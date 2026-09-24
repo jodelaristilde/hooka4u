@@ -119,7 +119,7 @@ export default async function Dashboard() {
                 const isDisabled = item.requiresAdmin && userRole !== "ADMIN";
 
                 return (
-                  
+                  <a
                     key={item.title}
                     href={isDisabled ? "#" : item.url}
                     className={
