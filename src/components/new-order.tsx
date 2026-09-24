@@ -26,7 +26,11 @@ interface CartState {
   [key: string]: CartItem
 }
 
-export default function NewOrder() {
+interface NewOrderProps {
+  onOrderComplete?: () => void
+}
+
+export default function NewOrder({ onOrderComplete }: NewOrderProps) {
   const [customerName, setCustomerName] = useState("")
   const [paymentType, setPaymentType] = useState<"CASH" | "CARD" | "">("")
   const [seating, setSeating] = useState("")
@@ -209,6 +213,13 @@ export default function NewOrder() {
       setIsCartOpen(false)
       setIsMobileSheetOpen(false)
       setMobileSheetView("cart")
+
+      // Auto-return to the welcome screen a few seconds after a successful order,
+      // so the kiosk is ready for the next customer.
+      setTimeout(() => {
+        setShowSuccessDialog(false)
+        onOrderComplete?.()
+      }, 3000)
     } catch (err) {
       console.error("Error placing order:", err)
       toast.error("We are sorry to say, but your order cannot be placed", {
@@ -459,7 +470,7 @@ export default function NewOrder() {
                     placeholder="Enter customer name"
                     value={customerName}
                     onChange={(e) => setCustomerName(e.target.value)}
-                    className="h-9 bg-zinc-800 border-zinc-700 text-black placeholder:text-zinc-500 text-sm"
+                    className="h-9 bg-zinc-800 border-zinc-700 text-white placeholder:text-zinc-500 text-sm"
                   />
                 </div>
 
@@ -490,7 +501,7 @@ export default function NewOrder() {
                     placeholder="Enter seating location"
                     value={seating}
                     onChange={(e) => setSeating(e.target.value)}
-                    className="h-9 bg-zinc-800 border-zinc-700 text-black placeholder:text-zinc-500 text-sm"
+                    className="h-9 bg-zinc-800 border-zinc-700 text-white placeholder:text-zinc-500 text-sm"
                   />
                 </div>
 
@@ -775,7 +786,10 @@ export default function NewOrder() {
               <p className="text-lg font-semibold text-white">{lastOrderId}</p>
             </div>
             <Button
-              onClick={() => setShowSuccessDialog(false)}
+              onClick={() => {
+                setShowSuccessDialog(false)
+                onOrderComplete?.()
+              }}
               className="w-full bg-lime-600 hover:bg-lime-700 text-white"
             >
               Close
