@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 // import "./homepagecss.css";
@@ -18,6 +18,21 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "VIP Service 4U - Your Hookah, Your Way",
   description: "Your Hookah, Your Way",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "VIP Service 4U",
+  },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  viewportFit: "cover",
+  themeColor: "#09090b",
 };
 
 export default function RootLayout({
