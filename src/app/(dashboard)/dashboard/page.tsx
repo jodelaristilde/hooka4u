@@ -23,10 +23,11 @@ import {
   Frame,
   ArrowRight,
 } from "lucide-react";
-import { getSession } from "next-auth/react";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 
 export default async function Dashboard() {
-  const session = await getSession();
+  const session = await getServerSession(authOptions);
   const userRole = session?.user?.role;
 
   const navMain = [
@@ -85,8 +86,7 @@ export default async function Dashboard() {
           />
           <Breadcrumb>
             <BreadcrumbList>
-              <BreadcrumbItem className="block">
-                <BreadcrumbLink href="/">Dashboard</BreadcrumbLink>
+              <BreadcrumbItem className="block"><BreadcrumbLink href="/">Dashboard</BreadcrumbLink>
               </BreadcrumbItem>
               <BreadcrumbSeparator className="block" />
               <BreadcrumbItem>
@@ -112,92 +112,5 @@ export default async function Dashboard() {
             <h3 className="text-sm font-medium text-muted-foreground mb-3">
               Main Navigation
             </h3>
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {navMain.map((item) => {
-                const Icon = item.icon;
-                const isDisabled = item.requiresAdmin && userRole !== "ADMIN"; // disable for non-admins
-
-                return (
-                  <a
-                    key={item.title}
-                    href={isDisabled ? "#" : item.url} // prevent navigation if disabled
-                    className={`group ${
-                      isDisabled ? "pointer-events-none opacity-50" : ""
-                    }`} // dim and disable click
-                  >
-                    <Card className="transition-all hover:shadow-md hover:border-primary/50">
-                      <CardHeader>
-                        <div className="flex items-start justify-between">
-                          <div className="flex items-center gap-3">
-                            <div className="p-2 rounded-lg bg-primary/10">
-                              <Icon
-                                className={`h-5 w-5 ${
-                                  isDisabled
-                                    ? "text-muted-foreground"
-                                    : "text-primary"
-                                }`}
-                              />
-                            </div>
-                            <div className="space-y-1">
-                              <CardTitle className="text-base flex items-center gap-2">
-                                {item.title}
-                                {item.requiresAdmin && (
-                                  <span className="text-xs font-normal px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">
-                                    Admin
-                                  </span>
-                                )}
-                              </CardTitle>
-                              <CardDescription className="text-xs">
-                                {item.description}
-                              </CardDescription>
-                            </div>
-                          </div>
-                          <ArrowRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-1" />
-                        </div>
-                      </CardHeader>
-                    </Card>
-                  </a>
-                );
-              })}
-            </div>
-          </div>
-
-          <div>
-            <h3 className="text-sm font-medium text-muted-foreground mb-3">
-              Quick Actions
-            </h3>
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {projects.map((item) => {
-                const Icon = item.icon;
-                return (
-                  <a key={item.name} href={item.url} className="group">
-                    <Card className="transition-all hover:shadow-md hover:border-primary/50">
-                      <CardHeader>
-                        <div className="flex items-start justify-between">
-                          <div className="flex items-center gap-3">
-                            <div className="p-2 rounded-lg bg-primary/10">
-                              <Icon className="h-5 w-5 text-primary" />
-                            </div>
-                            <div className="space-y-1">
-                              <CardTitle className="text-base">
-                                {item.name}
-                              </CardTitle>
-                              <CardDescription className="text-xs">
-                                {item.description}
-                              </CardDescription>
-                            </div>
-                          </div>
-                          <ArrowRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-1" />
-                        </div>
-                      </CardHeader>
-                    </Card>
-                  </a>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
+            <div className="difference">
+</parameter>
