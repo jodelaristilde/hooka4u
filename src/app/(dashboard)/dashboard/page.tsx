@@ -122,9 +122,11 @@ export default async function Dashboard() {
                   
                     key={item.title}
                     href={isDisabled ? "#" : item.url}
-                    className={`group ${
-                      isDisabled ? "pointer-events-none opacity-50" : ""
-                    }`}
+                    className={
+                      isDisabled
+                        ? "group pointer-events-none opacity-50"
+                        : "group"
+                    }
                   >
                     <Card className="transition-all hover:shadow-md hover:border-primary/50">
                       <CardHeader>
@@ -132,11 +134,11 @@ export default async function Dashboard() {
                           <div className="flex items-center gap-3">
                             <div className="p-2 rounded-lg bg-primary/10">
                               <Icon
-                                className={`h-5 w-5 ${
+                                className={
                                   isDisabled
-                                    ? "text-muted-foreground"
-                                    : "text-primary"
-                                }`}
+                                    ? "h-5 w-5 text-muted-foreground"
+                                    : "h-5 w-5 text-primary"
+                                }
                               />
                             </div>
                             <div className="space-y-1">
