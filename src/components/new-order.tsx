@@ -258,7 +258,7 @@ export default function NewOrder() {
                 <EmptyHookahState />
               </div>
             ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-7 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-5">
                 {products.map((product) => {
                   const inCart = cart[product.id]
                   const isSelected = inCart && inCart.quantity > 0
@@ -266,7 +266,7 @@ export default function NewOrder() {
                   return (
 <div
   key={product.id}
-  className={`cursor-pointer transition-all border overflow-hidden rounded-lg relative ${
+  className={`cursor-pointer transition-all active:scale-[0.97] border overflow-hidden rounded-lg relative ${
     isSelected
       ? "bg-lime-100 dark:bg-lime-950 shadow-md border-lime-300 dark:border-lime-800"
       : "border-zinc-700 bg-zinc-800 hover:border-lime-500 hover:shadow-sm"
@@ -318,7 +318,7 @@ export default function NewOrder() {
 
       {/* Add to Cart Button */}
       <button
-        className="w-full mt-2 bg-lime-500 hover:bg-lime-400 text-black text-sm font-semibold py-2 rounded-md transition"
+        className="w-full mt-2 bg-lime-500 hover:bg-lime-400 text-black text-base font-semibold py-3.5 rounded-md transition active:scale-95"
       >
         Add to Cart
       </button>
@@ -377,10 +377,10 @@ export default function NewOrder() {
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-7 w-7 -mt-1 -mr-1 hover:bg-red-500/20 hover:text-red-400 text-zinc-400 transition-colors"
+                            className="h-9 w-9 -mt-1 -mr-1 hover:bg-red-500/20 hover:text-red-400 text-zinc-400 transition-colors active:scale-90"
                             onClick={() => removeFromCart(item.id)}
                           >
-                            <X className="w-3.5 h-3.5" />
+                            <X className="w-4 h-4" />
                           </Button>
                         </div>
                         <div className="flex items-center justify-between gap-2">
@@ -388,19 +388,19 @@ export default function NewOrder() {
                             <Button
                               variant="outline"
                               size="icon"
-                              className="h-8 w-8 border-zinc-700 hover:bg-zinc-700 bg-transparent text-white hover:text-white"
+                              className="h-11 w-11 border-zinc-700 hover:bg-zinc-700 bg-transparent text-white hover:text-white active:scale-90 transition-transform"
                               onClick={() => updateQuantity(item.id, -1)}
                             >
-                              <Minus className="w-3 h-3" />
+                              <Minus className="w-4 h-4" />
                             </Button>
-                            <span className="w-6 text-center font-semibold text-sm text-white">{item.quantity}</span>
+                            <span className="w-8 text-center font-semibold text-base text-white">{item.quantity}</span>
                             <Button
                               variant="outline"
                               size="icon"
-                              className="h-8 w-8 border-zinc-700 hover:bg-zinc-700 bg-transparent text-white hover:text-white"
+                              className="h-11 w-11 border-zinc-700 hover:bg-zinc-700 bg-transparent text-white hover:text-white active:scale-90 transition-transform"
                               onClick={() => updateQuantity(item.id, 1)}
                             >
-                              <Plus className="w-3 h-3" />
+                              <Plus className="w-4 h-4" />
                             </Button>
                           </div>
                           <span className="font-semibold text-sm text-lime-500">
@@ -420,7 +420,7 @@ export default function NewOrder() {
                   <span className="text-xl font-bold text-lime-500">${subtotal.toFixed(2)}</span>
                 </div>
                 <Button
-                  className="w-full bg-lime-600 hover:bg-lime-700 text-white h-10 text-sm font-medium transition-colors"
+                  className="w-full bg-lime-600 hover:bg-lime-700 text-white h-12 text-base font-medium transition-colors active:scale-95"
                   disabled={cartItems.length === 0}
                   onClick={handlePlaceOrderClick}
                 >
@@ -516,7 +516,7 @@ export default function NewOrder() {
               {/* Order Form Footer */}
               <div className="border-t border-zinc-800 bg-zinc-900 p-4">
                 <Button
-                  className="w-full bg-lime-600 hover:bg-lime-700 text-black h-10 text-sm font-medium transition-colors"
+                  className="w-full bg-lime-600 hover:bg-lime-700 text-black h-12 text-base font-medium transition-colors active:scale-95"
                   onClick={handleConfirmOrder}
                   disabled={submitting}
                 >
@@ -608,10 +608,10 @@ export default function NewOrder() {
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-7 w-7 -mt-1 -mr-1 hover:bg-red-500/20 hover:text-red-400 text-zinc-400 transition-colors"
+                          className="h-9 w-9 -mt-1 -mr-1 hover:bg-red-500/20 hover:text-red-400 text-zinc-400 transition-colors active:scale-90"
                           onClick={() => removeFromCart(item.id)}
                         >
-                          <X className="w-3.5 h-3.5" />
+                          <X className="w-4 h-4" />
                         </Button>
                       </div>
                       <div className="flex items-center justify-between gap-2">
@@ -619,19 +619,19 @@ export default function NewOrder() {
                           <Button
                             variant="outline"
                             size="icon"
-                            className="h-8 w-8 border-zinc-700 hover:bg-zinc-700 bg-transparent text-white hover:text-white"
+                            className="h-11 w-11 border-zinc-700 hover:bg-zinc-700 bg-transparent text-white hover:text-white active:scale-90 transition-transform"
                             onClick={() => updateQuantity(item.id, -1)}
                           >
-                            <Minus className="w-3 h-3" />
+                            <Minus className="w-4 h-4" />
                           </Button>
-                          <span className="w-6 text-center font-semibold text-sm text-white">{item.quantity}</span>
+                          <span className="w-8 text-center font-semibold text-base text-white">{item.quantity}</span>
                           <Button
                             variant="outline"
                             size="icon"
-                            className="h-8 w-8 border-zinc-700 hover:bg-zinc-700 bg-transparent text-white hover:text-white"
+                            className="h-11 w-11 border-zinc-700 hover:bg-zinc-700 bg-transparent text-white hover:text-white active:scale-90 transition-transform"
                             onClick={() => updateQuantity(item.id, 1)}
                           >
-                            <Plus className="w-3 h-3" />
+                            <Plus className="w-4 h-4" />
                           </Button>
                         </div>
                         <span className="font-semibold text-sm text-lime-500">
@@ -651,7 +651,7 @@ export default function NewOrder() {
                 <span className="text-xl font-bold text-lime-500">${subtotal.toFixed(2)}</span>
               </div>
               <Button
-                className="w-full bg-lime-600 hover:bg-lime-700 text-white h-10 text-sm font-medium transition-colors"
+                className="w-full bg-lime-600 hover:bg-lime-700 text-white h-12 text-base font-medium transition-colors active:scale-95"
                 disabled={cartItems.length === 0}
                 onClick={handleMobileSheetPlaceOrder}
               >
@@ -729,7 +729,7 @@ export default function NewOrder() {
             {/* Order Form Footer */}
             <div className="border-t border-zinc-800 bg-zinc-900 p-4">
               <Button
-                className="w-full bg-lime-600 hover:bg-lime-700 text-white h-10 text-sm font-medium transition-colors"
+                className="w-full bg-lime-600 hover:bg-lime-700 text-white h-12 text-base font-medium transition-colors active:scale-95"
                 onClick={handleConfirmOrder}
                 disabled={submitting}
               >
