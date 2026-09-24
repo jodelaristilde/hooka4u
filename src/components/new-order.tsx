@@ -285,7 +285,7 @@ export default function NewOrder({ onOrderComplete }: NewOrderProps) {
   onClick={() => handleProductClick(product)}
 >
   {/* Square Image Container */}
-  <div className="relative w-full h-82 pt-[100%] bg-zinc-900 overflow-hidden">
+  <div className="relative w-full aspect-square bg-zinc-900 overflow-hidden">
 
     {/* Product Image */}
     {product.image ? (
@@ -296,7 +296,7 @@ export default function NewOrder({ onOrderComplete }: NewOrderProps) {
       />
     ) : (
       <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-zinc-800 to-zinc-900">
-        <ShoppingCart className="w-10 h-10 text-zinc-700" />
+        <ShoppingCart className="w-8 h-8 sm:w-10 sm:h-10 text-zinc-700" />
       </div>
     )}
 
@@ -304,34 +304,35 @@ export default function NewOrder({ onOrderComplete }: NewOrderProps) {
 
     {/* Quantity Badge */}
     {isSelected && (
-      <div className="absolute top-3 right-3 bg-red-500 text-white px-2 py-1 text-xs font-medium rounded-full shadow-md">
+      <div className="absolute top-2 right-2 sm:top-3 sm:right-3 bg-red-500 text-white w-6 h-6 sm:px-2 sm:py-1 sm:w-auto sm:h-auto flex items-center justify-center text-xs font-medium rounded-full shadow-md">
         {inCart.quantity}
       </div>
     )}
 
     {/* Bottom Overlay */}
-    <div className="absolute inset-x-0 bottom-0 p-4 bg-gradient-to-t from-black/80 via-black/50 to-transparent space-y-2">
+    <div className="absolute inset-x-0 bottom-0 p-2 sm:p-4 bg-gradient-to-t from-black/85 via-black/55 to-transparent space-y-1 sm:space-y-2 text-center sm:text-left">
     {/* Price Badge */}
-    <div className="w-fit bg-lime-500 text-black text-md font-bold px-3 py-1 rounded-full shadow-md">
+    <div className="mx-auto sm:mx-0 w-fit bg-lime-500 text-black text-xs sm:text-base font-bold px-2 py-0.5 sm:px-3 sm:py-1 rounded-full shadow-md">
       ${product.price.toFixed(2)}
     </div>
       {/* Title */}
-      <h3 className="text-white font-semibold text-2xl leading-tight">
+      <h3 className="text-white font-semibold text-sm sm:text-xl md:text-2xl leading-tight line-clamp-2 break-words">
         {product.name}
       </h3>
 
       {/* Description */}
       {product.description && (
-        <p className="text-zinc-300 text-xs line-clamp-2">
+        <p className="hidden sm:block text-zinc-300 text-xs line-clamp-2">
           {product.description}
         </p>
       )}
 
       {/* Add to Cart Button */}
       <button
-        className="w-full mt-2 bg-lime-500 hover:bg-lime-400 text-black text-base font-semibold py-3.5 rounded-md transition active:scale-95"
+        className="w-full mt-1 sm:mt-2 bg-lime-500 hover:bg-lime-400 text-black text-xs sm:text-base font-semibold py-2 sm:py-3.5 rounded-md transition active:scale-95"
       >
-        Add to Cart
+        <span className="sm:hidden">Add</span>
+        <span className="hidden sm:inline">Add to Cart</span>
       </button>
     </div>
   </div>
