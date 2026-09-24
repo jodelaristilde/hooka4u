@@ -8,7 +8,7 @@ export default function Home() {
   const [showHero, setShowHero] = useState(true);
 
   if (!showHero) {
-    return <NewOrder />;
+    return <NewOrder onOrderComplete={() => setShowHero(true)} />;
   }
 
   return (
