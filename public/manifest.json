@@ -1,0 +1,18 @@
+{
+  "name": "VIP Service 4U",
+  "short_name": "VIP Service 4U",
+  "description": "Your Hookah, Your Way",
+  "start_url": "/place-new-order",
+  "display": "fullscreen",
+  "orientation": "any",
+  "background_color": "#09090b",
+  "theme_color": "#09090b",
+  "icons": [
+    {
+      "src": "/logo.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
