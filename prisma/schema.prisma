@@ -51,6 +51,7 @@ model MenuItems {
 
 model Order {
   id           String      @id @default(uuid()) @map("_id")
+  orderNumber  Int?
   customerName String
   paymentType  String?     @default("CASH")
   Seating      String
