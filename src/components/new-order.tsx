@@ -205,7 +205,7 @@ export default function NewOrder({ category, onOrderComplete, onBack }: NewOrder
 
       const order = await response.json()
 
-      setLastOrderId(order.id)
+      setLastOrderId(order.orderNumber?.toString() || order.id)
       setShowSuccessDialog(true)
 
       setCart({})
