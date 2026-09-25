@@ -1,14 +1,23 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    const { searchParams } = new URL(request.url);
+    const category = searchParams.get("category");
+
     const allItems = await prisma.menuItems.findMany({
       orderBy: { createdAt: 'desc' }
     });
-    
-    const menuItems = allItems.filter(item => item.available === true);
-    
+
+    let menuItems = allItems.filter(item => item.available === true);
+
+    if (category) {
+      menuItems = menuItems.filter(
+        (item) => item.category?.toUpperCase() === category.toUpperCase()
+      );
+    }
+
     return NextResponse.json(menuItems);
   } catch (error) {
     console.error('Error details:', error);
@@ -22,14 +31,15 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { name, description, price, image } = body;
+    const { name, description, price, image, category } = body;
 
     const menuItem = await prisma.menuItems.create({
       data: {
         name,
         description,
-        image: image || null, // Store base64 image
+        image: image || null,
         price: 0,
+        category: category || null,
       },
     });
 
