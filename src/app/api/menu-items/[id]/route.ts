@@ -1,27 +1,29 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
-export async function PUT(
+export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await params;
     const body = await request.json();
-    const { name, description, available, image } = body;
+    const { name, description, price, image, category, available } = body;
 
-    const menuItem = await prisma.menuItems.update({
+    const data: Record<string, unknown> = {};
+    if (name !== undefined) data.name = name;
+    if (description !== undefined) data.description = description;
+    if (price !== undefined) data.price = price;
+    if (image !== undefined) data.image = image;
+    if (category !== undefined) data.category = category;
+    if (available !== undefined) data.available = available;
+
+    const updated = await prisma.menuItems.update({
       where: { id },
-      data: {
-        name,
-        description,
-        available,
-        image: image !== undefined ? image : undefined, // Update image if provided
-        price: 0,
-      },
+      data,
     });
 
-    return NextResponse.json(menuItem);
+    return NextResponse.json(updated);
   } catch (error) {
     console.error("Error updating menu item:", error);
     return NextResponse.json(
@@ -37,11 +39,7 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
-
-    await prisma.menuItems.delete({
-      where: { id },
-    });
-
+    await prisma.menuItems.delete({ where: { id } });
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Error deleting menu item:", error);
