@@ -3,58 +3,18 @@
 import { useState } from "react";
 import NewOrder from "@/components/new-order";
 
-type Screen = "hero" | "category" | "order";
+type Screen = "hero" | "order";
 
 export default function Home() {
   const [screen, setScreen] = useState<Screen>("hero");
-  const [category, setCategory] = useState<"FOOD" | "DRINKS" | null>(null);
 
-  const chooseCategory = (cat: "FOOD" | "DRINKS") => {
-    setCategory(cat);
-    setScreen("order");
-  };
-
-  if (screen === "order" && category) {
+  if (screen === "order") {
     return (
       <NewOrder
-        category={category}
-        onBack={() => setScreen("category")}
         onOrderComplete={() => {
           setScreen("hero");
-          setCategory(null);
         }}
       />
-    );
-  }
-
-  if (screen === "category") {
-    return (
-      <main className="min-h-screen bg-gray-950 flex items-center justify-center px-4">
-        <div className="max-w-3xl w-full text-center">
-          <h1
-            className="text-3xl sm:text-5xl font-bold text-white mb-12"
-            style={{ fontFamily: "Georgia, serif" }}
-          >
-            What are you in the mood for?
-          </h1>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-            <button
-              onClick={() => chooseCategory("FOOD")}
-              className="py-12 px-6 rounded-2xl bg-gradient-to-r from-lime-400 to-lime-500 text-black text-2xl font-semibold uppercase tracking-wide hover:scale-105 transition-transform"
-              style={{ fontFamily: "Georgia, serif" }}
-            >
-              Food
-            </button>
-            <button
-              onClick={() => chooseCategory("DRINKS")}
-              className="py-12 px-6 rounded-2xl bg-gradient-to-r from-lime-400 to-lime-500 text-black text-2xl font-semibold uppercase tracking-wide hover:scale-105 transition-transform"
-              style={{ fontFamily: "Georgia, serif" }}
-            >
-              Drinks
-            </button>
-          </div>
-        </div>
-      </main>
     );
   }
 
@@ -79,7 +39,7 @@ export default function Home() {
         </h1>
         <div className="flex justify-center">
           <button
-            onClick={() => setScreen("category")}
+            onClick={() => setScreen("order")}
             className="group relative px-12 sm:px-20 py-4 sm:py-6 text-lg sm:text-xl md:text-2xl font-semibold text-black bg-gradient-to-r from-lime-400 to-lime-500 overflow-hidden transition-all duration-500 hover:scale-105"
             style={{
               fontFamily: "Georgia, serif",
