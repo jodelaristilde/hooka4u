@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { Plus, Pencil, Trash2, Loader2, Upload, X, Image } from 'lucide-react';
+import { Plus, Pencil, Trash2, Loader2, Upload, X, Image, UtensilsCrossed, CupSoda } from 'lucide-react';
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -17,6 +17,15 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Dialog,
   DialogContent,
@@ -37,12 +46,15 @@ import {
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 
+type Category = "FOOD" | "DRINKS";
+
 interface MenuItem {
   id: string;
   name: string;
   description?: string;
   price: number;
   image?: string;
+  category?: Category | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -50,6 +62,7 @@ interface MenuItem {
 export default function MenuItemsPage() {
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<Category>("FOOD");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState<MenuItem | null>(null);
@@ -63,6 +76,7 @@ export default function MenuItemsPage() {
   const [formData, setFormData] = useState({
     name: "",
     description: "",
+    category: "FOOD" as Category,
   });
 
   // Fetch menu items
@@ -135,6 +149,7 @@ export default function MenuItemsPage() {
       setFormData({
         name: item.name,
         description: item.description || "",
+        category: item.category || activeTab,
       });
       setImagePreview(item.image || null);
     } else {
@@ -142,6 +157,7 @@ export default function MenuItemsPage() {
       setFormData({
         name: "",
         description: "",
+        category: activeTab,
       });
       setImagePreview(null);
     }
@@ -155,6 +171,7 @@ export default function MenuItemsPage() {
     setFormData({
       name: "",
       description: "",
+      category: activeTab,
     });
     setImagePreview(null);
     setImageFile(null);
@@ -167,6 +184,13 @@ export default function MenuItemsPage() {
     if (!formData.name.trim()) {
       toast.error("Name is required", {
         description: "Please enter a name for the menu item.",
+      });
+      return;
+    }
+
+    if (!formData.category) {
+      toast.error("Category is required", {
+        description: "Please choose Food or Drinks for this item.",
       });
       return;
     }
@@ -203,8 +227,10 @@ export default function MenuItemsPage() {
         body: JSON.stringify({
           name: formData.name.trim(),
           description: formData.description.trim() || null,
-          price: 0,
+          price: selectedItem?.price ?? 0,
           image: imageBase64,
+          category: formData.category,
+          available: true,
         }),
       });
 
@@ -269,6 +295,95 @@ export default function MenuItemsPage() {
     }
   };
 
+  const itemsForTab = menuItems.filter((item) => item.category === activeTab);
+
+  const renderGrid = () => (
+    loading ? (
+      <div className="flex flex-col items-center justify-center py-12">
+        <Loader2 className="w-12 h-12 animate-spin text-primary mb-4" />
+        <p className="text-muted-foreground text-sm">Loading menu items...</p>
+      </div>
+    ) : itemsForTab.length === 0 ? (
+      <Card>
+        <CardContent className="flex flex-col items-center justify-center py-12">
+          <div className="text-center">
+            <h3 className="text-lg font-semibold text-foreground mb-2">
+              No {activeTab === "FOOD" ? "food" : "drink"} items yet
+            </h3>
+            <p className="text-sm text-muted-foreground mb-4">
+              Get started by adding your first {activeTab === "FOOD" ? "food" : "drink"} item
+            </p>
+            <Button
+              onClick={() => handleOpenDialog()}
+              className="bg-primary hover:bg-primary/90 text-primary-foreground"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Add {activeTab === "FOOD" ? "Food" : "Drink"} Item
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    ) : (
+      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
+        {itemsForTab.map((item) => (
+          <Card key={item.id} className="hover:shadow-md transition-shadow overflow-hidden">
+            {item.image && (
+              <div className="w-full h-64 bg-muted relative overflow-hidden">
+                <img
+                  src={item.image}
+                  alt={item.name}
+                  className="w-full h-64 aspect-square"
+                />
+              </div>
+            )}
+            <CardHeader className="pb-3">
+              <div className="flex items-start justify-between">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <CardTitle className="text-base font-semibold truncate">
+                      {item.name}
+                    </CardTitle>
+                    <Badge variant="secondary" className="text-xs">
+                      {item.category === "FOOD" ? "Food" : "Drinks"}
+                    </Badge>
+                  </div>
+                  <p className="text-2xl font-bold text-primary mt-1">
+                    ${item.price.toFixed(2)}
+                  </p>
+                </div>
+                <div className="flex gap-1">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 hover:bg-primary/10 hover:text-primary"
+                    onClick={() => handleOpenDialog(item)}
+                  >
+                    <Pencil className="w-4 h-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 hover:bg-destructive/10 hover:text-destructive"
+                    onClick={() => handleDeleteClick(item)}
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+            </CardHeader>
+            {item.description && (
+              <CardContent className="pt-0">
+                <p className="text-sm text-muted-foreground line-clamp-2">
+                  {item.description}
+                </p>
+              </CardContent>
+            )}
+          </Card>
+        ))}
+      </div>
+    )
+  );
+
   return (
     <div className="flex flex-col h-screen bg-background">
       {/* Header */}
@@ -305,7 +420,7 @@ export default function MenuItemsPage() {
             <div>
               <h1 className="text-2xl font-bold text-foreground">Menu Items</h1>
               <p className="text-sm text-muted-foreground mt-1">
-                Manage your menu items. Note: All new items will have a price of $0.00 by default.
+                Manage your food and drinks menu items.
               </p>
             </div>
             <Button
@@ -317,86 +432,26 @@ export default function MenuItemsPage() {
             </Button>
           </div>
 
-          {/* Menu Items Grid */}
-          {loading ? (
-            <div className="flex flex-col items-center justify-center py-12">
-              <Loader2 className="w-12 h-12 animate-spin text-primary mb-4" />
-              <p className="text-muted-foreground text-sm">Loading menu items...</p>
-            </div>
-          ) : menuItems.length === 0 ? (
-            <Card>
-              <CardContent className="flex flex-col items-center justify-center py-12">
-                <div className="text-center">
-                  <h3 className="text-lg font-semibold text-foreground mb-2">
-                    No menu items yet
-                  </h3>
-                  <p className="text-sm text-muted-foreground mb-4">
-                    Get started by creating your first menu item
-                  </p>
-                  <Button
-                    onClick={() => handleOpenDialog()}
-                    className="bg-primary hover:bg-primary/90 text-primary-foreground"
-                  >
-                    <Plus className="w-4 h-4 mr-2" />
-                    Add Menu Item
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
-              {menuItems.map((item) => (
-                <Card key={item.id} className="hover:shadow-md transition-shadow overflow-hidden">
-                  {item.image && (
-                    <div className="w-full h-64 bg-muted relative overflow-hidden">
-                      <img
-                        src={item.image}
-                        alt={item.name}
-                        className="w-full h-64 aspect-square"
-                      />
-                    </div>
-                  )}
-                  <CardHeader className="pb-3">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1 min-w-0">
-                        <CardTitle className="text-base font-semibold truncate">
-                          {item.name}
-                        </CardTitle>
-                        <p className="text-2xl font-bold text-primary mt-1">
-                          ${item.price.toFixed(2)}
-                        </p>
-                      </div>
-                      <div className="flex gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 hover:bg-primary/10 hover:text-primary"
-                          onClick={() => handleOpenDialog(item)}
-                        >
-                          <Pencil className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 hover:bg-destructive/10 hover:text-destructive"
-                          onClick={() => handleDeleteClick(item)}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  </CardHeader>
-                  {item.description && (
-                    <CardContent className="pt-0">
-                      <p className="text-sm text-muted-foreground line-clamp-2">
-                        {item.description}
-                      </p>
-                    </CardContent>
-                  )}
-                </Card>
-              ))}
-            </div>
-          )}
+          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as Category)}>
+            <TabsList>
+              <TabsTrigger value="FOOD" className="gap-1.5">
+                <UtensilsCrossed className="w-4 h-4" />
+                Food
+              </TabsTrigger>
+              <TabsTrigger value="DRINKS" className="gap-1.5">
+                <CupSoda className="w-4 h-4" />
+                Drinks
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="FOOD" className="pt-4">
+              {renderGrid()}
+            </TabsContent>
+
+            <TabsContent value="DRINKS" className="pt-4">
+              {renderGrid()}
+            </TabsContent>
+          </Tabs>
         </div>
       </div>
 
@@ -410,7 +465,7 @@ export default function MenuItemsPage() {
             <DialogDescription>
               {selectedItem 
                 ? "Update the details of the menu item below."
-                : "Create a new menu item. The price will be set to $0.00 and can be updated later."}
+                : "Create a new menu item and choose whether it's Food or Drinks."}
             </DialogDescription>
           </DialogHeader>
           
@@ -480,6 +535,26 @@ export default function MenuItemsPage() {
             </div>
 
             <div className="space-y-2">
+              <Label htmlFor="category">
+                Category <span className="text-destructive">*</span>
+              </Label>
+              <Select
+                value={formData.category}
+                onValueChange={(value) =>
+                  setFormData({ ...formData, category: value as Category })
+                }
+              >
+                <SelectTrigger id="category" className="w-full">
+                  <SelectValue placeholder="Select category" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="FOOD">Food</SelectItem>
+                  <SelectItem value="DRINKS">Drinks</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
               <Label htmlFor="description">Description (Optional)</Label>
               <Textarea
                 id="description"
@@ -493,10 +568,14 @@ export default function MenuItemsPage() {
             <div className="bg-muted/50 border border-border rounded-lg p-3">
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium text-foreground">Price</span>
-                <span className="text-lg font-bold text-primary">$0.00</span>
+                <span className="text-lg font-bold text-primary">
+                  ${(selectedItem?.price ?? 0).toFixed(2)}
+                </span>
               </div>
               <p className="text-xs text-muted-foreground mt-1">
-                Price is set to $0.00 by default and will be updated later by users.
+                {selectedItem
+                  ? "Update the price from the Menu Prices page."
+                  : "Price is set to $0.00 by default and can be updated later."}
               </p>
             </div>
           </div>
@@ -534,7 +613,7 @@ export default function MenuItemsPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Are you sure?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently delete &qout;{itemToDelete?.name}&qout;. This action cannot be undone.
+              This will permanently delete &quot;{itemToDelete?.name}&quot;. This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
