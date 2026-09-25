@@ -52,9 +52,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Generate a short, human-friendly order number (starts at 100, always increasing)
+    const lastOrder = await prisma.order.findFirst({
+      where: { orderNumber: { not: null } },
+      orderBy: { orderNumber: "desc" },
+      select: { orderNumber: true },
+    });
+    const orderNumber = (lastOrder?.orderNumber ?? 99) + 1;
+
     // Create order with items
     const order = await prisma.order.create({
       data: {
+        orderNumber,
         customerName: customerName.trim(),
         paymentType: finalPaymentType,
         Seating: Seating.trim(),
