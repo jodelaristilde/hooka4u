@@ -5,12 +5,15 @@ export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const category = searchParams.get("category");
+    const admin = searchParams.get("admin");
 
     const allItems = await prisma.menuItems.findMany({
       orderBy: { createdAt: 'desc' }
     });
 
-    let menuItems = allItems.filter(item => item.available === true);
+    let menuItems = admin === "true"
+      ? allItems
+      : allItems.filter(item => item.available === true);
 
     if (category) {
       menuItems = menuItems.filter(
@@ -31,15 +34,16 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { name, description, price, image, category } = body;
+    const { name, description, price, image, category, available } = body;
 
     const menuItem = await prisma.menuItems.create({
       data: {
         name,
         description,
         image: image || null,
-        price: 0,
+        price: price ?? 0,
         category: category || null,
+        available: available ?? false,
       },
     });
 
