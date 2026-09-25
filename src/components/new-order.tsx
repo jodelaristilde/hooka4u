@@ -28,12 +28,14 @@ interface CartState {
 }
 
 interface NewOrderProps {
-  category: "FOOD" | "DRINKS"
   onOrderComplete?: () => void
   onBack?: () => void
 }
 
-export default function NewOrder({ category, onOrderComplete, onBack }: NewOrderProps) {
+type CategoryTab = "ALL" | "FOOD" | "DRINKS"
+
+export default function NewOrder({ onOrderComplete, onBack }: NewOrderProps) {
+  const [activeTab, setActiveTab] = useState<CategoryTab>("ALL")
   const [customerName, setCustomerName] = useState("")
   const [paymentType, setPaymentType] = useState<"CASH" | "CARD" | "">("")
   const [seating, setSeating] = useState("")
@@ -54,7 +56,7 @@ export default function NewOrder({ category, onOrderComplete, onBack }: NewOrder
     const fetchProducts = async () => {
       try {
         setLoading(true)
-        const response = await fetch(`/api/menu-items?category=${category}`)
+        const response = await fetch(`/api/menu-items`)
 
         if (!response.ok) {
           throw new Error("Failed to fetch menu items")
@@ -73,7 +75,7 @@ export default function NewOrder({ category, onOrderComplete, onBack }: NewOrder
     }
 
     fetchProducts()
-  }, [category])
+  }, [])
 
   const addToCart = (product: Product) => {
     setCart((prev) => ({
@@ -241,6 +243,9 @@ export default function NewOrder({ category, onOrderComplete, onBack }: NewOrder
   const subtotal = cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0)
   const totalItems = cartItems.reduce((sum, item) => sum + item.quantity, 0)
 
+  const visibleProducts =
+    activeTab === "ALL" ? products : products.filter((p) => p.category === activeTab)
+
   return (
     <div className="flex flex-col h-screen bg-background">
 
@@ -248,7 +253,23 @@ export default function NewOrder({ category, onOrderComplete, onBack }: NewOrder
       <div className="flex flex-col md:flex-row flex-1 overflow-hidden">
         {/* Products Section */}
         <div className="flex-1 flex flex-col overflow-hidden pb-20 md:pb-0">
-          <div className="flex-1 overflow-y-auto p-3 sm:p-6">
+          {/* Category Tabs */}
+          <div className="flex gap-2 px-3 sm:px-6 pt-3 sm:pt-6 pb-1 sm:pb-2">
+            {(["ALL", "FOOD", "DRINKS"] as CategoryTab[]).map((tab) => (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+                  activeTab === tab
+                    ? "bg-lime-500 text-black"
+                    : "bg-zinc-800 text-zinc-300 hover:bg-zinc-700"
+                }`}
+              >
+                {tab === "ALL" ? "All" : tab.charAt(0) + tab.slice(1).toLowerCase()}
+              </button>
+            ))}
+          </div>
+          <div className="flex-1 overflow-y-auto p-3 sm:p-6 pt-2 sm:pt-3">
             {loading ? (
               <div className="flex flex-col items-center justify-center h-full">
                 <Loader2 className="w-12 h-12 animate-spin text-primary mb-4" />
@@ -267,13 +288,13 @@ export default function NewOrder({ category, onOrderComplete, onBack }: NewOrder
                   Retry
                 </Button>
               </div>
-            ) : products.length === 0 ? (
+            ) : visibleProducts.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full">
                 <EmptyHookahState />
               </div>
             ) : (
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-5">
-                {products.map((product) => {
+                {visibleProducts.map((product) => {
                   const inCart = cart[product.id]
                   const isSelected = inCart && inCart.quantity > 0
 
