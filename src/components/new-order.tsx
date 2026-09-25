@@ -385,9 +385,20 @@ export default function NewOrder({ category, onOrderComplete, onBack }: NewOrder
                     {cartItems.map((item) => (
                       <div key={item.id} className="bg-zinc-800 rounded-lg p-3.5 border border-zinc-700 transition-all">
                         <div className="flex items-start justify-between mb-3">
-                          <div className="flex-1 min-w-0">
-                            <h4 className="font-medium text-sm text-white truncate">{item.name}</h4>
-                            <p className="text-xs text-zinc-400 mt-0.5">${item.price.toFixed(2)}</p>
+                          <div className="flex items-start gap-3 flex-1 min-w-0">
+                            {item.image ? (
+                              <img
+                                src={item.image}
+                                alt={item.name}
+                                className="w-12 h-12 rounded-md object-cover flex-shrink-0"
+                              />
+                            ) : (
+                              <div className="w-12 h-12 rounded-md bg-zinc-700 flex-shrink-0" />
+                            )}
+                            <div className="flex-1 min-w-0">
+                              <h4 className="font-medium text-sm text-white truncate">{item.name}</h4>
+                              <p className="text-xs text-zinc-400 mt-0.5">${item.price.toFixed(2)}</p>
+                            </div>
                           </div>
                           <Button
                             variant="ghost"
@@ -616,9 +627,20 @@ export default function NewOrder({ category, onOrderComplete, onBack }: NewOrder
                   {cartItems.map((item) => (
                     <div key={item.id} className="bg-zinc-800 rounded-lg p-3.5 border border-zinc-700 transition-all">
                       <div className="flex items-start justify-between mb-3">
-                        <div className="flex-1 min-w-0">
-                          <h4 className="font-medium text-sm text-white truncate">{item.name}</h4>
-                          <p className="text-xs text-zinc-400 mt-0.5">${item.price.toFixed(2)}</p>
+                        <div className="flex items-start gap-3 flex-1 min-w-0">
+                          {item.image ? (
+                            <img
+                              src={item.image}
+                              alt={item.name}
+                              className="w-12 h-12 rounded-md object-cover flex-shrink-0"
+                            />
+                          ) : (
+                            <div className="w-12 h-12 rounded-md bg-zinc-700 flex-shrink-0" />
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <h4 className="font-medium text-sm text-white truncate">{item.name}</h4>
+                            <p className="text-xs text-zinc-400 mt-0.5">${item.price.toFixed(2)}</p>
+                          </div>
                         </div>
                         <Button
                           variant="ghost"
