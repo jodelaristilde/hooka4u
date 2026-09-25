@@ -829,8 +829,25 @@ export default function NewOrder({ onOrderComplete, onBack }: NewOrderProps) {
           </DialogHeader>
           <div className="flex flex-col gap-4 py-4">
             <div className="flex flex-col gap-2">
-              <p className="text-sm text-zinc-400">Order ID:</p>
-              <p className="text-lg font-semibold text-white">{lastOrderId}</p>
+                        <div className="flex flex-col gap-6 py-4">
+            <div className="flex flex-col items-center gap-2">
+              <p className="text-sm uppercase tracking-widest text-zinc-400">Your Order Number</p>
+              <div className="flex items-center justify-center w-full rounded-2xl border-4 border-lime-500 bg-zinc-950 py-6">
+                <p className="text-7xl sm:text-8xl font-black text-lime-500 tabular-nums tracking-wider">
+                  {lastOrderId}
+                </p>
+              </div>
+            </div>
+            <Button
+              onClick={() => {
+                setShowSuccessDialog(false)
+                onOrderComplete?.()
+              }}
+              className="w-full bg-lime-600 hover:bg-lime-700 text-white"
+            >
+              Close
+            </Button>
+          </div>
             </div>
             <Button
               onClick={() => {
