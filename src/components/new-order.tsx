@@ -418,4 +418,6 @@ export default function NewOrder({ category, onOrderComplete, onBack }: NewOrder
                               <Plus className="w-4 h-4" />
                             </Button>
                           </div>
-                          <span className="font-semibold text-sm
+                         <span className="font-semibold text-sm text-lime-500">
+  ${(item.price * item.quantity).toFixed(2)}
+</span>
