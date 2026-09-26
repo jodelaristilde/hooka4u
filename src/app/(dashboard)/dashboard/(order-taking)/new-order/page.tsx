@@ -33,7 +33,13 @@ interface Product {
   image: string;
   price: number;
   description?: string;
+  category?: string | null;
 }
+
+type CategoryTab = string;
+
+const titleCase = (s: string) =>
+  s.length === 0 ? s : s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
 
 interface CartItem extends Product {
   quantity: number;
@@ -44,6 +50,7 @@ interface CartState {
 }
 
 export default function NewOrder() {
+  const [activeCategoryTab, setActiveCategoryTab] = useState<CategoryTab>("ALL");
   const [customerName, setCustomerName] = useState("");
   const [paymentType, setPaymentType] = useState<"CASH" | "CARD" | "">("");
   const [seating, setSeating] = useState("");
@@ -252,6 +259,16 @@ const handleConfirmOrder = async () => {
     0
   );
   const totalItems = cartItems.reduce((sum, item) => sum + item.quantity, 0);
+
+  const availableCategories = Array.from(
+    new Set(products.map((p) => p.category).filter((c): c is string => !!c))
+  ).sort();
+  const categoryTabs: CategoryTab[] = ["ALL", ...availableCategories];
+
+  const visibleProducts =
+    activeCategoryTab === "ALL"
+      ? products
+      : products.filter((p) => p.category === activeCategoryTab);
 return (
   <div className="flex flex-col h-screen bg-background">
     <header className="flex h-14 shrink-0 items-center gap-3 bg-card border-b border-border">
@@ -283,6 +300,24 @@ return (
     <div className="flex flex-col md:flex-row flex-1 overflow-hidden">
       {/* Products Section */}
       <div className="flex-1 flex flex-col overflow-hidden pb-20 md:pb-0 bg-zinc-50 dark:bg-zinc-900 md:bg-background">
+        {/* Category Tabs */}
+        {!loading && !error && categoryTabs.length > 1 && (
+          <div className="flex gap-2 px-3 sm:px-6 pt-3 sm:pt-6 pb-1 sm:pb-2">
+            {categoryTabs.map((tab) => (
+              <button
+                key={tab}
+                onClick={() => setActiveCategoryTab(tab)}
+                className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+                  activeCategoryTab === tab
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-muted text-muted-foreground hover:bg-muted/80"
+                }`}
+              >
+                {tab === "ALL" ? "All" : titleCase(tab)}
+              </button>
+            ))}
+          </div>
+        )}
         <div className="flex-1 overflow-y-auto p-3 sm:p-6">
           {loading ? (
             <div className="flex flex-col items-center justify-center h-full">
@@ -306,13 +341,13 @@ return (
                 Retry
               </Button>
             </div>
-          ) : products.length === 0 ? (
+          ) : visibleProducts.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full">
               <EmptyHookahState />
             </div>
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4">
-              {products.map((product) => {
+              {visibleProducts.map((product) => {
                 const inCart = cart[product.id];
                 const isSelected = inCart && inCart.quantity > 0;
 
@@ -847,9 +882,6 @@ return (
           </DialogTitle>
           <DialogDescription className="text-center space-y-2">
             <p>Your order has been confirmed and sent to the kitchen.</p>
-            {/* <p className="text-sm font-mono bg-muted px-3 py-2 rounded-md inline-block">
-              Order ID: {lastOrderId}
-            </p> */}
           </DialogDescription>
         </DialogHeader>
         <div className="flex flex-col gap-2 sm:flex-row sm:justify-center mt-4">
