@@ -1,5 +1,6 @@
 "use client"
 
+import { useEffect, useState } from "react"
 import { QrCode } from "lucide-react"
 import {
   SidebarGroup,
@@ -8,19 +9,23 @@ import {
 import Link from "next/link"
 
 export function HomepageQR() {
-  const getHomepageUrl = () => {
-    if (typeof window !== 'undefined') {
-      return `${window.location.origin}/place-new-order`
-    }
-    return ''
-  }
+  // `window.location` only exists in the browser, not on the server. Reading
+  // it directly during render (the old `typeof window !== 'undefined'`
+  // check) made the server draw this with an empty URL and the browser draw
+  // it with the real URL, on the very first paint — a mismatch that crashed
+  // hydration for the whole dashboard (not just this widget). Instead,
+  // start with an empty URL on every render (server and client agree), and
+  // fill it in only after the component has actually mounted in the
+  // browser, which happens safely after that first-paint comparison.
+  const [finalUrl, setFinalUrl] = useState("")
+
+  useEffect(() => {
+    setFinalUrl(`${window.location.origin}/place-new-order`)
+  }, [])
 
   const getQRCodeUrl = () => {
-    const finalUrl = getHomepageUrl()
     return `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(finalUrl)}&bgcolor=ffffff&color=000000&qzone=1&format=svg`
   }
-
-  const finalUrl = getHomepageUrl()
 
   return (
     <SidebarGroup className="group-data-[collapsible=icon]:hidden mt-auto">
