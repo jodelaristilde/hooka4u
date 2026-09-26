@@ -48,11 +48,13 @@ import Link from "next/link";
 interface OrderItem {
   id: string;
   quantity: number;
+  // Optional/nullable: if the underlying menu item was later deleted from
+  // the admin Menu page, the API can return this as null for that item.
   product: {
     id: string;
     name: string;
     price: number;
-  };
+  } | null;
 }
 
 interface Order {
@@ -488,35 +490,46 @@ export default function AllOrders() {
 
         <CardContent className="flex-1 flex flex-col">
           <div className="space-y-2 flex-1 mb-4">
-            {order.items.map((item) => (
-              <div
-                key={item.id}
-                className="flex items-center gap-2.5 p-2.5 bg-muted border border-border rounded"
-              >
-                {productImages[item.product.id] ? (
-                  <img
-                    src={productImages[item.product.id]}
-                    alt={item.product.name}
-                    className="w-10 h-10 rounded-md object-cover shrink-0"
-                  />
-                ) : (
-                  <div className="w-10 h-10 rounded-md bg-border shrink-0" />
-                )}
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm text-foreground truncate">
-                    {item.product.name}
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    ${item.product.price.toFixed(2)} × {item.quantity}
-                  </p>
+            {order.items.map((item) => {
+              // A product can be deleted from the menu after an order was
+              // placed for it. When that happens, `item.product` comes back
+              // as null even though the TypeScript type claims it's always
+              // present. Guard every access so one deleted menu item can't
+              // crash the entire order-card grid.
+              const productId = item.product?.id;
+              const productName = item.product?.name ?? "Item no longer available";
+              const productPrice = item.product?.price ?? 0;
+
+              return (
+                <div
+                  key={item.id}
+                  className="flex items-center gap-2.5 p-2.5 bg-muted border border-border rounded"
+                >
+                  {productId && productImages[productId] ? (
+                    <img
+                      src={productImages[productId]}
+                      alt={productName}
+                      className="w-10 h-10 rounded-md object-cover shrink-0"
+                    />
+                  ) : (
+                    <div className="w-10 h-10 rounded-md bg-border shrink-0" />
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm text-foreground truncate">
+                      {productName}
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      ${productPrice.toFixed(2)} × {item.quantity}
+                    </p>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <p className="text-sm font-semibold text-foreground">
+                      ${(productPrice * item.quantity).toFixed(2)}
+                    </p>
+                  </div>
                 </div>
-                <div className="text-right shrink-0">
-                  <p className="text-sm font-semibold text-foreground">
-                    ${(item.product.price * item.quantity).toFixed(2)}
-                  </p>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
 
           <div className="pt-3 border-t border-border space-y-3">
