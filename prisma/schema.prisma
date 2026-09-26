@@ -31,18 +31,13 @@ model VerificationToken {
   @@unique([identifier, token])
 }
 
-enum Category {
-  FOOD
-  DRINKS
-}
-
 model MenuItems {
   id          String      @id @default(uuid()) @map("_id")
   name        String
   description String?
   image       String?     // Add this line for base64 image storage
   price       Float
-  category    Category?
+  category    String?     // Free-text category name, e.g. "FOOD", "DRINKS", or any custom category
   available   Boolean     @default(false)
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
