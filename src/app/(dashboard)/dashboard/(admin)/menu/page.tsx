@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { Plus, Pencil, Trash2, Loader2, Upload, X, Image, UtensilsCrossed, CupSoda } from 'lucide-react';
+import { Plus, Pencil, Trash2, Loader2, Upload, X, Image, UtensilsCrossed, CupSoda, Package } from 'lucide-react';
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -46,7 +46,102 @@ import {
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 
-type Category = "FOOD" | "DRINKS";
+type Category = string;
+
+const titleCase = (s: string) =>
+  s.length === 0 ? s : s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
+
+const categoryIcon = (name: string) => {
+  const upper = (name || "").toUpperCase();
+  if (upper === "FOOD") return UtensilsCrossed;
+  if (upper === "DRINKS") return CupSoda;
+  return Package;
+};
+
+const NEW_CATEGORY_VALUE = "__new__";
+
+// Images below this size get a "low resolution" warning on upload.
+const MIN_DIMENSION = 600;
+// Images larger than this get downscaled before processing/storage.
+const MAX_DIMENSION = 1600;
+
+// Simple 3x3 unsharp-mask style convolution to make soft/blurry photos look crisper.
+function sharpenImageData(data: Uint8ClampedArray, width: number, height: number) {
+  const kernel = [0, -1, 0, -1, 5, -1, 0, -1, 0];
+  const output = new Uint8ClampedArray(data.length);
+
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      for (let c = 0; c < 3; c++) {
+        let sum = 0;
+        let k = 0;
+        for (let ky = -1; ky <= 1; ky++) {
+          for (let kx = -1; kx <= 1; kx++) {
+            const sx = Math.min(width - 1, Math.max(0, x + kx));
+            const sy = Math.min(height - 1, Math.max(0, y + ky));
+            sum += data[(sy * width + sx) * 4 + c] * kernel[k];
+            k++;
+          }
+        }
+        output[(y * width + x) * 4 + c] = sum;
+      }
+      output[(y * width + x) * 4 + 3] = data[(y * width + x) * 4 + 3];
+    }
+  }
+
+  return output;
+}
+
+// Resizes (if needed) and sharpens an uploaded image file, returning a data URL
+// plus the image's dimensions so we can warn about low-resolution source photos.
+async function processImageFile(
+  file: File
+): Promise<{ dataUrl: string; width: number; height: number }> {
+  const rawDataUrl = await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+
+  const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+    const image = new window.Image();
+    image.onload = () => resolve(image);
+    image.onerror = reject;
+    image.src = rawDataUrl;
+  });
+
+  const originalWidth = img.naturalWidth;
+  const originalHeight = img.naturalHeight;
+
+  let targetWidth = originalWidth;
+  let targetHeight = originalHeight;
+  if (targetWidth > MAX_DIMENSION || targetHeight > MAX_DIMENSION) {
+    const scale = MAX_DIMENSION / Math.max(targetWidth, targetHeight);
+    targetWidth = Math.round(targetWidth * scale);
+    targetHeight = Math.round(targetHeight * scale);
+  }
+
+  const canvas = document.createElement("canvas");
+  canvas.width = targetWidth;
+  canvas.height = targetHeight;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) {
+    return { dataUrl: rawDataUrl, width: originalWidth, height: originalHeight };
+  }
+
+  ctx.drawImage(img, 0, 0, targetWidth, targetHeight);
+  const imageData = ctx.getImageData(0, 0, targetWidth, targetHeight);
+  const sharpened = sharpenImageData(imageData.data, targetWidth, targetHeight);
+  ctx.putImageData(
+    new ImageData(sharpened as unknown as Uint8ClampedArray<ArrayBuffer>, targetWidth, targetHeight),
+    0,
+    0
+  );
+
+  const dataUrl = canvas.toDataURL("image/jpeg", 0.92);
+  return { dataUrl, width: originalWidth, height: originalHeight };
+}
 
 interface MenuItem {
   id: string;
@@ -62,7 +157,7 @@ interface MenuItem {
 export default function MenuItemsPage() {
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<Category>("FOOD");
+  const [activeTab, setActiveTab] = useState<Category>("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState<MenuItem | null>(null);
@@ -70,14 +165,32 @@ export default function MenuItemsPage() {
   const [submitting, setSubmitting] = useState(false);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [imageFile, setImageFile] = useState<File | null>(null);
+  const [isAddingNewCategory, setIsAddingNewCategory] = useState(false);
+  const [newCategoryInput, setNewCategoryInput] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
-  
+
   // Form state
   const [formData, setFormData] = useState({
     name: "",
     description: "",
-    category: "FOOD" as Category,
+    category: "" as Category,
   });
+
+  const categories = Array.from(
+    new Set(menuItems.map((item) => item.category).filter((c): c is string => !!c))
+  ).sort();
+
+  // Keep the active tab pointing at a real category once items load.
+  useEffect(() => {
+    if (categories.length === 0) {
+      if (activeTab !== "") setActiveTab("");
+      return;
+    }
+    if (!categories.includes(activeTab)) {
+      setActiveTab(categories[0]);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [categories.join("|")]);
 
   // Fetch menu items
   useEffect(() => {
@@ -105,7 +218,7 @@ export default function MenuItemsPage() {
     }
   };
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -127,12 +240,25 @@ export default function MenuItemsPage() {
 
     setImageFile(file);
 
-    // Create preview
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      setImagePreview(reader.result as string);
-    };
-    reader.readAsDataURL(file);
+    try {
+      const { dataUrl, width, height } = await processImageFile(file);
+      setImagePreview(dataUrl);
+
+      if (width < MIN_DIMENSION || height < MIN_DIMENSION) {
+        toast.warning("Low-resolution image", {
+          description:
+            "This photo is a bit small and may look soft on the kiosk. We've sharpened it automatically, but a higher-resolution photo will look best.",
+        });
+      }
+    } catch (err) {
+      console.error("Error processing image:", err);
+      // Fall back to a plain preview if processing fails for any reason.
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   const handleRemoveImage = () => {
@@ -162,6 +288,8 @@ export default function MenuItemsPage() {
       setImagePreview(null);
     }
     setImageFile(null);
+    setIsAddingNewCategory(false);
+    setNewCategoryInput("");
     setIsDialogOpen(true);
   };
 
@@ -175,6 +303,8 @@ export default function MenuItemsPage() {
     });
     setImagePreview(null);
     setImageFile(null);
+    setIsAddingNewCategory(false);
+    setNewCategoryInput("");
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -188,37 +318,38 @@ export default function MenuItemsPage() {
       return;
     }
 
-    if (!formData.category) {
+    const finalCategory = isAddingNewCategory
+      ? newCategoryInput.trim().toUpperCase()
+      : formData.category;
+
+    if (!finalCategory) {
       toast.error("Category is required", {
-        description: "Please choose Food or Drinks for this item.",
+        description: "Please choose or create a category for this item.",
       });
       return;
     }
 
     try {
       setSubmitting(true);
-      
-      let imageBase64 = selectedItem?.image || null;
-      
-      // Convert new image to base64 if uploaded
-      if (imageFile) {
-        imageBase64 = await new Promise<string>((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onloadend = () => resolve(reader.result as string);
-          reader.onerror = reject;
-          reader.readAsDataURL(imageFile);
-        });
+
+      // imagePreview already holds the processed (resized/sharpened) image data
+      // when a new file was chosen, so use it directly instead of re-reading the
+      // raw file (which would discard the sharpening).
+      let imageBase64: string | null = selectedItem?.image || null;
+
+      if (imageFile && imagePreview) {
+        imageBase64 = imagePreview;
       } else if (imagePreview === null && selectedItem) {
         // Image was removed
         imageBase64 = null;
       }
-      
-      const url = selectedItem 
+
+      const url = selectedItem
         ? `/api/menu-items/${selectedItem.id}`
         : "/api/menu-items";
-      
+
       const method = selectedItem ? "PUT" : "POST";
-      
+
       const response = await fetch(url, {
         method,
         headers: {
@@ -229,7 +360,7 @@ export default function MenuItemsPage() {
           description: formData.description.trim() || null,
           price: selectedItem?.price ?? 0,
           image: imageBase64,
-          category: formData.category,
+          category: finalCategory,
           available: true,
         }),
       });
@@ -308,17 +439,17 @@ export default function MenuItemsPage() {
         <CardContent className="flex flex-col items-center justify-center py-12">
           <div className="text-center">
             <h3 className="text-lg font-semibold text-foreground mb-2">
-              No {activeTab === "FOOD" ? "food" : "drink"} items yet
+              No {titleCase(activeTab)} items yet
             </h3>
             <p className="text-sm text-muted-foreground mb-4">
-              Get started by adding your first {activeTab === "FOOD" ? "food" : "drink"} item
+              Get started by adding your first {titleCase(activeTab)} item
             </p>
             <Button
               onClick={() => handleOpenDialog()}
               className="bg-primary hover:bg-primary/90 text-primary-foreground"
             >
               <Plus className="w-4 h-4 mr-2" />
-              Add {activeTab === "FOOD" ? "Food" : "Drink"} Item
+              Add {titleCase(activeTab)} Item
             </Button>
           </div>
         </CardContent>
@@ -344,7 +475,7 @@ export default function MenuItemsPage() {
                       {item.name}
                     </CardTitle>
                     <Badge variant="secondary" className="text-xs">
-                      {item.category === "FOOD" ? "Food" : "Drinks"}
+                      {titleCase(item.category || "")}
                     </Badge>
                   </div>
                   <p className="text-2xl font-bold text-primary mt-1">
@@ -420,7 +551,7 @@ export default function MenuItemsPage() {
             <div>
               <h1 className="text-2xl font-bold text-foreground">Menu Items</h1>
               <p className="text-sm text-muted-foreground mt-1">
-                Manage your food and drinks menu items.
+                Manage your menu items and categories.
               </p>
             </div>
             <Button
@@ -432,26 +563,47 @@ export default function MenuItemsPage() {
             </Button>
           </div>
 
-          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as Category)}>
-            <TabsList>
-              <TabsTrigger value="FOOD" className="gap-1.5">
-                <UtensilsCrossed className="w-4 h-4" />
-                Food
-              </TabsTrigger>
-              <TabsTrigger value="DRINKS" className="gap-1.5">
-                <CupSoda className="w-4 h-4" />
-                Drinks
-              </TabsTrigger>
-            </TabsList>
+          {categories.length === 0 ? (
+            <Card>
+              <CardContent className="flex flex-col items-center justify-center py-12">
+                <div className="text-center">
+                  <h3 className="text-lg font-semibold text-foreground mb-2">
+                    No menu items yet
+                  </h3>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Add your first item and create a category for it (e.g. Food, Drinks, or anything else you sell).
+                  </p>
+                  <Button
+                    onClick={() => handleOpenDialog()}
+                    className="bg-primary hover:bg-primary/90 text-primary-foreground"
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Add Your First Item
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ) : (
+            <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as Category)}>
+              <TabsList>
+                {categories.map((cat) => {
+                  const Icon = categoryIcon(cat);
+                  return (
+                    <TabsTrigger key={cat} value={cat} className="gap-1.5">
+                      <Icon className="w-4 h-4" />
+                      {titleCase(cat)}
+                    </TabsTrigger>
+                  );
+                })}
+              </TabsList>
 
-            <TabsContent value="FOOD" className="pt-4">
-              {renderGrid()}
-            </TabsContent>
-
-            <TabsContent value="DRINKS" className="pt-4">
-              {renderGrid()}
-            </TabsContent>
-          </Tabs>
+              {categories.map((cat) => (
+                <TabsContent key={cat} value={cat} className="pt-4">
+                  {renderGrid()}
+                </TabsContent>
+              ))}
+            </Tabs>
+          )}
         </div>
       </div>
 
@@ -463,9 +615,9 @@ export default function MenuItemsPage() {
               {selectedItem ? "Edit Menu Item" : "Add New Menu Item"}
             </DialogTitle>
             <DialogDescription>
-              {selectedItem 
+              {selectedItem
                 ? "Update the details of the menu item below."
-                : "Create a new menu item and choose whether it's Food or Drinks."}
+                : "Create a new menu item and choose its category."}
             </DialogDescription>
           </DialogHeader>
           
@@ -538,20 +690,53 @@ export default function MenuItemsPage() {
               <Label htmlFor="category">
                 Category <span className="text-destructive">*</span>
               </Label>
-              <Select
-                value={formData.category}
-                onValueChange={(value) =>
-                  setFormData({ ...formData, category: value as Category })
-                }
-              >
-                <SelectTrigger id="category" className="w-full">
-                  <SelectValue placeholder="Select category" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="FOOD">Food</SelectItem>
-                  <SelectItem value="DRINKS">Drinks</SelectItem>
-                </SelectContent>
-              </Select>
+              {isAddingNewCategory ? (
+                <div className="flex gap-2">
+                  <Input
+                    id="category"
+                    autoFocus
+                    placeholder="e.g., Hookah, Merch, Desserts"
+                    value={newCategoryInput}
+                    onChange={(e) => setNewCategoryInput(e.target.value)}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      setIsAddingNewCategory(false);
+                      setNewCategoryInput("");
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              ) : (
+                <Select
+                  value={formData.category}
+                  onValueChange={(value) => {
+                    if (value === NEW_CATEGORY_VALUE) {
+                      setIsAddingNewCategory(true);
+                      setNewCategoryInput("");
+                    } else {
+                      setFormData({ ...formData, category: value as Category });
+                    }
+                  }}
+                >
+                  <SelectTrigger id="category" className="w-full">
+                    <SelectValue placeholder="Select category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {categories.map((cat) => (
+                      <SelectItem key={cat} value={cat}>
+                        {titleCase(cat)}
+                      </SelectItem>
+                    ))}
+                    <SelectItem value={NEW_CATEGORY_VALUE}>
+                      + Add new category
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              )}
             </div>
 
             <div className="space-y-2">
