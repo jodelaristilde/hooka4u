@@ -51,7 +51,7 @@ export default function OrderStatusPage() {
   }
 
   // Auto-refresh the status every 5 seconds while a result is being shown,
-  // so a guest watching the page sees it flip to "Delivered" automatically.
+  // so a guest watching the page sees it flip to "Ready" automatically.
   useEffect(() => {
     if (pollRef.current) {
       clearInterval(pollRef.current)
@@ -119,7 +119,7 @@ export default function OrderStatusPage() {
               }`}
             >
               {isDelivered ? <CheckCircle2 className="w-4 h-4" /> : <Clock className="w-4 h-4" />}
-              {isDelivered ? "Delivered" : "Pending"}
+              {isDelivered ? "Ready" : "Pending"}
             </div>
 
             <p className="text-zinc-500 text-xs">
