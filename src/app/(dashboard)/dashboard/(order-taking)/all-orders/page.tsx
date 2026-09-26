@@ -79,10 +79,12 @@ export default function AllOrders() {
   const [lastFetchTime, setLastFetchTime] = useState<Date | null>(null);
   const [updatingStatus, setUpdatingStatus] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("pending");
+  const [hasUnacknowledgedOrder, setHasUnacknowledgedOrder] = useState(false);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const previousOrderIdsRef = useRef<Set<string>>(new Set());
   const isInitialLoadRef = useRef(true);
+  const alertLoopRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     audioRef.current = new Audio(
@@ -98,6 +100,10 @@ export default function AllOrders() {
 
     return () => {
       clearInterval(pollInterval);
+      if (alertLoopRef.current) {
+        clearInterval(alertLoopRef.current);
+        alertLoopRef.current = null;
+      }
       if (audioRef.current) {
         audioRef.current.pause();
         audioRef.current = null;
@@ -106,7 +112,7 @@ export default function AllOrders() {
   }, []);
 
   const handleNewOrder = (newOrder: Order) => {
-    playNotificationSound();
+    startAlertLoop();
 
     if ("Notification" in window && Notification.permission === "granted") {
       new Notification("🔔 New Order Received!", {
@@ -130,6 +136,28 @@ export default function AllOrders() {
         console.log("Could not play notification sound:", err);
       });
     }
+  };
+
+  // Keep playing the notification sound every few seconds until a staff
+  // member clicks the "New Order" banner to acknowledge it, instead of
+  // just chiming once and possibly going unnoticed.
+  const startAlertLoop = () => {
+    setHasUnacknowledgedOrder(true);
+    playNotificationSound();
+
+    if (alertLoopRef.current) return; // already looping
+
+    alertLoopRef.current = setInterval(() => {
+      playNotificationSound();
+    }, 2500);
+  };
+
+  const acknowledgeNewOrders = () => {
+    if (alertLoopRef.current) {
+      clearInterval(alertLoopRef.current);
+      alertLoopRef.current = null;
+    }
+    setHasUnacknowledgedOrder(false);
   };
 
   const fetchOrders = async () => {
@@ -395,7 +423,7 @@ export default function AllOrders() {
                   : "bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-400 border-amber-300 dark:border-amber-800"
               }`}
             >
-              {isDelivered ? "DELIVERED" : "PENDING"}
+              {isDelivered ? "READY" : "PENDING"}
             </Badge>
           </div>
         </CardHeader>
@@ -460,10 +488,10 @@ export default function AllOrders() {
               ) : isDelivered ? (
                 <>
                   <CheckCircle2 className="w-4 h-4 mr-2" />
-                  Delivered
+                  Ready
                 </>
               ) : (
-                "Mark Delivered"
+                "Mark Ready"
               )}
             </Button>
           </div>
@@ -518,6 +546,16 @@ export default function AllOrders() {
           </div>
         </div>
       </header>
+
+      {hasUnacknowledgedOrder && (
+        <button
+          onClick={acknowledgeNewOrders}
+          className="flex w-full items-center justify-center gap-2 bg-red-600 hover:bg-red-700 text-white text-sm md:text-base font-semibold py-3 px-4 animate-pulse transition-colors shrink-0"
+        >
+          <Bell className="w-5 h-5" />
+          New order received — tap to acknowledge
+        </button>
+      )}
 
       <div className="flex-1 overflow-hidden">
         {loading ? (
@@ -575,7 +613,7 @@ export default function AllOrders() {
                 </div>
                 <div className="md:w-32 bg-card border border-border p-3 rounded-lg">
                   <div className="text-xs text-muted-foreground uppercase tracking-wider mb-1">
-                    Delivered
+                    Ready
                   </div>
                   <div className="text-2xl font-bold text-emerald-500 dark:text-emerald-400">
                     {deliveredOrders.length}
@@ -606,7 +644,7 @@ export default function AllOrders() {
                   value="delivered"
                   className="flex-1 md:flex-none data-[state=active]:bg-emerald-600 data-[state=active]:text-white"
                 >
-                  Delivered ({deliveredOrders.length})
+                  Ready ({deliveredOrders.length})
                 </TabsTrigger>
               </TabsList>
             </div>
@@ -622,7 +660,7 @@ export default function AllOrders() {
                           No pending orders
                         </p>
                         <p className="text-muted-foreground text-xs mt-1">
-                          All orders have been delivered
+                          All orders are ready
                         </p>
                       </div>
                     ) : (
@@ -641,10 +679,10 @@ export default function AllOrders() {
                       <div className="flex flex-col items-center justify-center py-16">
                         <CheckCircle2 className="w-16 h-16 text-muted-foreground/50 mb-4" />
                         <p className="text-gray-700 text-sm font-medium">
-                          No delivered orders
+                          No ready orders
                         </p>
                         <p className="text-muted-foreground text-xs mt-1">
-                          Orders will appear here once delivered
+                          Orders will appear here once ready
                         </p>
                       </div>
                     ) : (
