@@ -50,11 +50,13 @@ interface OrderItem {
     id: string;
     name: string;
     price: number;
+    image?: string | null;
   };
 }
 
 interface Order {
   id: string;
+  orderNumber?: number | null;
   customerName: string;
   subtotal: number;
   createdAt: string;
@@ -319,6 +321,14 @@ export default function AllOrders() {
               </div>
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2 mb-1">
+                  {order.orderNumber != null && (
+                    <Badge
+                      variant="outline"
+                      className="text-xs font-bold border-lime-500/50 bg-lime-500/10 text-lime-400 tabular-nums px-1.5 py-0 shrink-0"
+                    >
+                      #{order.orderNumber}
+                    </Badge>
+                  )}
                   <h3 className="font-semibold text-md text-white truncate">
                     {order.customerName || "Guest"}
                   </h3>
@@ -395,8 +405,17 @@ export default function AllOrders() {
             {order.items.map((item) => (
               <div
                 key={item.id}
-                className="flex items-start justify-between gap-2 p-2.5 bg-muted border border-border rounded"
+                className="flex items-center gap-2.5 p-2.5 bg-muted border border-border rounded"
               >
+                {item.product.image ? (
+                  <img
+                    src={item.product.image}
+                    alt={item.product.name}
+                    className="w-10 h-10 rounded-md object-cover shrink-0"
+                  />
+                ) : (
+                  <div className="w-10 h-10 rounded-md bg-border shrink-0" />
+                )}
                 <div className="flex-1 min-w-0">
                   <p className="text-sm text-foreground truncate">
                     {item.product.name}
