@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import NewOrder from "@/components/new-order";
 
 type Screen = "hero" | "order";
@@ -39,7 +40,7 @@ export default function Home() {
             VIP SERVICE 4U
           </span>
         </h1>
-        <div className="flex justify-center">
+        <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
           <button
             onClick={() => setScreen("order")}
             className="group relative px-12 sm:px-20 py-4 sm:py-6 text-lg sm:text-xl md:text-2xl font-semibold text-black bg-gradient-to-r from-lime-400 to-lime-500 overflow-hidden transition-all duration-500 hover:scale-105"
@@ -52,6 +53,17 @@ export default function Home() {
             <span className="relative z-10 uppercase">View Items</span>
             <div className="absolute inset-0 bg-gradient-to-r from-lime-500 to-lime-600 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
           </button>
+
+          <Link
+            href="/order-status"
+            className="group relative px-12 sm:px-20 py-4 sm:py-6 text-lg sm:text-xl md:text-2xl font-semibold text-lime-400 border-2 border-lime-500/60 overflow-hidden transition-all duration-500 hover:scale-105 hover:bg-lime-500/10"
+            style={{
+              fontFamily: "Georgia, serif",
+              letterSpacing: "0.05em",
+            }}
+          >
+            <span className="relative z-10 uppercase">Check Status</span>
+          </Link>
         </div>
       </div>
     </main>
