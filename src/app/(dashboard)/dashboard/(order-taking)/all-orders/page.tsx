@@ -94,6 +94,18 @@ export default function AllOrders() {
   const alertLoopRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const audioUnlockedRef = useRef(false);
 
+  // This page is only ever meaningful once it's running in the browser (it
+  // fetches its own data on mount). Rendering it for real on the server
+  // first and then swapping it for the browser's version can, in some
+  // cases, produce a mismatch that React refuses to recover from, leaving
+  // this whole page blank. Sidestep that entirely: render nothing but a
+  // simple loading spinner until the very first moment we're confirmed to
+  // be running in the browser, then render everything as normal.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   useEffect(() => {
     audioRef.current = new Audio(
       "data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuBzvLZiTYHGWe77OVvSxMLT6Xl8Lhb"
@@ -570,6 +582,14 @@ export default function AllOrders() {
       </Card>
     );
   };
+
+  if (!mounted) {
+    return (
+      <div className="flex flex-col h-screen items-center justify-center bg-neutral-100">
+        <Loader2 className="w-10 h-10 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col h-screen bg-neutral-100">
