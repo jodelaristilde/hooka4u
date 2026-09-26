@@ -37,6 +37,7 @@ model MenuItems {
   description String?
   image       String?     // Add this line for base64 image storage
   price       Float
+  category    String?     // Free-text category name, e.g. "FOOD", "DRINKS", or any custom category
   available   Boolean     @default(false)
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
@@ -45,6 +46,7 @@ model MenuItems {
 
 model Order {
   id           String      @id @default(uuid()) @map("_id")
+  orderNumber  Int?
   customerName String
   paymentType  String?     @default("CASH")
   Seating      String
