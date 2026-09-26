@@ -1,6 +1,13 @@
 import prisma from "@/lib/prisma";
 import { NextResponse } from "next/server";
 
+// The dashboard polls this every 5 seconds expecting fresh data every
+// time (to catch brand-new orders and trigger the alert sound). Force
+// this route to always run live instead of letting Next.js/Vercel cache
+// a response and serve it again on the next poll.
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export async function GET() {
   try {
     // Fetch recent orders from database.
