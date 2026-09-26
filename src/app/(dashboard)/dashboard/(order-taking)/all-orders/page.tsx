@@ -92,7 +92,7 @@ export default function AllOrders() {
 
     const pollInterval = setInterval(() => {
       fetchOrdersQuietly();
-    }, 60000);
+    }, 5000);
 
     return () => {
       clearInterval(pollInterval);
@@ -454,7 +454,7 @@ export default function AllOrders() {
   };
 
   return (
-    <div className="flex flex-col h-screen bg-black">
+    <div className="flex flex-col h-screen bg-neutral-100">
       {/* Header */}
       <header className="flex h-14 shrink-0 items-center gap-3 bg-card border-b border-border">
         <div className="flex items-center gap-2 md:gap-3 px-3 md:px-5 w-full justify-between">
@@ -524,7 +524,7 @@ export default function AllOrders() {
         ) : orders.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full">
             <ShoppingBag className="w-16 h-16 text-muted-foreground/50 mb-4" />
-            <p className="text-white text-sm font-medium">No orders</p>
+            <p className="text-gray-700 text-sm font-medium">No orders</p>
             <p className="text-muted-foreground text-xs mt-1">
               Waiting for new orders...
             </p>
@@ -568,7 +568,7 @@ export default function AllOrders() {
                   </div>
                   <div className="text-2xl font-bold text-blue-500 dark:text-blue-400">
                     $
-                    {orders
+                    {deliveredOrders
                       .reduce((sum, order) => sum + order.subtotal, 0)
                       .toFixed(2)}
                   </div>
@@ -599,7 +599,7 @@ export default function AllOrders() {
                     {pendingOrders.length === 0 ? (
                       <div className="flex flex-col items-center justify-center py-16">
                         <Clock className="w-16 h-16 text-muted-foreground/50 mb-4" />
-                        <p className="text-white text-sm font-medium">
+                        <p className="text-gray-700 text-sm font-medium">
                           No pending orders
                         </p>
                         <p className="text-muted-foreground text-xs mt-1">
@@ -621,7 +621,7 @@ export default function AllOrders() {
                     {deliveredOrders.length === 0 ? (
                       <div className="flex flex-col items-center justify-center py-16">
                         <CheckCircle2 className="w-16 h-16 text-muted-foreground/50 mb-4" />
-                        <p className="text-white text-sm font-medium">
+                        <p className="text-gray-700 text-sm font-medium">
                           No delivered orders
                         </p>
                         <p className="text-muted-foreground text-xs mt-1">
