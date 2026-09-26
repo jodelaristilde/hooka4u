@@ -345,7 +345,7 @@ export default function AllOrders() {
     return (
       <Card
         key={order.id}
-        className={`group bg-black border hover:border-primary/50 transition-all duration-200 flex flex-col ${
+        className={`group bg-black border hover:border-primary/50 transition-all duration-200 flex flex-col w-full sm:w-80 ${
           newOrderAnimation === order.id
             ? "animate-[pulse_0.5s_ease-in-out_4] border-blue-500"
             : "border-border"
@@ -442,12 +442,7 @@ export default function AllOrders() {
                     {item.product.name}
                   </p>
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    ${item.product.price.toFixed(2)} × {item.quantity}
-                  </p>
-                </div>
-                <div className="text-right shrink-0">
-                  <p className="text-sm font-semibold text-foreground">
-                    ${(item.product.price * item.quantity).toFixed(2)}
+                    × {item.quantity}
                   </p>
                 </div>
               </div>
@@ -455,15 +450,6 @@ export default function AllOrders() {
           </div>
 
           <div className="pt-3 border-t border-border space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-muted-foreground uppercase tracking-wider">
-                Total
-              </span>
-              <span className="text-xl font-bold text-white">
-                ${order.subtotal.toFixed(2)}
-              </span>
-            </div>
-
             <Button
               onClick={() => handleStatusToggle(order)}
               disabled={updatingStatus === order.id}
@@ -636,7 +622,7 @@ export default function AllOrders() {
                         </p>
                       </div>
                     ) : (
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 md:gap-4">
+                      <div className="flex flex-wrap justify-center gap-3 md:gap-4">
                         {pendingOrders.map((order) => renderOrderCard(order))}
                       </div>
                     )}
@@ -658,7 +644,7 @@ export default function AllOrders() {
                         </p>
                       </div>
                     ) : (
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 md:gap-4">
+                      <div className="flex flex-wrap justify-center gap-3 md:gap-4">
                         {deliveredOrders.map((order) => renderOrderCard(order))}
                       </div>
                     )}
