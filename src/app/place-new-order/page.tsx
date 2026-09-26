@@ -13,9 +13,9 @@ export default function Home() {
     return (
       <NewOrder
         onOrderComplete={() => {
-          // Order is placed and the cart/name/seating are already reset
-          // inside NewOrder — stay right here so the next customer can
-          // start ordering immediately, with no extra tap needed.
+          // Send the guest back to the home screen so they can either
+          // start a new order or check their order's status.
+          setScreen("hero");
         }}
       />
     );
