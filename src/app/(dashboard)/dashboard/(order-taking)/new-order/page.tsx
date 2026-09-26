@@ -225,8 +225,9 @@ const handleConfirmOrder = async () => {
 
     const order = await response.json();
 
-    // Store order ID and show success dialog
-    setLastOrderId(order.id);
+    // Store the short order number (fall back to the raw id if it's missing)
+    // and show the success dialog.
+    setLastOrderId(order.orderNumber?.toString() || order.id);
     setShowSuccessDialog(true);
 
     // Reset form state
@@ -486,7 +487,7 @@ return (
                     >
                       <div className="flex items-start justify-between mb-3">
                         <div className="flex-1 min-w-0">
-                          <h4 className="font-medium text-sm text-white truncate">
+                          <h4 className="font-bold text-base text-white truncate">
                             {item.name}
                           </h4>
                           <p className="text-xs text-zinc-400 dark:text-zinc-400 mt-0.5">
@@ -564,7 +565,11 @@ return (
                   placeholder="Enter customer name"
                   value={customerName}
                   onChange={(e) => setCustomerName(e.target.value)}
-                  className="h-9 bg-zinc-800 dark:bg-zinc-800 border-zinc-700 dark:border-zinc-700 text-white placeholder:text-zinc-500 text-sm"
+                  className={`h-9 border text-white placeholder:text-zinc-300 text-sm transition-colors ${
+                    customerName.trim()
+                      ? "bg-green-500/20 border-green-500/50"
+                      : "bg-red-500/20 border-red-500/50"
+                  }`}
                 />
               </div>
 
@@ -595,7 +600,11 @@ return (
                   placeholder="e.g., Table 5, VIP 2"
                   value={seating}
                   onChange={(e) => setSeating(e.target.value)}
-                  className="h-9 bg-zinc-800 dark:bg-zinc-800 border-zinc-700 dark:border-zinc-700 text-white placeholder:text-zinc-500 text-sm"
+                  className={`h-9 border text-white placeholder:text-zinc-300 text-sm transition-colors ${
+                    seating.trim()
+                      ? "bg-green-500/20 border-green-500/50"
+                      : "bg-red-500/20 border-red-500/50"
+                  }`}
                 />
               </div>
 
@@ -695,7 +704,7 @@ return (
                     >
                       <div className="flex items-start justify-between mb-3">
                         <div className="flex-1 min-w-0">
-                          <h4 className="font-medium text-sm text-foreground truncate">
+                          <h4 className="font-bold text-sm text-foreground truncate">
                             {item.name}
                           </h4>
                           <p className="text-xs text-muted-foreground mt-0.5">
@@ -725,175 +734,3 @@ return (
                             {item.quantity}
                           </span>
                           <Button
-                            variant="outline"
-                            size="icon"
-                            className="h-8 w-8 border-border hover:bg-muted bg-transparent"
-                            onClick={() => updateQuantity(item.id, 1)}
-                          >
-                            <Plus className="w-3 h-3" />
-                          </Button>
-                        </div>
-                        <span className="font-semibold text-sm text-foreground">
-                          ${(item.price * item.quantity).toFixed(2)}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            <div className="border-t border-border bg-card">
-              <div className="px-6 py-5 space-y-4">
-                <div className="flex justify-between items-center pt-1">
-                  <span className="text-sm font-semibold text-foreground">
-                    Total
-                  </span>
-                  <span className="text-xl font-bold text-primary">
-                    ${subtotal.toFixed(2)}
-                  </span>
-                </div>
-                <Button
-                  className="w-full bg-primary hover:bg-primary/90 text-primary-foreground h-10 text-sm font-medium transition-colors"
-                  disabled={cartItems.length === 0}
-                  onClick={handlePlaceOrderClick}
-                >
-                  Place Order
-                </Button>
-              </div>
-            </div>
-          </>
-        ) : (
-          <>
-            {/* Order Form */}
-            <div className="flex-1 overflow-y-auto p-6 space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="customerName" className="text-sm font-medium">
-                  Customer Name *
-                </Label>
-                <Input
-                  id="customerName"
-                  placeholder="Enter customer name"
-                  value={customerName}
-                  onChange={(e) => setCustomerName(e.target.value)}
-                  className="h-9 bg-muted border-border text-sm"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label className="text-sm font-medium">Payment Type *</Label>
-                <RadioGroup value={paymentType} onValueChange={(value) => setPaymentType(value as "CASH" | "CARD")}>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="CASH" id="cash" />
-                    <Label htmlFor="cash" className="text-sm font-normal cursor-pointer">
-                      Cash
-                    </Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="CARD" id="card" />
-                    <Label htmlFor="card" className="text-sm font-normal cursor-pointer">
-                      Credit Card
-                    </Label>
-                  </div>
-                </RadioGroup>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="seating" className="text-sm font-medium">
-                  Seating Location *
-                </Label>
-                <Input
-                  id="seating"
-                  placeholder="e.g., Table 5, Booth 2"
-                  value={seating}
-                  onChange={(e) => setSeating(e.target.value)}
-                  className="h-9 bg-muted border-border text-sm"
-                />
-              </div>
-
-              {/* Order Summary */}
-              <div className="pt-4 border-t border-border">
-                <h3 className="text-sm font-semibold text-foreground mb-3">Order Summary</h3>
-                <div className="space-y-2">
-                  {cartItems.map((item) => (
-                    <div key={item.id} className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">
-                        {item.quantity}x {item.name}
-                      </span>
-                      <span className="font-medium text-foreground">
-                        ${(item.price * item.quantity).toFixed(2)}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            <div className="border-t border-border bg-card">
-              <div className="px-6 py-5 space-y-4">
-                <div className="flex justify-between items-center pt-1">
-                  <span className="text-sm font-semibold text-foreground">
-                    Total
-                  </span>
-                  <span className="text-xl font-bold text-primary">
-                    ${subtotal.toFixed(2)}
-                  </span>
-                </div>
-                <Button
-                  className="w-full bg-primary hover:bg-primary/90 text-primary-foreground h-10 text-sm font-medium transition-colors"
-                  disabled={submitting}
-                  onClick={handleConfirmOrder}
-                >
-                  {submitting ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Processing...
-                    </>
-                  ) : (
-                    "Confirm Order"
-                  )}
-                </Button>
-              </div>
-            </div>
-          </>
-        )}
-      </div>
-    </div>
-     <Dialog open={showSuccessDialog} onOpenChange={setShowSuccessDialog}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/20">
-            <svg
-              className="h-6 w-6 text-green-600 dark:text-green-500"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M5 13l4 4L19 7"
-              />
-            </svg>
-          </div>
-          <DialogTitle className="text-center text-xl">
-            Order Placed Successfully!
-          </DialogTitle>
-          <DialogDescription className="text-center space-y-2">
-            <p>Your order has been confirmed and sent to the kitchen.</p>
-          </DialogDescription>
-        </DialogHeader>
-        <div className="flex flex-col gap-2 sm:flex-row sm:justify-center mt-4">
-          <Button
-            onClick={() => setShowSuccessDialog(false)}
-            className="w-full sm:w-auto"
-          >
-            Close
-          </Button>
-        </div>
-      </DialogContent>
-    </Dialog>
-  </div>
-);
-}
