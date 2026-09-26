@@ -43,6 +43,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import Link from "next/link";
 
 interface OrderItem {
@@ -87,6 +93,14 @@ export default function AllOrders() {
   const [productImages, setProductImages] = useState<Record<string, string>>(
     {}
   );
+  // The order grid now shows small, compact cards (so more fit on a small
+  // monitor). Tapping a card opens this order's full details — items,
+  // images, prices — in a dialog instead of cramming all of that onto
+  // every card all the time. Storing just the id (and looking the order
+  // back up from the live `orders` list below) means the dialog always
+  // shows this order's current status, even while it's open and the
+  // 5-second poll brings in an update.
+  const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const previousOrderIdsRef = useRef<Set<string>>(new Set());
@@ -398,7 +412,11 @@ export default function AllOrders() {
     (o) => !o.status || o.status === "PENDING"
   );
   const deliveredOrders = orders.filter((o) => o.status === "DELIVERED");
+  const expandedOrder = orders.find((o) => o.id === expandedOrderId) ?? null;
 
+  // Compact tile for the grid: just enough to scan at a glance on a small
+  // monitor. Tapping it (anywhere except the quick action buttons) opens
+  // the full details below in a dialog.
   const renderOrderCard = (order: Order) => {
     const isDelivered = order.status === "DELIVERED";
     const isVIP = order.Seating?.toUpperCase().includes("VIP");
@@ -406,158 +424,231 @@ export default function AllOrders() {
     return (
       <Card
         key={order.id}
-        onClick={acknowledgeNewOrders}
-        className={`group bg-black border hover:border-primary/50 transition-all duration-200 flex flex-col cursor-pointer ${
+        onClick={() => {
+          acknowledgeNewOrders();
+          setExpandedOrderId(order.id);
+        }}
+        className={`group bg-black border hover:border-primary/50 transition-all duration-200 cursor-pointer gap-2 py-3 ${
           unacknowledgedOrderIds.has(order.id)
             ? "animate-pulse border-red-500 ring-2 ring-red-500/50"
             : "border-border"
         }`}
       >
-        <CardHeader className="pb-4 space-y-3">
-          <div className="flex items-start justify-between gap-2">
-            <div className="flex items-center gap-3 min-w-0 flex-1">
-              <div className="w-10 h-10 bg-muted flex items-center justify-center shrink-0 rounded">
-                <User className="w-5 h-5 text-muted-foreground" />
+        <CardHeader className="px-3">
+          <div className="flex items-start justify-between gap-1.5">
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-1.5">
+                {order.orderNumber != null && (
+                  <Badge
+                    variant="outline"
+                    className="text-[10px] font-bold border-lime-500/50 bg-lime-500/10 text-lime-400 tabular-nums px-1 py-0 shrink-0"
+                  >
+                    #{order.orderNumber}
+                  </Badge>
+                )}
+                <h3 className="font-semibold text-sm text-white truncate">
+                  {order.customerName || "Guest"}
+                </h3>
+                {isVIP && (
+                  <Badge className="bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-400 text-[9px] px-1 py-0 border-amber-300 dark:border-amber-800 shrink-0">
+                    VIP
+                  </Badge>
+                )}
               </div>
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2 mb-1">
-                  {order.orderNumber != null && (
-                    <Badge
-                      variant="outline"
-                      className="text-xs font-bold border-lime-500/50 bg-lime-500/10 text-lime-400 tabular-nums px-1.5 py-0 shrink-0"
-                    >
-                      #{order.orderNumber}
-                    </Badge>
-                  )}
-                  <h3 className="font-semibold text-md text-white truncate">
-                    {order.customerName || "Guest"}
-                  </h3>
-                  {isVIP && (
-                    <Badge className="bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-400 text-xs px-1.5 py-0 border-amber-300 dark:border-amber-800">
-                      VIP
-                    </Badge>
-                  )}
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  {formatDate(order.createdAt)}
-                </p>
-              </div>
+              <p className="text-[10px] text-muted-foreground mt-0.5">
+                {getTotalItems(order.items)} items · {formatDate(order.createdAt)}
+              </p>
             </div>
             <Button
               variant="ghost"
               size="icon"
-              className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 shrink-0 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
-              onClick={() => handleDeleteClick(order)}
+              className="h-6 w-6 text-muted-foreground hover:text-destructive hover:bg-destructive/10 shrink-0"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleDeleteClick(order);
+              }}
             >
-              <Trash2 className="h-4 w-4" />
+              <Trash2 className="h-3.5 w-3.5" />
             </Button>
-          </div>
-
-          <div className="flex items-center gap-2 flex-wrap">
-            <Badge
-              variant="outline"
-              className="text-xs border-border bg-muted text-foreground"
-            >
-              {getTotalItems(order.items)} items
-            </Badge>
-            <Badge
-              variant="outline"
-              className={`text-md uppercase font-bold border-border px-3 py-1 ${
-                order.paymentType === "CARD"
-                  ? "bg-muted text-foreground"
-                  : "bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400 border-emerald-300 dark:border-emerald-800"
-              }`}
-            >
-              {order.paymentType === "CARD" ? (
-                <CreditCard className="w-4 h-4 mr-1.5" />
-              ) : (
-                <Banknote className="w-4 h-4 mr-1.5" />
-              )}
-              {order.paymentType === "CARD" ? "Card" : "Cash"}
-            </Badge>
-            {order.Seating && (
-              <Badge
-                variant="outline"
-                className="text-md border-border bg-muted text-muted-foreground"
-              >
-                <MapPin className="w-3 h-3 mr-1" />
-                {order.Seating}
-              </Badge>
-            )}
-          </div>
-
-          <div className="pt-2">
-            <Badge
-              variant="outline"
-              className={`text-xs font-medium ${
-                isDelivered
-                  ? "bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400 border-emerald-300 dark:border-emerald-800"
-                  : "bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-400 border-amber-300 dark:border-amber-800"
-              }`}
-            >
-              {isDelivered ? "READY" : "PENDING"}
-            </Badge>
           </div>
         </CardHeader>
 
-        <CardContent className="flex-1 flex flex-col">
-          <div className="space-y-2 flex-1 mb-4">
-            {order.items.map((item) => {
-              // A product can be deleted from the menu after an order was
-              // placed for it. When that happens, `item.product` comes back
-              // as null even though the TypeScript type claims it's always
-              // present. Guard every access so one deleted menu item can't
-              // crash the entire order-card grid.
-              const productId = item.product?.id;
-              const productName = item.product?.name ?? "Item no longer available";
-              const productPrice = item.product?.price ?? 0;
+        <CardContent className="px-3 flex items-center justify-between gap-2">
+          <Badge
+            variant="outline"
+            className={`text-[10px] font-medium px-1.5 py-0 ${
+              isDelivered
+                ? "bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400 border-emerald-300 dark:border-emerald-800"
+                : "bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-400 border-amber-300 dark:border-amber-800"
+            }`}
+          >
+            {isDelivered ? "READY" : "PENDING"}
+          </Badge>
+          <span className="text-base font-bold text-white">
+            ${order.subtotal.toFixed(2)}
+          </span>
+        </CardContent>
 
-              return (
-                <div
-                  key={item.id}
-                  className="flex items-center gap-2.5 p-2.5 bg-muted border border-border rounded"
-                >
-                  {productId && productImages[productId] ? (
-                    <img
-                      src={productImages[productId]}
-                      alt={productName}
-                      className="w-10 h-10 rounded-md object-cover shrink-0"
-                    />
-                  ) : (
-                    <div className="w-10 h-10 rounded-md bg-border shrink-0" />
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm text-foreground truncate">
-                      {productName}
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      ${productPrice.toFixed(2)} × {item.quantity}
-                    </p>
-                  </div>
-                  <div className="text-right shrink-0">
-                    <p className="text-sm font-semibold text-foreground">
-                      ${(productPrice * item.quantity).toFixed(2)}
-                    </p>
-                  </div>
+        <CardContent className="px-3 pt-0">
+          <Button
+            onClick={(e) => {
+              e.stopPropagation();
+              handleStatusToggle(order);
+            }}
+            disabled={updatingStatus === order.id}
+            size="sm"
+            className={`w-full h-7 text-xs font-medium transition-all ${
+              isDelivered
+                ? "bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-600 dark:hover:bg-emerald-700 text-white"
+                : "bg-amber-600 hover:bg-amber-700 dark:bg-amber-600 dark:hover:bg-amber-700 text-white"
+            }`}
+          >
+            {updatingStatus === order.id ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            ) : isDelivered ? (
+              <>
+                <CheckCircle2 className="w-3.5 h-3.5 mr-1.5" />
+                Ready
+              </>
+            ) : (
+              "Mark Ready"
+            )}
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  };
+
+  // Full detail view for whichever order was tapped in the grid — the
+  // in-depth layout (item images, prices, big total) the compact cards
+  // above no longer show all the time.
+  const renderExpandedOrderDetails = (order: Order) => {
+    const isDelivered = order.status === "DELIVERED";
+    const isVIP = order.Seating?.toUpperCase().includes("VIP");
+
+    return (
+      <div className="flex flex-col gap-4">
+        <div className="flex items-center gap-2 flex-wrap">
+          {order.orderNumber != null && (
+            <Badge
+              variant="outline"
+              className="text-xs font-bold border-lime-500/50 bg-lime-500/10 text-lime-400 tabular-nums px-1.5 py-0"
+            >
+              #{order.orderNumber}
+            </Badge>
+          )}
+          {isVIP && (
+            <Badge className="bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-400 text-xs px-1.5 py-0 border-amber-300 dark:border-amber-800">
+              VIP
+            </Badge>
+          )}
+          <Badge
+            variant="outline"
+            className={`text-xs font-medium ${
+              isDelivered
+                ? "bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400 border-emerald-300 dark:border-emerald-800"
+                : "bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-400 border-amber-300 dark:border-amber-800"
+            }`}
+          >
+            {isDelivered ? "READY" : "PENDING"}
+          </Badge>
+        </div>
+
+        <p className="text-xs text-muted-foreground -mt-2">
+          {formatDate(order.createdAt)}
+        </p>
+
+        <div className="flex items-center gap-2 flex-wrap">
+          <Badge
+            variant="outline"
+            className="text-xs border-border bg-muted text-foreground"
+          >
+            {getTotalItems(order.items)} items
+          </Badge>
+          <Badge
+            variant="outline"
+            className={`text-xs uppercase font-bold border-border px-2 py-1 ${
+              order.paymentType === "CARD"
+                ? "bg-muted text-foreground"
+                : "bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400 border-emerald-300 dark:border-emerald-800"
+            }`}
+          >
+            {order.paymentType === "CARD" ? (
+              <CreditCard className="w-3.5 h-3.5 mr-1.5" />
+            ) : (
+              <Banknote className="w-3.5 h-3.5 mr-1.5" />
+            )}
+            {order.paymentType === "CARD" ? "Card" : "Cash"}
+          </Badge>
+          {order.Seating && (
+            <Badge
+              variant="outline"
+              className="text-xs border-border bg-muted text-muted-foreground"
+            >
+              <MapPin className="w-3 h-3 mr-1" />
+              {order.Seating}
+            </Badge>
+          )}
+        </div>
+
+        <div className="space-y-2">
+          {order.items.map((item) => {
+            // A product can be deleted from the menu after an order was
+            // placed for it. When that happens, `item.product` comes back
+            // as null even though the TypeScript type claims it's always
+            // present. Guard every access so one deleted menu item can't
+            // crash this view.
+            const productId = item.product?.id;
+            const productName = item.product?.name ?? "Item no longer available";
+            const productPrice = item.product?.price ?? 0;
+
+            return (
+              <div
+                key={item.id}
+                className="flex items-center gap-2.5 p-2.5 bg-muted border border-border rounded"
+              >
+                {productId && productImages[productId] ? (
+                  <img
+                    src={productImages[productId]}
+                    alt={productName}
+                    className="w-10 h-10 rounded-md object-cover shrink-0"
+                  />
+                ) : (
+                  <div className="w-10 h-10 rounded-md bg-border shrink-0" />
+                )}
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm text-foreground truncate">
+                    {productName}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    ${productPrice.toFixed(2)} × {item.quantity}
+                  </p>
                 </div>
-              );
-            })}
+                <div className="text-right shrink-0">
+                  <p className="text-sm font-semibold text-foreground">
+                    ${(productPrice * item.quantity).toFixed(2)}
+                  </p>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="pt-3 border-t border-border space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-muted-foreground uppercase tracking-wider">
+              Total
+            </span>
+            <span className="text-xl font-bold text-foreground">
+              ${order.subtotal.toFixed(2)}
+            </span>
           </div>
 
-          <div className="pt-3 border-t border-border space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-muted-foreground uppercase tracking-wider">
-                Total
-              </span>
-              <span className="text-xl font-bold text-white">
-                ${order.subtotal.toFixed(2)}
-              </span>
-            </div>
-
+          <div className="flex gap-2">
             <Button
               onClick={() => handleStatusToggle(order)}
               disabled={updatingStatus === order.id}
-              className={`w-full font-medium transition-all ${
+              className={`flex-1 font-medium transition-all ${
                 isDelivered
                   ? "bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-600 dark:hover:bg-emerald-700 text-white"
                   : "bg-amber-600 hover:bg-amber-700 dark:bg-amber-600 dark:hover:bg-amber-700 text-white"
@@ -577,9 +668,19 @@ export default function AllOrders() {
                 "Mark Ready"
               )}
             </Button>
+            <Button
+              variant="outline"
+              className="text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+              onClick={() => {
+                setExpandedOrderId(null);
+                handleDeleteClick(order);
+              }}
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     );
   };
 
@@ -773,7 +874,7 @@ export default function AllOrders() {
                         </p>
                       </div>
                     ) : (
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 md:gap-4">
+                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2 md:gap-3">
                         {pendingOrders.map((order) => renderOrderCard(order))}
                       </div>
                     )}
@@ -795,7 +896,7 @@ export default function AllOrders() {
                         </p>
                       </div>
                     ) : (
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 md:gap-4">
+                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2 md:gap-3">
                         {deliveredOrders.map((order) => renderOrderCard(order))}
                       </div>
                     )}
@@ -846,6 +947,23 @@ export default function AllOrders() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Order details, opened by tapping a compact card in the grid */}
+      <Dialog
+        open={expandedOrderId !== null}
+        onOpenChange={(open) => {
+          if (!open) setExpandedOrderId(null);
+        }}
+      >
+        <DialogContent className="bg-card border-border w-[calc(100%-2rem)] max-w-lg max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-foreground">
+              {expandedOrder?.customerName || "Guest"}
+            </DialogTitle>
+          </DialogHeader>
+          {expandedOrder && renderExpandedOrderDetails(expandedOrder)}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
