@@ -50,7 +50,6 @@ interface OrderItem {
     id: string;
     name: string;
     price: number;
-    image?: string | null;
   };
 }
 
@@ -73,18 +72,22 @@ export default function AllOrders() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [orderToDelete, setOrderToDelete] = useState<Order | null>(null);
   const [deleting, setDeleting] = useState(false);
-  const [newOrderAnimation, setNewOrderAnimation] = useState<string | null>(
-    null
-  );
   const [lastFetchTime, setLastFetchTime] = useState<Date | null>(null);
   const [updatingStatus, setUpdatingStatus] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("pending");
   const [hasUnacknowledgedOrder, setHasUnacknowledgedOrder] = useState(false);
+  const [unacknowledgedOrderIds, setUnacknowledgedOrderIds] = useState<
+    Set<string>
+  >(new Set());
+  const [productImages, setProductImages] = useState<Record<string, string>>(
+    {}
+  );
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const previousOrderIdsRef = useRef<Set<string>>(new Set());
   const isInitialLoadRef = useRef(true);
   const alertLoopRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const audioUnlockedRef = useRef(false);
 
   useEffect(() => {
     audioRef.current = new Audio(
@@ -92,7 +95,30 @@ export default function AllOrders() {
     );
 
     fetchOrders();
+    fetchProductImages();
     requestNotificationPermission();
+
+    // Browsers block audio from playing automatically until the page has
+    // had at least one real click/tap/keypress. "Unlock" it as early as
+    // possible (silently play + immediately pause) on the first
+    // interaction, so the alert sound actually plays later when a new
+    // order comes in with no direct click on the audio itself.
+    const unlockAudio = () => {
+      if (audioUnlockedRef.current || !audioRef.current) return;
+      audioRef.current
+        .play()
+        .then(() => {
+          audioRef.current?.pause();
+          if (audioRef.current) audioRef.current.currentTime = 0;
+          audioUnlockedRef.current = true;
+        })
+        .catch(() => {
+          // Still locked; a later real interaction will retry.
+        });
+    };
+    window.addEventListener("click", unlockAudio);
+    window.addEventListener("keydown", unlockAudio);
+    window.addEventListener("touchstart", unlockAudio);
 
     const pollInterval = setInterval(() => {
       fetchOrdersQuietly();
@@ -100,6 +126,9 @@ export default function AllOrders() {
 
     return () => {
       clearInterval(pollInterval);
+      window.removeEventListener("click", unlockAudio);
+      window.removeEventListener("keydown", unlockAudio);
+      window.removeEventListener("touchstart", unlockAudio);
       if (alertLoopRef.current) {
         clearInterval(alertLoopRef.current);
         alertLoopRef.current = null;
@@ -125,8 +154,10 @@ export default function AllOrders() {
       });
     }
 
-    setNewOrderAnimation(newOrder.id);
-    setTimeout(() => setNewOrderAnimation(null), 3000);
+    // Keep this order visually flagged (pulsing, red border) until a
+    // staff member taps its card to acknowledge it — not just for a few
+    // seconds, since the sound keeps playing until then too.
+    setUnacknowledgedOrderIds((prev) => new Set(prev).add(newOrder.id));
   };
 
   const playNotificationSound = () => {
@@ -139,8 +170,8 @@ export default function AllOrders() {
   };
 
   // Keep playing the notification sound every few seconds until a staff
-  // member clicks the "New Order" banner to acknowledge it, instead of
-  // just chiming once and possibly going unnoticed.
+  // member taps anywhere on an order card (or the banner) to acknowledge
+  // it, instead of just chiming once and possibly going unnoticed.
   const startAlertLoop = () => {
     setHasUnacknowledgedOrder(true);
     playNotificationSound();
@@ -158,6 +189,29 @@ export default function AllOrders() {
       alertLoopRef.current = null;
     }
     setHasUnacknowledgedOrder(false);
+    setUnacknowledgedOrderIds(new Set());
+  };
+
+  // Fetch the product catalog's images once (it rarely changes) and build
+  // a lookup map, instead of the orders endpoint re-sending every image
+  // over and over with every order, on every 5-second refresh.
+  const fetchProductImages = async () => {
+    try {
+      const response = await fetch("/api/menu-items/get-all-items");
+      if (!response.ok) return;
+      const items = await response.json();
+      if (!Array.isArray(items)) return;
+
+      const map: Record<string, string> = {};
+      for (const item of items) {
+        if (item?.id && item?.image) {
+          map[item.id] = item.image;
+        }
+      }
+      setProductImages(map);
+    } catch (err) {
+      console.error("Error fetching product images:", err);
+    }
   };
 
   const fetchOrders = async () => {
@@ -335,9 +389,10 @@ export default function AllOrders() {
     return (
       <Card
         key={order.id}
-        className={`group bg-black border hover:border-primary/50 transition-all duration-200 flex flex-col ${
-          newOrderAnimation === order.id
-            ? "animate-[pulse_0.5s_ease-in-out_4] border-blue-500"
+        onClick={acknowledgeNewOrders}
+        className={`group bg-black border hover:border-primary/50 transition-all duration-200 flex flex-col cursor-pointer ${
+          unacknowledgedOrderIds.has(order.id)
+            ? "animate-pulse border-red-500 ring-2 ring-red-500/50"
             : "border-border"
         }`}
       >
@@ -435,9 +490,9 @@ export default function AllOrders() {
                 key={item.id}
                 className="flex items-center gap-2.5 p-2.5 bg-muted border border-border rounded"
               >
-                {item.product.image ? (
+                {productImages[item.product.id] ? (
                   <img
-                    src={item.product.image}
+                    src={productImages[item.product.id]}
                     alt={item.product.name}
                     className="w-10 h-10 rounded-md object-cover shrink-0"
                   />
