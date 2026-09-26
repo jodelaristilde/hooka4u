@@ -414,69 +414,70 @@ export default function AllOrders() {
   const deliveredOrders = orders.filter((o) => o.status === "DELIVERED");
   const expandedOrder = orders.find((o) => o.id === expandedOrderId) ?? null;
 
-  // Compact tile for the grid: just enough to scan at a glance on a small
-  // monitor. Tapping it (anywhere except the quick action buttons) opens
-  // the full details below in a dialog.
+  // Bigger, easy-to-read tile for the grid. Marking an order ready only
+  // happens from the full detail popup now — this card's button just
+  // opens that popup ("View Order"), so staff can't accidentally toggle
+  // status with a stray tap on the grid.
   const renderOrderCard = (order: Order) => {
     const isDelivered = order.status === "DELIVERED";
     const isVIP = order.Seating?.toUpperCase().includes("VIP");
 
+    const openOrder = () => {
+      acknowledgeNewOrders();
+      setExpandedOrderId(order.id);
+    };
+
     return (
       <Card
         key={order.id}
-        onClick={() => {
-          acknowledgeNewOrders();
-          setExpandedOrderId(order.id);
-        }}
-        className={`group bg-black border hover:border-primary/50 transition-all duration-200 cursor-pointer gap-2 py-3 ${
+        onClick={openOrder}
+        className={`group bg-black border hover:border-primary/50 transition-all duration-200 cursor-pointer gap-2 py-4 ${
           unacknowledgedOrderIds.has(order.id)
             ? "animate-pulse border-red-500 ring-2 ring-red-500/50"
             : "border-border"
         }`}
       >
-        <CardHeader className="px-3">
-          <div className="flex items-start justify-between gap-1.5">
+        <CardHeader className="px-4">
+          <div className="flex items-start justify-between gap-2">
             <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-2 flex-wrap">
                 {order.orderNumber != null && (
                   <Badge
                     variant="outline"
-                    className="text-[10px] font-bold border-lime-500/50 bg-lime-500/10 text-lime-400 tabular-nums px-1 py-0 shrink-0"
+                    className="text-sm font-bold border-lime-500/50 bg-lime-500/10 text-lime-400 tabular-nums px-2 py-0.5 shrink-0"
                   >
                     #{order.orderNumber}
                   </Badge>
                 )}
-                <h3 className="font-semibold text-sm text-white truncate">
+                <h3 className="font-bold text-lg text-white truncate">
                   {order.customerName || "Guest"}
                 </h3>
                 {isVIP && (
-                  <Badge className="bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-400 text-[9px] px-1 py-0 border-amber-300 dark:border-amber-800 shrink-0">
+                  <Badge className="bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-400 text-xs px-1.5 py-0 border-amber-300 dark:border-amber-800 shrink-0">
                     VIP
                   </Badge>
                 )}
               </div>
-              <p className="text-[10px] text-muted-foreground mt-0.5">
-                {getTotalItems(order.items)} items · {formatDate(order.createdAt)}
+              <p className="text-sm text-muted-foreground mt-0.5">
+                {formatDate(order.createdAt)}
               </p>
             </div>
             <Button
               variant="ghost"
               size="icon"
-              className="h-6 w-6 text-muted-foreground hover:text-destructive hover:bg-destructive/10 shrink-0"
+              className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 shrink-0"
               onClick={(e) => {
                 e.stopPropagation();
                 handleDeleteClick(order);
               }}
             >
-              <Trash2 className="h-3.5 w-3.5" />
+              <Trash2 className="h-4 w-4" />
             </Button>
           </div>
-        </CardHeader>
 
-        <CardContent className="px-3 flex items-center justify-between gap-2">
           <Badge
             variant="outline"
-            className={`text-[10px] font-medium px-1.5 py-0 ${
+            className={`self-start text-sm font-bold px-3 py-1 ${
               isDelivered
                 ? "bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400 border-emerald-300 dark:border-emerald-800"
                 : "bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-400 border-amber-300 dark:border-amber-800"
@@ -484,35 +485,55 @@ export default function AllOrders() {
           >
             {isDelivered ? "READY" : "PENDING"}
           </Badge>
-          <span className="text-base font-bold text-white">
+
+          <div className="flex items-center gap-2 flex-wrap">
+            <Badge
+              variant="outline"
+              className="text-sm border-border bg-muted text-foreground px-2.5 py-1"
+            >
+              {getTotalItems(order.items)} items
+            </Badge>
+            <Badge
+              variant="outline"
+              className={`text-sm font-bold px-2.5 py-1 ${
+                order.paymentType === "CARD"
+                  ? "bg-muted text-foreground"
+                  : "bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400 border-emerald-300 dark:border-emerald-800"
+              }`}
+            >
+              {order.paymentType === "CARD" ? (
+                <CreditCard className="w-3.5 h-3.5 mr-1" />
+              ) : (
+                <Banknote className="w-3.5 h-3.5 mr-1" />
+              )}
+              {order.paymentType === "CARD" ? "Card" : "Cash"}
+            </Badge>
+            {order.Seating && (
+              <Badge
+                variant="outline"
+                className="text-sm border-border bg-muted text-muted-foreground px-2.5 py-1"
+              >
+                <MapPin className="w-3.5 h-3.5 mr-1" />
+                {order.Seating}
+              </Badge>
+            )}
+          </div>
+        </CardHeader>
+
+        <CardContent className="px-4 flex items-center justify-between gap-3">
+          <span className="text-xl font-bold text-white">
             ${order.subtotal.toFixed(2)}
           </span>
-        </CardContent>
-
-        <CardContent className="px-3 pt-0">
           <Button
             onClick={(e) => {
               e.stopPropagation();
-              handleStatusToggle(order);
+              openOrder();
             }}
-            disabled={updatingStatus === order.id}
             size="sm"
-            className={`w-full h-7 text-xs font-medium transition-all ${
-              isDelivered
-                ? "bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-600 dark:hover:bg-emerald-700 text-white"
-                : "bg-amber-600 hover:bg-amber-700 dark:bg-amber-600 dark:hover:bg-amber-700 text-white"
-            }`}
+            variant="outline"
+            className="border-primary/50 text-foreground hover:bg-primary/10"
           >
-            {updatingStatus === order.id ? (
-              <Loader2 className="w-3.5 h-3.5 animate-spin" />
-            ) : isDelivered ? (
-              <>
-                <CheckCircle2 className="w-3.5 h-3.5 mr-1.5" />
-                Ready
-              </>
-            ) : (
-              "Mark Ready"
-            )}
+            View Order
           </Button>
         </CardContent>
       </Card>
@@ -646,7 +667,12 @@ export default function AllOrders() {
 
           <div className="flex gap-2">
             <Button
-              onClick={() => handleStatusToggle(order)}
+              onClick={async () => {
+                // Update the status, then close this popup so staff land
+                // back on the All Orders board with the fresh list.
+                await handleStatusToggle(order);
+                setExpandedOrderId(null);
+              }}
               disabled={updatingStatus === order.id}
               className={`flex-1 font-medium transition-all ${
                 isDelivered
@@ -874,7 +900,7 @@ export default function AllOrders() {
                         </p>
                       </div>
                     ) : (
-                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2 md:gap-3">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 md:gap-4">
                         {pendingOrders.map((order) => renderOrderCard(order))}
                       </div>
                     )}
@@ -896,7 +922,7 @@ export default function AllOrders() {
                         </p>
                       </div>
                     ) : (
-                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2 md:gap-3">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 md:gap-4">
                         {deliveredOrders.map((order) => renderOrderCard(order))}
                       </div>
                     )}
