@@ -15,6 +15,8 @@ import {
   Bell,
   CheckCircle2,
   AlertCircle,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import {
   Breadcrumb,
@@ -75,6 +77,7 @@ export default function AllOrders() {
   const [lastFetchTime, setLastFetchTime] = useState<Date | null>(null);
   const [updatingStatus, setUpdatingStatus] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("pending");
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [hasUnacknowledgedOrder, setHasUnacknowledgedOrder] = useState(false);
   const [unacknowledgedOrderIds, setUnacknowledgedOrderIds] = useState<
     Set<string>
@@ -647,59 +650,80 @@ export default function AllOrders() {
             onValueChange={setActiveTab}
             className="h-full flex"
           >
-            {/* Compact side column: stats stacked vertically + tabs */}
-            <div className="w-28 sm:w-32 md:w-36 shrink-0 border-r border-border bg-card overflow-y-auto p-2 flex flex-col gap-1.5">
-              <div className="bg-muted border border-border rounded-md px-2 py-1.5">
-                <div className="text-[9px] text-muted-foreground uppercase tracking-wider">
-                  Total
+            {/* Compact side column: stats stacked vertically + tabs.
+                Slides away to w-0 when collapsed, leaving just the thin
+                toggle strip so it can be reopened. */}
+            <div
+              className={`shrink-0 border-r border-border bg-card overflow-hidden transition-all duration-300 ${
+                sidebarCollapsed ? "w-0" : "w-28 sm:w-32 md:w-36"
+              }`}
+            >
+              <div className="w-28 sm:w-32 md:w-36 h-full overflow-y-auto p-2 flex flex-col gap-1.5">
+                <div className="bg-muted border border-border rounded-md px-2 py-1.5">
+                  <div className="text-[9px] text-muted-foreground uppercase tracking-wider">
+                    Total
+                  </div>
+                  <div className="text-base font-bold text-foreground">
+                    {orders.length}
+                  </div>
                 </div>
-                <div className="text-base font-bold text-foreground">
-                  {orders.length}
+                <div className="bg-muted border border-border rounded-md px-2 py-1.5">
+                  <div className="text-[9px] text-muted-foreground uppercase tracking-wider">
+                    Pending
+                  </div>
+                  <div className="text-base font-bold text-amber-500 dark:text-amber-400">
+                    {pendingOrders.length}
+                  </div>
                 </div>
-              </div>
-              <div className="bg-muted border border-border rounded-md px-2 py-1.5">
-                <div className="text-[9px] text-muted-foreground uppercase tracking-wider">
-                  Pending
+                <div className="bg-muted border border-border rounded-md px-2 py-1.5">
+                  <div className="text-[9px] text-muted-foreground uppercase tracking-wider">
+                    Ready
+                  </div>
+                  <div className="text-base font-bold text-emerald-500 dark:text-emerald-400">
+                    {deliveredOrders.length}
+                  </div>
                 </div>
-                <div className="text-base font-bold text-amber-500 dark:text-amber-400">
-                  {pendingOrders.length}
+                <div className="bg-muted border border-border rounded-md px-2 py-1.5">
+                  <div className="text-[9px] text-muted-foreground uppercase tracking-wider">
+                    Sales
+                  </div>
+                  <div className="text-sm font-bold text-blue-500 dark:text-blue-400">
+                    $
+                    {deliveredOrders
+                      .reduce((sum, order) => sum + order.subtotal, 0)
+                      .toFixed(2)}
+                  </div>
                 </div>
-              </div>
-              <div className="bg-muted border border-border rounded-md px-2 py-1.5">
-                <div className="text-[9px] text-muted-foreground uppercase tracking-wider">
-                  Ready
-                </div>
-                <div className="text-base font-bold text-emerald-500 dark:text-emerald-400">
-                  {deliveredOrders.length}
-                </div>
-              </div>
-              <div className="bg-muted border border-border rounded-md px-2 py-1.5">
-                <div className="text-[9px] text-muted-foreground uppercase tracking-wider">
-                  Sales
-                </div>
-                <div className="text-sm font-bold text-blue-500 dark:text-blue-400">
-                  $
-                  {deliveredOrders
-                    .reduce((sum, order) => sum + order.subtotal, 0)
-                    .toFixed(2)}
-                </div>
-              </div>
 
-              <TabsList className="flex flex-col h-auto w-full bg-muted border border-border gap-1 p-1 mt-1">
-                <TabsTrigger
-                  value="pending"
-                  className="w-full justify-start text-xs data-[state=active]:bg-amber-600 data-[state=active]:text-white"
-                >
-                  Pending ({pendingOrders.length})
-                </TabsTrigger>
-                <TabsTrigger
-                  value="delivered"
-                  className="w-full justify-start text-xs data-[state=active]:bg-emerald-600 data-[state=active]:text-white"
-                >
-                  Ready ({deliveredOrders.length})
-                </TabsTrigger>
-              </TabsList>
+                <TabsList className="flex flex-col h-auto w-full bg-muted border border-border gap-1 p-1 mt-1">
+                  <TabsTrigger
+                    value="pending"
+                    className="w-full justify-start text-xs data-[state=active]:bg-amber-600 data-[state=active]:text-white"
+                  >
+                    Pending ({pendingOrders.length})
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="delivered"
+                    className="w-full justify-start text-xs data-[state=active]:bg-emerald-600 data-[state=active]:text-white"
+                  >
+                    Ready ({deliveredOrders.length})
+                  </TabsTrigger>
+                </TabsList>
+              </div>
             </div>
+
+            {/* Thin always-visible strip to slide the side column open/closed */}
+            <button
+              onClick={() => setSidebarCollapsed((v) => !v)}
+              title={sidebarCollapsed ? "Show stats" : "Hide stats"}
+              className="shrink-0 w-4 sm:w-5 h-full flex items-center justify-center bg-card border-r border-border text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+            >
+              {sidebarCollapsed ? (
+                <ChevronRight className="w-3.5 h-3.5" />
+              ) : (
+                <ChevronLeft className="w-3.5 h-3.5" />
+              )}
+            </button>
 
             <div className="flex-1 overflow-hidden">
               <TabsContent value="pending" className="h-full m-0">
