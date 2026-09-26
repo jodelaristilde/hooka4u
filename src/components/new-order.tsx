@@ -16,7 +16,7 @@ interface Product {
   image: string
   price: number
   description?: string
-  category?: "FOOD" | "DRINKS"
+  category?: string | null
 }
 
 interface CartItem extends Product {
@@ -32,7 +32,10 @@ interface NewOrderProps {
   onBack?: () => void
 }
 
-type CategoryTab = "ALL" | "FOOD" | "DRINKS"
+type CategoryTab = string
+
+const titleCase = (s: string) =>
+  s.length === 0 ? s : s.charAt(0).toUpperCase() + s.slice(1).toLowerCase()
 
 export default function NewOrder({ onOrderComplete, onBack }: NewOrderProps) {
   const [activeTab, setActiveTab] = useState<CategoryTab>("ALL")
@@ -243,6 +246,11 @@ export default function NewOrder({ onOrderComplete, onBack }: NewOrderProps) {
   const subtotal = cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0)
   const totalItems = cartItems.reduce((sum, item) => sum + item.quantity, 0)
 
+  const availableCategories = Array.from(
+    new Set(products.map((p) => p.category).filter((c): c is string => !!c))
+  ).sort()
+  const categoryTabs: CategoryTab[] = ["ALL", ...availableCategories]
+
   const visibleProducts =
     activeTab === "ALL" ? products : products.filter((p) => p.category === activeTab)
 
@@ -255,7 +263,7 @@ export default function NewOrder({ onOrderComplete, onBack }: NewOrderProps) {
         <div className="flex-1 flex flex-col overflow-hidden pb-20 md:pb-0">
           {/* Category Tabs */}
           <div className="flex gap-2 px-3 sm:px-6 pt-3 sm:pt-6 pb-1 sm:pb-2">
-            {(["ALL", "FOOD", "DRINKS"] as CategoryTab[]).map((tab) => (
+            {categoryTabs.map((tab) => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
@@ -265,7 +273,7 @@ export default function NewOrder({ onOrderComplete, onBack }: NewOrderProps) {
                     : "bg-zinc-800 text-zinc-300 hover:bg-zinc-700"
                 }`}
               >
-                {tab === "ALL" ? "All" : tab.charAt(0) + tab.slice(1).toLowerCase()}
+                {tab === "ALL" ? "All" : titleCase(tab)}
               </button>
             ))}
           </div>
@@ -293,7 +301,7 @@ export default function NewOrder({ onOrderComplete, onBack }: NewOrderProps) {
                 <EmptyHookahState />
               </div>
             ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-5">
+              <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 gap-2 sm:gap-5">
                 {visibleProducts.map((product) => {
                   const inCart = cart[product.id]
                   const isSelected = inCart && inCart.quantity > 0
@@ -417,7 +425,7 @@ export default function NewOrder({ onOrderComplete, onBack }: NewOrderProps) {
                               <div className="w-12 h-12 rounded-md bg-zinc-700 flex-shrink-0" />
                             )}
                             <div className="flex-1 min-w-0">
-                              <h4 className="font-medium text-sm text-white truncate">{item.name}</h4>
+                              <h4 className="font-bold text-base text-white truncate">{item.name}</h4>
                               <p className="text-xs text-zinc-400 mt-0.5">${item.price.toFixed(2)}</p>
                             </div>
                           </div>
@@ -506,7 +514,11 @@ export default function NewOrder({ onOrderComplete, onBack }: NewOrderProps) {
                     placeholder="Enter customer name"
                     value={customerName}
                     onChange={(e) => setCustomerName(e.target.value)}
-                    className="h-9 bg-zinc-800 border-zinc-700 text-white placeholder:text-zinc-500 text-sm"
+                    className={`h-9 border text-white placeholder:text-zinc-300 text-sm transition-colors ${
+                      customerName.trim()
+                        ? "bg-green-500/20 border-green-500/50"
+                        : "bg-red-500/20 border-red-500/50"
+                    }`}
                   />
                 </div>
 
@@ -537,7 +549,11 @@ export default function NewOrder({ onOrderComplete, onBack }: NewOrderProps) {
                     placeholder="Enter seating location"
                     value={seating}
                     onChange={(e) => setSeating(e.target.value)}
-                    className="h-9 bg-zinc-800 border-zinc-700 text-white placeholder:text-zinc-500 text-sm"
+                    className={`h-9 border text-white placeholder:text-zinc-300 text-sm transition-colors ${
+                      seating.trim()
+                        ? "bg-green-500/20 border-green-500/50"
+                        : "bg-red-500/20 border-red-500/50"
+                    }`}
                   />
                 </div>
 
@@ -659,7 +675,7 @@ export default function NewOrder({ onOrderComplete, onBack }: NewOrderProps) {
                             <div className="w-12 h-12 rounded-md bg-zinc-700 flex-shrink-0" />
                           )}
                           <div className="flex-1 min-w-0">
-                            <h4 className="font-medium text-sm text-white truncate">{item.name}</h4>
+                            <h4 className="font-bold text-base text-white truncate">{item.name}</h4>
                             <p className="text-xs text-zinc-400 mt-0.5">${item.price.toFixed(2)}</p>
                           </div>
                         </div>
@@ -730,7 +746,11 @@ export default function NewOrder({ onOrderComplete, onBack }: NewOrderProps) {
                   placeholder="Enter customer name"
                   value={customerName}
                   onChange={(e) => setCustomerName(e.target.value)}
-                  className="h-9 bg-zinc-800 border-zinc-700 text-white placeholder:text-zinc-500 text-sm"
+                  className={`h-9 border text-white placeholder:text-zinc-300 text-sm transition-colors ${
+                    customerName.trim()
+                      ? "bg-green-500/20 border-green-500/50"
+                      : "bg-red-500/20 border-red-500/50"
+                  }`}
                 />
               </div>
 
@@ -761,7 +781,11 @@ export default function NewOrder({ onOrderComplete, onBack }: NewOrderProps) {
                   placeholder="Enter seating location"
                   value={seating}
                   onChange={(e) => setSeating(e.target.value)}
-                  className="h-9 bg-zinc-800 border-zinc-700 text-white placeholder:text-zinc-500 text-sm"
+                  className={`h-9 border text-white placeholder:text-zinc-300 text-sm transition-colors ${
+                    seating.trim()
+                      ? "bg-green-500/20 border-green-500/50"
+                      : "bg-red-500/20 border-red-500/50"
+                  }`}
                 />
               </div>
 
@@ -820,16 +844,17 @@ export default function NewOrder({ onOrderComplete, onBack }: NewOrderProps) {
 
       {/* Success Dialog */}
       <Dialog open={showSuccessDialog} onOpenChange={setShowSuccessDialog}>
-        <DialogContent className="sm:max-w-md bg-zinc-900 text-white border-zinc-800">
+        <DialogContent
+          showCloseButton={false}
+          className="sm:max-w-md bg-zinc-900 text-white border-zinc-800"
+        >
           <DialogHeader>
             <DialogTitle className="text-lime-500 text-xl">Order Placed Successfully!</DialogTitle>
             <DialogDescription className="text-zinc-400">
               Your order has been placed and is being prepared.
             </DialogDescription>
           </DialogHeader>
-          <div className="flex flex-col gap-4 py-4">
-            <div className="flex flex-col gap-2">
-                        <div className="flex flex-col gap-6 py-4">
+          <div className="flex flex-col gap-6 py-4">
             <div className="flex flex-col items-center gap-2">
               <p className="text-sm uppercase tracking-widest text-zinc-400">Your Order Number</p>
               <div className="flex items-center justify-center w-full rounded-2xl border-4 border-lime-500 bg-zinc-950 py-6">
@@ -837,17 +862,6 @@ export default function NewOrder({ onOrderComplete, onBack }: NewOrderProps) {
                   {lastOrderId}
                 </p>
               </div>
-            </div>
-            <Button
-              onClick={() => {
-                setShowSuccessDialog(false)
-                onOrderComplete?.()
-              }}
-              className="w-full bg-lime-600 hover:bg-lime-700 text-white"
-            >
-              Close
-            </Button>
-          </div>
             </div>
             <Button
               onClick={() => {
