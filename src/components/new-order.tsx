@@ -16,6 +16,7 @@ interface Product {
   image: string
   price: number
   description?: string
+  category?: string | null
 }
 
 interface CartItem extends Product {
@@ -26,7 +27,18 @@ interface CartState {
   [key: string]: CartItem
 }
 
-export default function NewOrder() {
+interface NewOrderProps {
+  onOrderComplete?: () => void
+  onBack?: () => void
+}
+
+type CategoryTab = string
+
+const titleCase = (s: string) =>
+  s.length === 0 ? s : s.charAt(0).toUpperCase() + s.slice(1).toLowerCase()
+
+export default function NewOrder({ onOrderComplete, onBack }: NewOrderProps) {
+  const [activeTab, setActiveTab] = useState<CategoryTab>("ALL")
   const [customerName, setCustomerName] = useState("")
   const [paymentType, setPaymentType] = useState<"CASH" | "CARD" | "">("")
   const [seating, setSeating] = useState("")
@@ -47,7 +59,7 @@ export default function NewOrder() {
     const fetchProducts = async () => {
       try {
         setLoading(true)
-        const response = await fetch("/api/menu-items")
+        const response = await fetch(`/api/menu-items`)
 
         if (!response.ok) {
           throw new Error("Failed to fetch menu items")
@@ -198,7 +210,7 @@ export default function NewOrder() {
 
       const order = await response.json()
 
-      setLastOrderId(order.id)
+      setLastOrderId(order.orderNumber?.toString() || order.id)
       setShowSuccessDialog(true)
 
       setCart({})
@@ -209,6 +221,13 @@ export default function NewOrder() {
       setIsCartOpen(false)
       setIsMobileSheetOpen(false)
       setMobileSheetView("cart")
+
+      // Auto-return to the welcome screen a few seconds after a successful order,
+      // so the kiosk is ready for the next customer.
+      setTimeout(() => {
+        setShowSuccessDialog(false)
+        onOrderComplete?.()
+      }, 3000)
     } catch (err) {
       console.error("Error placing order:", err)
       toast.error("We are sorry to say, but your order cannot be placed", {
@@ -227,6 +246,14 @@ export default function NewOrder() {
   const subtotal = cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0)
   const totalItems = cartItems.reduce((sum, item) => sum + item.quantity, 0)
 
+  const availableCategories = Array.from(
+    new Set(products.map((p) => p.category).filter((c): c is string => !!c))
+  ).sort()
+  const categoryTabs: CategoryTab[] = ["ALL", ...availableCategories]
+
+  const visibleProducts =
+    activeTab === "ALL" ? products : products.filter((p) => p.category === activeTab)
+
   return (
     <div className="flex flex-col h-screen bg-background">
 
@@ -234,7 +261,23 @@ export default function NewOrder() {
       <div className="flex flex-col md:flex-row flex-1 overflow-hidden">
         {/* Products Section */}
         <div className="flex-1 flex flex-col overflow-hidden pb-20 md:pb-0">
-          <div className="flex-1 overflow-y-auto p-3 sm:p-6">
+          {/* Category Tabs */}
+          <div className="flex gap-2 px-3 sm:px-6 pt-3 sm:pt-6 pb-1 sm:pb-2">
+            {categoryTabs.map((tab) => (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+                  activeTab === tab
+                    ? "bg-lime-500 text-black"
+                    : "bg-zinc-800 text-zinc-300 hover:bg-zinc-700"
+                }`}
+              >
+                {tab === "ALL" ? "All" : titleCase(tab)}
+              </button>
+            ))}
+          </div>
+          <div className="flex-1 overflow-y-auto p-3 sm:p-6 pt-2 sm:pt-3">
             {loading ? (
               <div className="flex flex-col items-center justify-center h-full">
                 <Loader2 className="w-12 h-12 animate-spin text-primary mb-4" />
@@ -253,20 +296,20 @@ export default function NewOrder() {
                   Retry
                 </Button>
               </div>
-            ) : products.length === 0 ? (
+            ) : visibleProducts.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full">
                 <EmptyHookahState />
               </div>
             ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-7 gap-3">
-                {products.map((product) => {
+              <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 gap-2 sm:gap-5">
+                {visibleProducts.map((product) => {
                   const inCart = cart[product.id]
                   const isSelected = inCart && inCart.quantity > 0
 
                   return (
 <div
   key={product.id}
-  className={`cursor-pointer transition-all border overflow-hidden rounded-lg relative ${
+  className={`cursor-pointer transition-all active:scale-[0.97] border overflow-hidden rounded-lg relative ${
     isSelected
       ? "bg-lime-100 dark:bg-lime-950 shadow-md border-lime-300 dark:border-lime-800"
       : "border-zinc-700 bg-zinc-800 hover:border-lime-500 hover:shadow-sm"
@@ -274,7 +317,7 @@ export default function NewOrder() {
   onClick={() => handleProductClick(product)}
 >
   {/* Square Image Container */}
-  <div className="relative w-full h-82 pt-[100%] bg-zinc-900 overflow-hidden">
+  <div className="relative w-full aspect-square bg-zinc-900 overflow-hidden">
 
     {/* Product Image */}
     {product.image ? (
@@ -285,7 +328,7 @@ export default function NewOrder() {
       />
     ) : (
       <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-zinc-800 to-zinc-900">
-        <ShoppingCart className="w-10 h-10 text-zinc-700" />
+        <ShoppingCart className="w-8 h-8 sm:w-10 sm:h-10 text-zinc-700" />
       </div>
     )}
 
@@ -293,34 +336,35 @@ export default function NewOrder() {
 
     {/* Quantity Badge */}
     {isSelected && (
-      <div className="absolute top-3 right-3 bg-red-500 text-white px-2 py-1 text-xs font-medium rounded-full shadow-md">
+      <div className="absolute top-2 right-2 sm:top-3 sm:right-3 bg-red-500 text-white w-6 h-6 sm:px-2 sm:py-1 sm:w-auto sm:h-auto flex items-center justify-center text-xs font-medium rounded-full shadow-md">
         {inCart.quantity}
       </div>
     )}
 
     {/* Bottom Overlay */}
-    <div className="absolute inset-x-0 bottom-0 p-4 bg-gradient-to-t from-black/80 via-black/50 to-transparent space-y-2">
+    <div className="absolute inset-x-0 bottom-0 p-2 sm:p-4 bg-gradient-to-t from-black/85 via-black/55 to-transparent space-y-1 sm:space-y-2 text-center sm:text-left">
     {/* Price Badge */}
-    <div className="w-fit bg-lime-500 text-black text-md font-bold px-3 py-1 rounded-full shadow-md">
+    <div className="mx-auto sm:mx-0 w-fit bg-lime-500 text-black text-xs sm:text-base font-bold px-2 py-0.5 sm:px-3 sm:py-1 rounded-full shadow-md">
       ${product.price.toFixed(2)}
     </div>
       {/* Title */}
-      <h3 className="text-white font-semibold text-2xl leading-tight">
+      <h3 className="text-white font-semibold text-sm sm:text-xl md:text-2xl leading-tight line-clamp-2 break-words">
         {product.name}
       </h3>
 
       {/* Description */}
       {product.description && (
-        <p className="text-zinc-300 text-xs line-clamp-2">
+        <p className="hidden sm:block text-zinc-300 text-xs line-clamp-2">
           {product.description}
         </p>
       )}
 
       {/* Add to Cart Button */}
       <button
-        className="w-full mt-2 bg-lime-500 hover:bg-lime-400 text-black text-sm font-semibold py-2 rounded-md transition"
+        className="w-full mt-1 sm:mt-2 bg-lime-500 hover:bg-lime-400 text-black text-xs sm:text-base font-semibold py-2 sm:py-3.5 rounded-md transition active:scale-95"
       >
-        Add to Cart
+        <span className="sm:hidden">Add</span>
+        <span className="hidden sm:inline">Add to Cart</span>
       </button>
     </div>
   </div>
@@ -370,17 +414,28 @@ export default function NewOrder() {
                     {cartItems.map((item) => (
                       <div key={item.id} className="bg-zinc-800 rounded-lg p-3.5 border border-zinc-700 transition-all">
                         <div className="flex items-start justify-between mb-3">
-                          <div className="flex-1 min-w-0">
-                            <h4 className="font-medium text-sm text-white truncate">{item.name}</h4>
-                            <p className="text-xs text-zinc-400 mt-0.5">${item.price.toFixed(2)}</p>
+                          <div className="flex items-start gap-3 flex-1 min-w-0">
+                            {item.image ? (
+                              <img
+                                src={item.image}
+                                alt={item.name}
+                                className="w-12 h-12 rounded-md object-cover flex-shrink-0"
+                              />
+                            ) : (
+                              <div className="w-12 h-12 rounded-md bg-zinc-700 flex-shrink-0" />
+                            )}
+                            <div className="flex-1 min-w-0">
+                              <h4 className="font-bold text-base text-white truncate">{item.name}</h4>
+                              <p className="text-xs text-zinc-400 mt-0.5">${item.price.toFixed(2)}</p>
+                            </div>
                           </div>
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-7 w-7 -mt-1 -mr-1 hover:bg-red-500/20 hover:text-red-400 text-zinc-400 transition-colors"
+                            className="h-9 w-9 -mt-1 -mr-1 hover:bg-red-500/20 hover:text-red-400 text-zinc-400 transition-colors active:scale-90"
                             onClick={() => removeFromCart(item.id)}
                           >
-                            <X className="w-3.5 h-3.5" />
+                            <X className="w-4 h-4" />
                           </Button>
                         </div>
                         <div className="flex items-center justify-between gap-2">
@@ -388,19 +443,19 @@ export default function NewOrder() {
                             <Button
                               variant="outline"
                               size="icon"
-                              className="h-8 w-8 border-zinc-700 hover:bg-zinc-700 bg-transparent text-white hover:text-white"
+                              className="h-11 w-11 border-zinc-700 hover:bg-zinc-700 bg-transparent text-white hover:text-white active:scale-90 transition-transform"
                               onClick={() => updateQuantity(item.id, -1)}
                             >
-                              <Minus className="w-3 h-3" />
+                              <Minus className="w-4 h-4" />
                             </Button>
-                            <span className="w-6 text-center font-semibold text-sm text-white">{item.quantity}</span>
+                            <span className="w-8 text-center font-semibold text-base text-white">{item.quantity}</span>
                             <Button
                               variant="outline"
                               size="icon"
-                              className="h-8 w-8 border-zinc-700 hover:bg-zinc-700 bg-transparent text-white hover:text-white"
+                              className="h-11 w-11 border-zinc-700 hover:bg-zinc-700 bg-transparent text-white hover:text-white active:scale-90 transition-transform"
                               onClick={() => updateQuantity(item.id, 1)}
                             >
-                              <Plus className="w-3 h-3" />
+                              <Plus className="w-4 h-4" />
                             </Button>
                           </div>
                           <span className="font-semibold text-sm text-lime-500">
@@ -420,7 +475,7 @@ export default function NewOrder() {
                   <span className="text-xl font-bold text-lime-500">${subtotal.toFixed(2)}</span>
                 </div>
                 <Button
-                  className="w-full bg-lime-600 hover:bg-lime-700 text-white h-10 text-sm font-medium transition-colors"
+                  className="w-full bg-lime-600 hover:bg-lime-700 text-white h-12 text-base font-medium transition-colors active:scale-95"
                   disabled={cartItems.length === 0}
                   onClick={handlePlaceOrderClick}
                 >
@@ -459,7 +514,11 @@ export default function NewOrder() {
                     placeholder="Enter customer name"
                     value={customerName}
                     onChange={(e) => setCustomerName(e.target.value)}
-                    className="h-9 bg-zinc-800 border-zinc-700 text-black placeholder:text-zinc-500 text-sm"
+                    className={`h-9 border text-white placeholder:text-zinc-300 text-sm transition-colors ${
+                      customerName.trim()
+                        ? "bg-green-500/20 border-green-500/50"
+                        : "bg-red-500/20 border-red-500/50"
+                    }`}
                   />
                 </div>
 
@@ -490,7 +549,11 @@ export default function NewOrder() {
                     placeholder="Enter seating location"
                     value={seating}
                     onChange={(e) => setSeating(e.target.value)}
-                    className="h-9 bg-zinc-800 border-zinc-700 text-black placeholder:text-zinc-500 text-sm"
+                    className={`h-9 border text-white placeholder:text-zinc-300 text-sm transition-colors ${
+                      seating.trim()
+                        ? "bg-green-500/20 border-green-500/50"
+                        : "bg-red-500/20 border-red-500/50"
+                    }`}
                   />
                 </div>
 
@@ -516,7 +579,7 @@ export default function NewOrder() {
               {/* Order Form Footer */}
               <div className="border-t border-zinc-800 bg-zinc-900 p-4">
                 <Button
-                  className="w-full bg-lime-600 hover:bg-lime-700 text-black h-10 text-sm font-medium transition-colors"
+                  className="w-full bg-lime-600 hover:bg-lime-700 text-black h-12 text-base font-medium transition-colors active:scale-95"
                   onClick={handleConfirmOrder}
                   disabled={submitting}
                 >
@@ -601,17 +664,28 @@ export default function NewOrder() {
                   {cartItems.map((item) => (
                     <div key={item.id} className="bg-zinc-800 rounded-lg p-3.5 border border-zinc-700 transition-all">
                       <div className="flex items-start justify-between mb-3">
-                        <div className="flex-1 min-w-0">
-                          <h4 className="font-medium text-sm text-white truncate">{item.name}</h4>
-                          <p className="text-xs text-zinc-400 mt-0.5">${item.price.toFixed(2)}</p>
+                        <div className="flex items-start gap-3 flex-1 min-w-0">
+                          {item.image ? (
+                            <img
+                              src={item.image}
+                              alt={item.name}
+                              className="w-12 h-12 rounded-md object-cover flex-shrink-0"
+                            />
+                          ) : (
+                            <div className="w-12 h-12 rounded-md bg-zinc-700 flex-shrink-0" />
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <h4 className="font-bold text-base text-white truncate">{item.name}</h4>
+                            <p className="text-xs text-zinc-400 mt-0.5">${item.price.toFixed(2)}</p>
+                          </div>
                         </div>
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-7 w-7 -mt-1 -mr-1 hover:bg-red-500/20 hover:text-red-400 text-zinc-400 transition-colors"
+                          className="h-9 w-9 -mt-1 -mr-1 hover:bg-red-500/20 hover:text-red-400 text-zinc-400 transition-colors active:scale-90"
                           onClick={() => removeFromCart(item.id)}
                         >
-                          <X className="w-3.5 h-3.5" />
+                          <X className="w-4 h-4" />
                         </Button>
                       </div>
                       <div className="flex items-center justify-between gap-2">
@@ -619,19 +693,19 @@ export default function NewOrder() {
                           <Button
                             variant="outline"
                             size="icon"
-                            className="h-8 w-8 border-zinc-700 hover:bg-zinc-700 bg-transparent text-white hover:text-white"
+                            className="h-11 w-11 border-zinc-700 hover:bg-zinc-700 bg-transparent text-white hover:text-white active:scale-90 transition-transform"
                             onClick={() => updateQuantity(item.id, -1)}
                           >
-                            <Minus className="w-3 h-3" />
+                            <Minus className="w-4 h-4" />
                           </Button>
-                          <span className="w-6 text-center font-semibold text-sm text-white">{item.quantity}</span>
+                          <span className="w-8 text-center font-semibold text-base text-white">{item.quantity}</span>
                           <Button
                             variant="outline"
                             size="icon"
-                            className="h-8 w-8 border-zinc-700 hover:bg-zinc-700 bg-transparent text-white hover:text-white"
+                            className="h-11 w-11 border-zinc-700 hover:bg-zinc-700 bg-transparent text-white hover:text-white active:scale-90 transition-transform"
                             onClick={() => updateQuantity(item.id, 1)}
                           >
-                            <Plus className="w-3 h-3" />
+                            <Plus className="w-4 h-4" />
                           </Button>
                         </div>
                         <span className="font-semibold text-sm text-lime-500">
@@ -651,7 +725,7 @@ export default function NewOrder() {
                 <span className="text-xl font-bold text-lime-500">${subtotal.toFixed(2)}</span>
               </div>
               <Button
-                className="w-full bg-lime-600 hover:bg-lime-700 text-white h-10 text-sm font-medium transition-colors"
+                className="w-full bg-lime-600 hover:bg-lime-700 text-white h-12 text-base font-medium transition-colors active:scale-95"
                 disabled={cartItems.length === 0}
                 onClick={handleMobileSheetPlaceOrder}
               >
@@ -672,7 +746,11 @@ export default function NewOrder() {
                   placeholder="Enter customer name"
                   value={customerName}
                   onChange={(e) => setCustomerName(e.target.value)}
-                  className="h-9 bg-zinc-800 border-zinc-700 text-white placeholder:text-zinc-500 text-sm"
+                  className={`h-9 border text-white placeholder:text-zinc-300 text-sm transition-colors ${
+                    customerName.trim()
+                      ? "bg-green-500/20 border-green-500/50"
+                      : "bg-red-500/20 border-red-500/50"
+                  }`}
                 />
               </div>
 
@@ -703,7 +781,11 @@ export default function NewOrder() {
                   placeholder="Enter seating location"
                   value={seating}
                   onChange={(e) => setSeating(e.target.value)}
-                  className="h-9 bg-zinc-800 border-zinc-700 text-white placeholder:text-zinc-500 text-sm"
+                  className={`h-9 border text-white placeholder:text-zinc-300 text-sm transition-colors ${
+                    seating.trim()
+                      ? "bg-green-500/20 border-green-500/50"
+                      : "bg-red-500/20 border-red-500/50"
+                  }`}
                 />
               </div>
 
@@ -729,7 +811,7 @@ export default function NewOrder() {
             {/* Order Form Footer */}
             <div className="border-t border-zinc-800 bg-zinc-900 p-4">
               <Button
-                className="w-full bg-lime-600 hover:bg-lime-700 text-white h-10 text-sm font-medium transition-colors"
+                className="w-full bg-lime-600 hover:bg-lime-700 text-white h-12 text-base font-medium transition-colors active:scale-95"
                 onClick={handleConfirmOrder}
                 disabled={submitting}
               >
@@ -762,20 +844,30 @@ export default function NewOrder() {
 
       {/* Success Dialog */}
       <Dialog open={showSuccessDialog} onOpenChange={setShowSuccessDialog}>
-        <DialogContent className="sm:max-w-md bg-zinc-900 text-white border-zinc-800">
+        <DialogContent
+          showCloseButton={false}
+          className="sm:max-w-md bg-zinc-900 text-white border-zinc-800"
+        >
           <DialogHeader>
             <DialogTitle className="text-lime-500 text-xl">Order Placed Successfully!</DialogTitle>
             <DialogDescription className="text-zinc-400">
               Your order has been placed and is being prepared.
             </DialogDescription>
           </DialogHeader>
-          <div className="flex flex-col gap-4 py-4">
-            <div className="flex flex-col gap-2">
-              <p className="text-sm text-zinc-400">Order ID:</p>
-              <p className="text-lg font-semibold text-white">{lastOrderId}</p>
+          <div className="flex flex-col gap-6 py-4">
+            <div className="flex flex-col items-center gap-2">
+              <p className="text-sm uppercase tracking-widest text-zinc-400">Your Order Number</p>
+              <div className="flex items-center justify-center w-full rounded-2xl border-4 border-lime-500 bg-zinc-950 py-6">
+                <p className="text-7xl sm:text-8xl font-black text-lime-500 tabular-nums tracking-wider">
+                  {lastOrderId}
+                </p>
+              </div>
             </div>
             <Button
-              onClick={() => setShowSuccessDialog(false)}
+              onClick={() => {
+                setShowSuccessDialog(false)
+                onOrderComplete?.()
+              }}
               className="w-full bg-lime-600 hover:bg-lime-700 text-white"
             >
               Close
