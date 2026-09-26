@@ -17,18 +17,16 @@ export async function GET() {
 
     let nextNumber = (lastNumbered?.orderNumber ?? 99) + 1;
 
-    // MongoDB (and Prisma's MongoDB query engine) treats "field is null"
-    // and "field doesn't exist in the document at all" as two different
-    // things. Orders placed before this feature existed never got the
-    // orderNumber key written at all, so `orderNumber: null` alone misses
-    // them — `isSet: false` catches the missing-field case too.
-    const missing = await prisma.order.findMany({
-      where: {
-        OR: [{ orderNumber: null }, { orderNumber: { isSet: false } }],
-      },
+    // Filtering for "missing orderNumber" directly in the MongoDB query
+    // (orderNumber: null, or isSet: false) wasn't reliably catching every
+    // case here. To be completely certain, fetch every order and filter
+    // in plain JavaScript instead — immune to any query-translation
+    // quirks between null, missing, 0, etc.
+    const allOrders = await prisma.order.findMany({
       orderBy: { createdAt: "asc" },
-      select: { id: true },
+      select: { id: true, orderNumber: true },
     });
+    const missing = allOrders.filter((order) => !order.orderNumber);
 
     for (const order of missing) {
       await prisma.order.update({
