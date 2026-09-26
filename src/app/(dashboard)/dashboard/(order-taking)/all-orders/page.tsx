@@ -217,7 +217,7 @@ export default function AllOrders() {
   const fetchOrders = async () => {
     try {
       setLoading(true);
-      const response = await fetch("/api/orders/get");
+      const response = await fetch("/api/orders/get", { cache: "no-store" });
       if (!response.ok) {
         throw new Error("Failed to fetch orders");
       }
@@ -245,7 +245,7 @@ export default function AllOrders() {
 
   const fetchOrdersQuietly = async () => {
     try {
-      const response = await fetch("/api/orders/get");
+      const response = await fetch("/api/orders/get", { cache: "no-store" });
       if (!response.ok) return;
 
       const data = await response.json();
@@ -645,59 +645,56 @@ export default function AllOrders() {
           <Tabs
             value={activeTab}
             onValueChange={setActiveTab}
-            className="h-full flex flex-col"
+            className="h-full flex"
           >
-            <div className="px-3 md:px-6 pt-3 md:pt-6">
-              {/* Stats */}
-              <div className="grid grid-cols-2 md:flex md:gap-3 gap-2 mb-4">
-                <div className="md:w-32 bg-card border border-border p-3 rounded-lg">
-                  <div className="text-xs text-muted-foreground uppercase tracking-wider mb-1">
-                    Total
-                  </div>
-                  <div className="text-2xl font-bold text-foreground">
-                    {orders.length}
-                  </div>
+            {/* Compact side column: stats stacked vertically + tabs */}
+            <div className="w-28 sm:w-32 md:w-36 shrink-0 border-r border-border bg-card overflow-y-auto p-2 flex flex-col gap-1.5">
+              <div className="bg-muted border border-border rounded-md px-2 py-1.5">
+                <div className="text-[9px] text-muted-foreground uppercase tracking-wider">
+                  Total
                 </div>
-                <div className="md:w-32 bg-card border border-border p-3 rounded-lg">
-                  <div className="text-xs text-muted-foreground uppercase tracking-wider mb-1">
-                    Pending
-                  </div>
-                  <div className="text-2xl font-bold text-amber-500 dark:text-amber-400">
-                    {pendingOrders.length}
-                  </div>
+                <div className="text-base font-bold text-foreground">
+                  {orders.length}
                 </div>
-                <div className="md:w-32 bg-card border border-border p-3 rounded-lg">
-                  <div className="text-xs text-muted-foreground uppercase tracking-wider mb-1">
-                    Ready
-                  </div>
-                  <div className="text-2xl font-bold text-emerald-500 dark:text-emerald-400">
-                    {deliveredOrders.length}
-                  </div>
+              </div>
+              <div className="bg-muted border border-border rounded-md px-2 py-1.5">
+                <div className="text-[9px] text-muted-foreground uppercase tracking-wider">
+                  Pending
                 </div>
-                <div className="md:w-32 bg-card border border-border p-3 rounded-lg">
-                  <div className="text-xs text-muted-foreground uppercase tracking-wider mb-1">
-                    Total Sales
-                  </div>
-                  <div className="text-2xl font-bold text-blue-500 dark:text-blue-400">
-                    $
-                    {deliveredOrders
-                      .reduce((sum, order) => sum + order.subtotal, 0)
-                      .toFixed(2)}
-                  </div>
+                <div className="text-base font-bold text-amber-500 dark:text-amber-400">
+                  {pendingOrders.length}
+                </div>
+              </div>
+              <div className="bg-muted border border-border rounded-md px-2 py-1.5">
+                <div className="text-[9px] text-muted-foreground uppercase tracking-wider">
+                  Ready
+                </div>
+                <div className="text-base font-bold text-emerald-500 dark:text-emerald-400">
+                  {deliveredOrders.length}
+                </div>
+              </div>
+              <div className="bg-muted border border-border rounded-md px-2 py-1.5">
+                <div className="text-[9px] text-muted-foreground uppercase tracking-wider">
+                  Sales
+                </div>
+                <div className="text-sm font-bold text-blue-500 dark:text-blue-400">
+                  $
+                  {deliveredOrders
+                    .reduce((sum, order) => sum + order.subtotal, 0)
+                    .toFixed(2)}
                 </div>
               </div>
 
-              {/* Tabs */}
-              <TabsList className="w-full md:w-auto bg-muted border border-border mb-4">
+              <TabsList className="flex flex-col h-auto w-full bg-muted border border-border gap-1 p-1 mt-1">
                 <TabsTrigger
                   value="pending"
-                  className="flex-1 md:flex-none data-[state=active]:bg-amber-600 data-[state=active]:text-white"
+                  className="w-full justify-start text-xs data-[state=active]:bg-amber-600 data-[state=active]:text-white"
                 >
                   Pending ({pendingOrders.length})
                 </TabsTrigger>
                 <TabsTrigger
                   value="delivered"
-                  className="flex-1 md:flex-none data-[state=active]:bg-emerald-600 data-[state=active]:text-white"
+                  className="w-full justify-start text-xs data-[state=active]:bg-emerald-600 data-[state=active]:text-white"
                 >
                   Ready ({deliveredOrders.length})
                 </TabsTrigger>
@@ -707,7 +704,7 @@ export default function AllOrders() {
             <div className="flex-1 overflow-hidden">
               <TabsContent value="pending" className="h-full m-0">
                 <ScrollArea className="h-full">
-                  <div className="px-3 md:px-6 pb-6">
+                  <div className="px-3 md:px-6 py-3 md:py-6">
                     {pendingOrders.length === 0 ? (
                       <div className="flex flex-col items-center justify-center py-16">
                         <Clock className="w-16 h-16 text-muted-foreground/50 mb-4" />
@@ -729,7 +726,7 @@ export default function AllOrders() {
 
               <TabsContent value="delivered" className="h-full m-0">
                 <ScrollArea className="h-full">
-                  <div className="px-3 md:px-6 pb-6">
+                  <div className="px-3 md:px-6 py-3 md:py-6">
                     {deliveredOrders.length === 0 ? (
                       <div className="flex flex-col items-center justify-center py-16">
                         <CheckCircle2 className="w-16 h-16 text-muted-foreground/50 mb-4" />
