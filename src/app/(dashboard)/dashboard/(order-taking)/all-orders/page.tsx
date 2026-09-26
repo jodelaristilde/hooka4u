@@ -681,7 +681,7 @@ export default function AllOrders() {
           <Tabs
             value={activeTab}
             onValueChange={setActiveTab}
-            className="h-full flex"
+            className="h-full flex flex-row"
           >
             {/* Compact side column: stats stacked vertically + tabs.
                 Slides away to w-0 when collapsed, leaving just the thin
