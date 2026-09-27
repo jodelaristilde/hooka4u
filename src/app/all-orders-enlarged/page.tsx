@@ -9,35 +9,32 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Badge } from "@/components/ui/badge";
 import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from "@/components/ui/breadcrumb";
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Separator } from "@/components/ui/separator";
-import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   AlertCircle,
   Banknote,
   CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
   Clock,
   CreditCard,
+  ExternalLink,
   Loader2,
   MapPin,
-  ShoppingBag,
-  ExternalLink,
-  Trash2,
-  User,
   Maximize,
   Minimize,
+  ShoppingBag,
+  Trash2,
 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
@@ -45,15 +42,18 @@ import { useEffect, useRef, useState } from "react";
 interface OrderItem {
   id: string;
   quantity: number;
+  // Optional/nullable: if the underlying menu item was later deleted from
+  // the admin Menu page, the API can return this as null for that item.
   product: {
     id: string;
     name: string;
     price: number;
-  };
+  } | null;
 }
 
 interface Order {
   id: string;
+  orderNumber?: number | null;
   customerName: string;
   subtotal: number;
   createdAt: string;
@@ -63,7 +63,7 @@ interface Order {
   status?: "PENDING" | "DELIVERED";
 }
 
-export default function AllOrders() {
+export default function AllOrdersEnlarged() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -77,6 +77,18 @@ export default function AllOrders() {
   const [updatingStatus, setUpdatingStatus] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("pending");
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
+
+  // This page is only ever meaningful once it's running in the browser (it
+  // fetches its own data on mount). Render nothing but a simple loading
+  // spinner until the very first moment we're confirmed to be running in
+  // the browser, so the server-drawn version and the browser's first paint
+  // can never disagree with each other and crash React's hydration step.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const previousOrderIdsRef = useRef<Set<string>>(new Set());
@@ -148,9 +160,7 @@ export default function AllOrders() {
 
     if ("Notification" in window && Notification.permission === "granted") {
       new Notification("🔔 New Order Received!", {
-        body: `Order from ${
-          newOrder.customerName || "Guest"
-        } - $${newOrder.subtotal.toFixed(2)}`,
+        body: `Order from ${newOrder.customerName || "Guest"}`,
         icon: "/notification-icon.png",
         badge: "/badge-icon.png",
         tag: newOrder.id,
@@ -173,7 +183,7 @@ export default function AllOrders() {
   const fetchOrders = async () => {
     try {
       setLoading(true);
-      const response = await fetch("/api/orders/get");
+      const response = await fetch("/api/orders/get", { cache: "no-store" });
       if (!response.ok) {
         throw new Error("Failed to fetch orders");
       }
@@ -201,7 +211,7 @@ export default function AllOrders() {
 
   const fetchOrdersQuietly = async () => {
     try {
-      const response = await fetch("/api/orders/get");
+      const response = await fetch("/api/orders/get", { cache: "no-store" });
       if (!response.ok) return;
 
       const data = await response.json();
@@ -337,123 +347,235 @@ export default function AllOrders() {
     (o) => !o.status || o.status === "PENDING"
   );
   const deliveredOrders = orders.filter((o) => o.status === "DELIVERED");
+  const expandedOrder = orders.find((o) => o.id === expandedOrderId) ?? null;
 
+  // Bigger, easy-to-read tile for the grid — matches the main dashboard's
+  // All Orders board. No prices are shown on this screen since it's the
+  // one meant to be visible around the venue. Tapping "View Order" opens
+  // the full details below in a popup, and marking an order delivered only
+  // happens from there.
   const renderOrderCard = (order: Order) => {
     const isDelivered = order.status === "DELIVERED";
     const isVIP = order.Seating?.toUpperCase().includes("VIP");
 
+    const openOrder = () => setExpandedOrderId(order.id);
+
     return (
       <Card
         key={order.id}
-        className={`group bg-black border hover:border-primary/50 transition-all duration-200 flex flex-col w-full sm:w-80 ${
+        onClick={openOrder}
+        className={`group bg-black border hover:border-primary/50 transition-all duration-200 cursor-pointer gap-2 py-4 w-full sm:w-80 ${
           newOrderAnimation === order.id
             ? "animate-[pulse_0.5s_ease-in-out_4] border-blue-500"
             : "border-border"
         }`}
       >
-        <CardHeader className="pb-4 space-y-3">
+        <CardHeader className="px-4">
           <div className="flex items-start justify-between gap-2">
-            <div className="flex items-center gap-3 min-w-0 flex-1">
-              <div className="w-10 h-10 bg-muted flex items-center justify-center shrink-0 rounded">
-                <User className="w-5 h-5 text-muted-foreground" />
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2 flex-wrap">
+                {order.orderNumber != null && (
+                  <Badge
+                    variant="outline"
+                    className="text-sm font-bold border-lime-500/50 bg-lime-500/10 text-lime-400 tabular-nums px-2 py-0.5 shrink-0"
+                  >
+                    #{order.orderNumber}
+                  </Badge>
+                )}
+                <h3 className="font-bold text-lg text-white truncate">
+                  {order.customerName || "Guest"}
+                </h3>
+                {isVIP && (
+                  <Badge className="bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-400 text-xs px-1.5 py-0 border-amber-300 dark:border-amber-800 shrink-0">
+                    VIP
+                  </Badge>
+                )}
               </div>
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2 mb-1">
-                  <h3 className="font-semibold text-md text-white truncate">
-                    {order.customerName || "Guest"}
-                  </h3>
-                  {isVIP && (
-                    <Badge className="bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-400 text-xs px-1.5 py-0 border-amber-300 dark:border-amber-800">
-                      VIP
-                    </Badge>
-                  )}
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  {formatDate(order.createdAt)}
-                </p>
-              </div>
+              <p className="text-sm text-muted-foreground mt-0.5">
+                {formatDate(order.createdAt)}
+              </p>
             </div>
             <Button
               variant="ghost"
               size="icon"
-              className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 shrink-0 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
-              onClick={() => handleDeleteClick(order)}
+              className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 shrink-0"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleDeleteClick(order);
+              }}
             >
               <Trash2 className="h-4 w-4" />
             </Button>
           </div>
 
+          <Badge
+            variant="outline"
+            className={`self-start text-sm font-bold px-3 py-1 ${
+              isDelivered
+                ? "bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400 border-emerald-300 dark:border-emerald-800"
+                : "bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-400 border-amber-300 dark:border-amber-800"
+            }`}
+          >
+            {isDelivered ? "DELIVERED" : "PENDING"}
+          </Badge>
+
           <div className="flex items-center gap-2 flex-wrap">
             <Badge
               variant="outline"
-              className="text-xs border-border bg-muted text-foreground"
+              className="text-sm border-border bg-muted text-foreground px-2.5 py-1"
             >
               {getTotalItems(order.items)} items
             </Badge>
             <Badge
               variant="outline"
-              className={`text-md uppercase font-bold border-border px-3 py-1 ${
+              className={`text-sm font-bold px-2.5 py-1 ${
                 order.paymentType === "CARD"
                   ? "bg-muted text-foreground"
                   : "bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400 border-emerald-300 dark:border-emerald-800"
               }`}
             >
               {order.paymentType === "CARD" ? (
-                <CreditCard className="w-4 h-4 mr-1.5" />
+                <CreditCard className="w-3.5 h-3.5 mr-1" />
               ) : (
-                <Banknote className="w-4 h-4 mr-1.5" />
+                <Banknote className="w-3.5 h-3.5 mr-1" />
               )}
               {order.paymentType === "CARD" ? "Card" : "Cash"}
             </Badge>
             {order.Seating && (
               <Badge
                 variant="outline"
-                className="text-md border-border bg-muted text-muted-foreground"
+                className="text-sm border-border bg-muted text-muted-foreground px-2.5 py-1"
               >
-                <MapPin className="w-3 h-3 mr-1" />
+                <MapPin className="w-3.5 h-3.5 mr-1" />
                 {order.Seating}
               </Badge>
             )}
           </div>
-
-          <div className="pt-2">
-            <Badge
-              variant="outline"
-              className={`text-xs font-medium ${
-                isDelivered
-                  ? "bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400 border-emerald-300 dark:border-emerald-800"
-                  : "bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-400 border-amber-300 dark:border-amber-800"
-              }`}
-            >
-              {isDelivered ? "DELIVERED" : "PENDING"}
-            </Badge>
-          </div>
         </CardHeader>
 
-        <CardContent className="flex-1 flex flex-col">
-          <div className="space-y-2 flex-1 mb-4">
-            {order.items.map((item) => (
+        <CardContent className="px-4 flex items-center justify-end gap-3">
+          <Button
+            onClick={(e) => {
+              e.stopPropagation();
+              openOrder();
+            }}
+            size="sm"
+            variant="outline"
+            className="border-primary/50 text-foreground hover:bg-primary/10"
+          >
+            View Order
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  };
+
+  // Full detail popup for whichever order was tapped in the grid. No prices
+  // are shown here either — this whole screen is meant to be visible
+  // around the venue.
+  const renderExpandedOrderDetails = (order: Order) => {
+    const isDelivered = order.status === "DELIVERED";
+    const isVIP = order.Seating?.toUpperCase().includes("VIP");
+
+    return (
+      <div className="flex flex-col gap-4">
+        <div className="flex items-center gap-2 flex-wrap">
+          {order.orderNumber != null && (
+            <Badge
+              variant="outline"
+              className="text-xs font-bold border-lime-500/50 bg-lime-500/10 text-lime-400 tabular-nums px-1.5 py-0"
+            >
+              #{order.orderNumber}
+            </Badge>
+          )}
+          {isVIP && (
+            <Badge className="bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-400 text-xs px-1.5 py-0 border-amber-300 dark:border-amber-800">
+              VIP
+            </Badge>
+          )}
+          <Badge
+            variant="outline"
+            className={`text-xs font-medium ${
+              isDelivered
+                ? "bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400 border-emerald-300 dark:border-emerald-800"
+                : "bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-400 border-amber-300 dark:border-amber-800"
+            }`}
+          >
+            {isDelivered ? "DELIVERED" : "PENDING"}
+          </Badge>
+        </div>
+
+        <p className="text-xs text-muted-foreground -mt-2">
+          {formatDate(order.createdAt)}
+        </p>
+
+        <div className="flex items-center gap-2 flex-wrap">
+          <Badge
+            variant="outline"
+            className="text-xs border-border bg-muted text-foreground"
+          >
+            {getTotalItems(order.items)} items
+          </Badge>
+          <Badge
+            variant="outline"
+            className={`text-xs uppercase font-bold border-border px-2 py-1 ${
+              order.paymentType === "CARD"
+                ? "bg-muted text-foreground"
+                : "bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400 border-emerald-300 dark:border-emerald-800"
+            }`}
+          >
+            {order.paymentType === "CARD" ? (
+              <CreditCard className="w-3.5 h-3.5 mr-1.5" />
+            ) : (
+              <Banknote className="w-3.5 h-3.5 mr-1.5" />
+            )}
+            {order.paymentType === "CARD" ? "Card" : "Cash"}
+          </Badge>
+          {order.Seating && (
+            <Badge
+              variant="outline"
+              className="text-xs border-border bg-muted text-muted-foreground"
+            >
+              <MapPin className="w-3 h-3 mr-1" />
+              {order.Seating}
+            </Badge>
+          )}
+        </div>
+
+        <div className="space-y-2">
+          {order.items.map((item) => {
+            const productName =
+              item.product?.name ?? "Item no longer available";
+
+            return (
               <div
                 key={item.id}
-                className="flex items-start justify-between gap-2 p-2.5 bg-muted border border-border rounded"
+                className="flex items-center gap-2.5 p-2.5 bg-muted border border-border rounded"
               >
                 <div className="flex-1 min-w-0">
                   <p className="text-sm text-foreground truncate">
-                    {item.product.name}
+                    {productName}
                   </p>
                   <p className="text-xs text-muted-foreground mt-0.5">
                     × {item.quantity}
                   </p>
                 </div>
               </div>
-            ))}
-          </div>
+            );
+          })}
+        </div>
 
-          <div className="pt-3 border-t border-border space-y-3">
+        <div className="pt-3 border-t border-border">
+          <div className="flex gap-2">
             <Button
-              onClick={() => handleStatusToggle(order)}
+              onClick={async () => {
+                // Update the status, then close this popup so the board
+                // shows the fresh list right away.
+                await handleStatusToggle(order);
+                setExpandedOrderId(null);
+              }}
               disabled={updatingStatus === order.id}
-              className={`w-full font-medium transition-all ${
+              className={`flex-1 font-medium transition-all ${
                 isDelivered
                   ? "bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-600 dark:hover:bg-emerald-700 text-white"
                   : "bg-amber-600 hover:bg-amber-700 dark:bg-amber-600 dark:hover:bg-amber-700 text-white"
@@ -473,18 +595,40 @@ export default function AllOrders() {
                 "Mark Delivered"
               )}
             </Button>
+            <Button
+              variant="outline"
+              className="text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+              onClick={() => {
+                setExpandedOrderId(null);
+                handleDeleteClick(order);
+              }}
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     );
   };
 
+  if (!mounted) {
+    return (
+      <div className="flex flex-col h-screen items-center justify-center bg-neutral-100">
+        <Loader2 className="w-10 h-10 animate-spin text-primary" />
+      </div>
+    );
+  }
+
   return (
-    <div ref={containerRef} className="flex flex-col h-screen w-screen bg-black overflow-hidden">
+    <div
+      ref={containerRef}
+      className="flex flex-col h-screen w-screen bg-neutral-100 overflow-hidden"
+    >
       {/* Header */}
-      <header className="flex h-14 shrink-0 items-center gap-3 bg-black border-b border-border">
-        <div className="flex flex-row md:gap-3 px-3 md:px-5 w-full items-center justify-between gap-2 text-xs text-zinc-200">
-          <div className="flex gap-2 items-center">
+      <header className="flex h-14 shrink-0 items-center gap-3 bg-card border-b border-border">
+        <div className="flex flex-row md:gap-3 px-3 md:px-5 w-full items-center justify-between gap-2">
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
             <Clock className="w-3.5 h-3.5 hidden sm:block" />
             <span className="hidden sm:inline">
               Updated {getTimeSinceLastFetch()}
@@ -539,7 +683,7 @@ export default function AllOrders() {
         ) : orders.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full">
             <ShoppingBag className="w-16 h-16 text-muted-foreground/50 mb-4" />
-            <p className="text-white text-sm font-medium">No orders</p>
+            <p className="text-gray-700 text-sm font-medium">No orders</p>
             <p className="text-muted-foreground text-xs mt-1">
               Waiting for new orders...
             </p>
@@ -548,73 +692,80 @@ export default function AllOrders() {
           <Tabs
             value={activeTab}
             onValueChange={setActiveTab}
-            className="h-full flex flex-col"
+            className="h-full flex flex-row"
           >
-            <div className="px-3 md:px-6 pt-3 md:pt-6">
-              {/* Stats */}
-              <div className="grid grid-cols-2 md:flex md:gap-3 gap-2 mb-4">
-                <div className="md:w-32 bg-card border border-border p-3 rounded-lg">
-                  <div className="text-xs text-muted-foreground uppercase tracking-wider mb-1">
+            {/* Compact side column: stats stacked vertically + tabs.
+                Slides away to w-0 when collapsed, leaving just the thin
+                toggle strip so it can be reopened. */}
+            <div
+              className={`shrink-0 border-r border-border bg-card overflow-hidden transition-all duration-300 ${
+                sidebarCollapsed ? "w-0" : "w-28 sm:w-32 md:w-36"
+              }`}
+            >
+              <div className="w-28 sm:w-32 md:w-36 h-full overflow-y-auto p-2 flex flex-col gap-1.5">
+                <div className="bg-muted border border-border rounded-md px-2 py-1.5">
+                  <div className="text-[9px] text-muted-foreground uppercase tracking-wider">
                     Total
                   </div>
-                  <div className="text-2xl font-bold text-foreground">
+                  <div className="text-base font-bold text-foreground">
                     {orders.length}
                   </div>
                 </div>
-                <div className="md:w-32 bg-card border border-border p-3 rounded-lg">
-                  <div className="text-xs text-muted-foreground uppercase tracking-wider mb-1">
+                <div className="bg-muted border border-border rounded-md px-2 py-1.5">
+                  <div className="text-[9px] text-muted-foreground uppercase tracking-wider">
                     Pending
                   </div>
-                  <div className="text-2xl font-bold text-amber-500 dark:text-amber-400">
+                  <div className="text-base font-bold text-amber-500 dark:text-amber-400">
                     {pendingOrders.length}
                   </div>
                 </div>
-                <div className="md:w-32 bg-card border border-border p-3 rounded-lg">
-                  <div className="text-xs text-muted-foreground uppercase tracking-wider mb-1">
+                <div className="bg-muted border border-border rounded-md px-2 py-1.5">
+                  <div className="text-[9px] text-muted-foreground uppercase tracking-wider">
                     Delivered
                   </div>
-                  <div className="text-2xl font-bold text-emerald-500 dark:text-emerald-400">
+                  <div className="text-base font-bold text-emerald-500 dark:text-emerald-400">
                     {deliveredOrders.length}
                   </div>
                 </div>
-                <div className="md:w-32 bg-card border border-border p-3 rounded-lg">
-                  <div className="text-xs text-muted-foreground uppercase tracking-wider mb-1">
-                    Total Sales
-                  </div>
-                  <div className="text-2xl font-bold text-blue-500 dark:text-blue-400">
-                    $
-                    {orders
-                      .reduce((sum, order) => sum + order.subtotal, 0)
-                      .toFixed(2)}
-                  </div>
-                </div>
-              </div>
 
-              {/* Tabs */}
-              <TabsList className="w-full md:w-auto bg-muted border border-border mb-4">
-                <TabsTrigger
-                  value="pending"
-                  className="flex-1 md:flex-none data-[state=active]:bg-amber-600 data-[state=active]:text-white"
-                >
-                  Pending ({pendingOrders.length})
-                </TabsTrigger>
-                <TabsTrigger
-                  value="delivered"
-                  className="flex-1 md:flex-none data-[state=active]:bg-emerald-600 data-[state=active]:text-white"
-                >
-                  Delivered ({deliveredOrders.length})
-                </TabsTrigger>
-              </TabsList>
+                <TabsList className="flex flex-col h-auto w-full bg-muted border border-border gap-1 p-1 mt-1">
+                  <TabsTrigger
+                    value="pending"
+                    className="w-full justify-start text-xs data-[state=active]:bg-amber-600 data-[state=active]:text-white"
+                  >
+                    Pending ({pendingOrders.length})
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="delivered"
+                    className="w-full justify-start text-xs data-[state=active]:bg-emerald-600 data-[state=active]:text-white"
+                  >
+                    Delivered ({deliveredOrders.length})
+                  </TabsTrigger>
+                </TabsList>
+              </div>
             </div>
+
+            {/* Thin always-visible strip to slide the side column open/closed */}
+            <button
+              onClick={() => setSidebarCollapsed((v) => !v)}
+              title={sidebarCollapsed ? "Show stats" : "Hide stats"}
+              className="shrink-0 w-4 sm:w-5 h-full flex items-center justify-center bg-card border-r border-border text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+            >
+              {sidebarCollapsed ? (
+                <ChevronRight className="w-3.5 h-3.5" />
+              ) : (
+                <ChevronLeft className="w-3.5 h-3.5" />
+              )}
+            </button>
 
             <div className="flex-1 overflow-hidden">
               <TabsContent value="pending" className="h-full m-0">
                 <ScrollArea className="h-full">
-                  <div className="px-3 md:px-6 pb-6">
+                  <div className="px-3 md:px-6 py-3 md:py-6">
                     {pendingOrders.length === 0 ? (
                       <div className="flex flex-col items-center justify-center py-16">
                         <Clock className="w-16 h-16 text-muted-foreground/50 mb-4" />
-                        <p className="text-white text-sm font-medium">
+                        <p className="text-gray-700 text-sm font-medium">
                           No pending orders
                         </p>
                         <p className="text-muted-foreground text-xs mt-1">
@@ -632,11 +783,11 @@ export default function AllOrders() {
 
               <TabsContent value="delivered" className="h-full m-0">
                 <ScrollArea className="h-full">
-                  <div className="px-3 md:px-6 pb-6">
+                  <div className="px-3 md:px-6 py-3 md:py-6">
                     {deliveredOrders.length === 0 ? (
                       <div className="flex flex-col items-center justify-center py-16">
                         <CheckCircle2 className="w-16 h-16 text-muted-foreground/50 mb-4" />
-                        <p className="text-white text-sm font-medium">
+                        <p className="text-gray-700 text-sm font-medium">
                           No delivered orders
                         </p>
                         <p className="text-muted-foreground text-xs mt-1">
@@ -695,6 +846,23 @@ export default function AllOrders() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Order details, opened by tapping "View Order" in the grid */}
+      <Dialog
+        open={expandedOrderId !== null}
+        onOpenChange={(open) => {
+          if (!open) setExpandedOrderId(null);
+        }}
+      >
+        <DialogContent className="bg-card border-border w-[calc(100%-2rem)] max-w-lg max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-foreground">
+              {expandedOrder?.customerName || "Guest"}
+            </DialogTitle>
+          </DialogHeader>
+          {expandedOrder && renderExpandedOrderDetails(expandedOrder)}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
