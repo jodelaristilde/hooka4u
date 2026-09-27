@@ -758,7 +758,7 @@ export default function NewOrder({ onOrderComplete, onBack }: NewOrderProps) {
                   placeholder="Enter customer name"
                   value={customerName}
                   onChange={(e) => setCustomerName(e.target.value)}
-                  className={`h-9 border text-black placeholder:text-zinc-600 text-sm transition-colors ${
+                  className={`h-9 border text-white placeholder:text-zinc-400 text-sm transition-colors ${
                     customerName.trim()
                       ? "bg-green-500/20 border-green-500/50"
                       : "bg-red-500/20 border-red-500/50"
@@ -805,7 +805,7 @@ export default function NewOrder({ onOrderComplete, onBack }: NewOrderProps) {
                   placeholder="Enter seating location"
                   value={seating}
                   onChange={(e) => setSeating(e.target.value)}
-                  className={`h-9 border text-black placeholder:text-zinc-600 text-sm transition-colors ${
+                  className={`h-9 border text-white placeholder:text-zinc-400 text-sm transition-colors ${
                     seating.trim()
                       ? "bg-green-500/20 border-green-500/50"
                       : "bg-red-500/20 border-red-500/50"
