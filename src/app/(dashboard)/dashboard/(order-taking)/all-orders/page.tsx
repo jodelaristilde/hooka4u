@@ -489,12 +489,6 @@ export default function AllOrders() {
           <div className="flex items-center gap-2 flex-wrap">
             <Badge
               variant="outline"
-              className="text-sm border-border bg-muted text-foreground px-2.5 py-1"
-            >
-              {getTotalItems(order.items)} items
-            </Badge>
-            <Badge
-              variant="outline"
               className={`text-sm font-bold px-2.5 py-1 ${
                 order.paymentType === "CARD"
                   ? "bg-muted text-foreground"
@@ -545,24 +539,24 @@ export default function AllOrders() {
     const isVIP = order.Seating?.toUpperCase().includes("VIP");
 
     return (
-      <div className="flex flex-col gap-4">
-        <div className="flex items-center gap-2 flex-wrap">
+      <div className="flex flex-col gap-5">
+        <div className="flex items-center gap-2.5 flex-wrap">
           {order.orderNumber != null && (
             <Badge
               variant="outline"
-              className="text-xs font-bold border-lime-500/50 bg-lime-500/10 text-lime-400 tabular-nums px-1.5 py-0"
+              className="text-base font-bold border-lime-500/50 bg-lime-500/10 text-lime-400 tabular-nums px-2.5 py-1"
             >
               #{order.orderNumber}
             </Badge>
           )}
           {isVIP && (
-            <Badge className="bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-400 text-xs px-1.5 py-0 border-amber-300 dark:border-amber-800">
+            <Badge className="bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-400 text-sm px-2.5 py-1 border-amber-300 dark:border-amber-800">
               VIP
             </Badge>
           )}
           <Badge
             variant="outline"
-            className={`text-xs font-medium ${
+            className={`text-sm font-bold px-2.5 py-1 ${
               isDelivered
                 ? "bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400 border-emerald-300 dark:border-emerald-800"
                 : "bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-400 border-amber-300 dark:border-amber-800"
@@ -572,44 +566,38 @@ export default function AllOrders() {
           </Badge>
         </div>
 
-        <p className="text-xs text-muted-foreground -mt-2">
+        <p className="text-sm text-muted-foreground -mt-3">
           {formatDate(order.createdAt)}
         </p>
 
-        <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex items-center gap-2.5 flex-wrap">
           <Badge
             variant="outline"
-            className="text-xs border-border bg-muted text-foreground"
-          >
-            {getTotalItems(order.items)} items
-          </Badge>
-          <Badge
-            variant="outline"
-            className={`text-xs uppercase font-bold border-border px-2 py-1 ${
+            className={`text-sm uppercase font-bold border-border px-3 py-1.5 ${
               order.paymentType === "CARD"
                 ? "bg-muted text-foreground"
                 : "bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400 border-emerald-300 dark:border-emerald-800"
             }`}
           >
             {order.paymentType === "CARD" ? (
-              <CreditCard className="w-3.5 h-3.5 mr-1.5" />
+              <CreditCard className="w-4 h-4 mr-1.5" />
             ) : (
-              <Banknote className="w-3.5 h-3.5 mr-1.5" />
+              <Banknote className="w-4 h-4 mr-1.5" />
             )}
             {order.paymentType === "CARD" ? "Card" : "Cash"}
           </Badge>
           {order.Seating && (
             <Badge
               variant="outline"
-              className="text-xs border-border bg-muted text-muted-foreground"
+              className="text-sm border-border bg-muted text-muted-foreground px-3 py-1.5"
             >
-              <MapPin className="w-3 h-3 mr-1" />
+              <MapPin className="w-4 h-4 mr-1.5" />
               {order.Seating}
             </Badge>
           )}
         </div>
 
-        <div className="space-y-2">
+        <div className="space-y-2.5">
           {order.items.map((item) => {
             // A product can be deleted from the menu after an order was
             // placed for it. When that happens, `item.product` comes back
@@ -623,27 +611,27 @@ export default function AllOrders() {
             return (
               <div
                 key={item.id}
-                className="flex items-center gap-2.5 p-2.5 bg-muted border border-border rounded"
+                className="flex items-center gap-3 p-3 bg-muted border border-border rounded-lg"
               >
                 {productId && productImages[productId] ? (
                   <img
                     src={productImages[productId]}
                     alt={productName}
-                    className="w-10 h-10 rounded-md object-cover shrink-0"
+                    className="w-14 h-14 rounded-md object-cover shrink-0"
                   />
                 ) : (
-                  <div className="w-10 h-10 rounded-md bg-border shrink-0" />
+                  <div className="w-14 h-14 rounded-md bg-border shrink-0" />
                 )}
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm text-foreground truncate">
+                  <p className="text-base text-foreground truncate">
                     {productName}
                   </p>
-                  <p className="text-xs text-muted-foreground mt-0.5">
+                  <p className="text-sm text-muted-foreground mt-0.5">
                     ${productPrice.toFixed(2)} × {item.quantity}
                   </p>
                 </div>
                 <div className="text-right shrink-0">
-                  <p className="text-sm font-semibold text-foreground">
+                  <p className="text-base font-semibold text-foreground">
                     ${(productPrice * item.quantity).toFixed(2)}
                   </p>
                 </div>
@@ -652,12 +640,12 @@ export default function AllOrders() {
           })}
         </div>
 
-        <div className="pt-3 border-t border-border space-y-3">
+        <div className="pt-3 border-t border-border space-y-4">
           <div className="flex items-center justify-between">
-            <span className="text-sm text-muted-foreground uppercase tracking-wider">
+            <span className="text-base text-muted-foreground uppercase tracking-wider">
               Total
             </span>
-            <span className="text-xl font-bold text-foreground">
+            <span className="text-2xl font-bold text-foreground">
               ${order.subtotal.toFixed(2)}
             </span>
           </div>
@@ -671,7 +659,8 @@ export default function AllOrders() {
                 setExpandedOrderId(null);
               }}
               disabled={updatingStatus === order.id}
-              className={`flex-1 font-medium transition-all ${
+              size="lg"
+              className={`flex-1 text-base font-medium transition-all ${
                 isDelivered
                   ? "bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-600 dark:hover:bg-emerald-700 text-white"
                   : "bg-amber-600 hover:bg-amber-700 dark:bg-amber-600 dark:hover:bg-amber-700 text-white"
@@ -679,12 +668,12 @@ export default function AllOrders() {
             >
               {updatingStatus === order.id ? (
                 <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  <Loader2 className="w-5 h-5 mr-2 animate-spin" />
                   Updating
                 </>
               ) : isDelivered ? (
                 <>
-                  <CheckCircle2 className="w-4 h-4 mr-2" />
+                  <CheckCircle2 className="w-5 h-5 mr-2" />
                   Ready
                 </>
               ) : (
@@ -693,13 +682,14 @@ export default function AllOrders() {
             </Button>
             <Button
               variant="outline"
+              size="lg"
               className="text-muted-foreground hover:text-destructive hover:bg-destructive/10"
               onClick={() => {
                 setExpandedOrderId(null);
                 handleDeleteClick(order);
               }}
             >
-              <Trash2 className="h-4 w-4" />
+              <Trash2 className="h-5 w-5" />
             </Button>
           </div>
         </div>
@@ -978,9 +968,9 @@ export default function AllOrders() {
           if (!open) setExpandedOrderId(null);
         }}
       >
-        <DialogContent className="bg-card border-border w-[calc(100%-2rem)] max-w-lg max-h-[85vh] overflow-y-auto">
+        <DialogContent className="bg-card border-border w-[calc(100%-2rem)] max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="text-foreground">
+            <DialogTitle className="text-foreground text-xl">
               {expandedOrder?.customerName || "Guest"}
             </DialogTitle>
           </DialogHeader>
