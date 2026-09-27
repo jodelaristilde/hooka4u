@@ -540,21 +540,13 @@ export default function AllOrders() {
 
     return (
       <div className="flex flex-col gap-5">
-        <div className="flex items-center gap-2.5 flex-wrap">
-          {order.orderNumber != null && (
-            <Badge
-              variant="outline"
-              className="text-base font-bold border-lime-500/50 bg-lime-500/10 text-lime-400 tabular-nums px-2.5 py-1"
-            >
-              #{order.orderNumber}
-            </Badge>
-          )}
-          {isVIP && (
+        {isVIP && (
+          <div className="flex items-center gap-2.5 flex-wrap">
             <Badge className="bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-400 text-sm px-2.5 py-1 border-amber-300 dark:border-amber-800">
               VIP
             </Badge>
-          )}
-        </div>
+          </div>
+        )}
 
         <div className="flex items-center gap-2.5 flex-wrap">
           <Badge
@@ -602,7 +594,6 @@ export default function AllOrders() {
             // crash this view.
             const productId = item.product?.id;
             const productName = item.product?.name ?? "Item no longer available";
-            const productPrice = item.product?.price ?? 0;
 
             return (
               <div
@@ -623,12 +614,7 @@ export default function AllOrders() {
                     {productName}
                   </p>
                   <p className="text-sm text-muted-foreground mt-0.5">
-                    ${productPrice.toFixed(2)} × {item.quantity}
-                  </p>
-                </div>
-                <div className="text-right shrink-0">
-                  <p className="text-base font-semibold text-foreground">
-                    ${(productPrice * item.quantity).toFixed(2)}
+                    × {item.quantity}
                   </p>
                 </div>
               </div>
@@ -636,16 +622,7 @@ export default function AllOrders() {
           })}
         </div>
 
-        <div className="pt-3 border-t border-border space-y-4">
-          <div className="flex items-center justify-between">
-            <span className="text-base text-muted-foreground uppercase tracking-wider">
-              Total
-            </span>
-            <span className="text-2xl font-bold text-foreground">
-              ${order.subtotal.toFixed(2)}
-            </span>
-          </div>
-
+        <div className="pt-3 border-t border-border">
           <div className="flex gap-2">
             <Button
               onClick={async () => {
@@ -966,7 +943,15 @@ export default function AllOrders() {
       >
         <DialogContent className="bg-card border-border w-[calc(100%-2rem)] max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="text-foreground text-xl flex items-baseline gap-2">
+            <DialogTitle className="text-foreground text-xl flex items-baseline gap-2 flex-wrap">
+              {expandedOrder?.orderNumber != null && (
+                <Badge
+                  variant="outline"
+                  className="text-base font-bold border-lime-500/50 bg-lime-500/10 text-lime-400 tabular-nums px-2.5 py-1"
+                >
+                  #{expandedOrder.orderNumber}
+                </Badge>
+              )}
               <span>{expandedOrder?.customerName || "Guest"}</span>
               {expandedOrder && (
                 <span className="text-sm font-normal text-muted-foreground">
