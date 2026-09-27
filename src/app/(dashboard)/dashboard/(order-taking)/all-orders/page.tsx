@@ -653,17 +653,6 @@ export default function AllOrders() {
                 "Mark Ready"
               )}
             </Button>
-            <Button
-              variant="outline"
-              size="lg"
-              className="text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-              onClick={() => {
-                setExpandedOrderId(null);
-                handleDeleteClick(order);
-              }}
-            >
-              <Trash2 className="h-5 w-5" />
-            </Button>
           </div>
         </div>
       </div>
