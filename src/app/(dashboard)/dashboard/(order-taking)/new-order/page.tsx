@@ -582,7 +582,7 @@ return (
                   placeholder="Enter customer name"
                   value={customerName}
                   onChange={(e) => setCustomerName(e.target.value)}
-                  className={`h-9 border text-white placeholder:text-zinc-300 text-sm transition-colors ${
+                  className={`h-9 border text-black placeholder:text-zinc-600 text-sm transition-colors ${
                     customerName.trim()
                       ? "bg-green-500/20 border-green-500/50"
                       : "bg-red-500/20 border-red-500/50"
@@ -593,13 +593,25 @@ return (
               <div className="space-y-2">
                 <Label className="text-sm font-medium text-white">Payment Type *</Label>
                 <RadioGroup value={paymentType} onValueChange={(value) => setPaymentType(value as "CASH" | "CARD")}>
-                  <div className="flex items-center space-x-2">
+                  <div
+                    className={`flex items-center space-x-2 rounded-md border px-3 py-2 transition-colors ${
+                      paymentType === "CASH"
+                        ? "bg-green-500/20 border-green-500/50"
+                        : "bg-red-500/20 border-red-500/50"
+                    }`}
+                  >
                     <RadioGroupItem value="CASH" id="cash" className="border-zinc-600 text-lime-500" />
                     <Label htmlFor="cash" className="text-sm font-normal cursor-pointer text-white">
                       Cash
                     </Label>
                   </div>
-                  <div className="flex items-center space-x-2">
+                  <div
+                    className={`flex items-center space-x-2 rounded-md border px-3 py-2 transition-colors ${
+                      paymentType === "CARD"
+                        ? "bg-green-500/20 border-green-500/50"
+                        : "bg-red-500/20 border-red-500/50"
+                    }`}
+                  >
                     <RadioGroupItem value="CARD" id="card" className="border-zinc-600 text-lime-500" />
                     <Label htmlFor="card" className="text-sm font-normal cursor-pointer text-white">
                       Credit Card
@@ -617,7 +629,7 @@ return (
                   placeholder="e.g., Table 5, VIP 2"
                   value={seating}
                   onChange={(e) => setSeating(e.target.value)}
-                  className={`h-9 border text-white placeholder:text-zinc-300 text-sm transition-colors ${
+                  className={`h-9 border text-black placeholder:text-zinc-600 text-sm transition-colors ${
                     seating.trim()
                       ? "bg-green-500/20 border-green-500/50"
                       : "bg-red-500/20 border-red-500/50"
@@ -813,13 +825,25 @@ return (
               <div className="space-y-2">
                 <Label className="text-sm font-medium">Payment Type *</Label>
                 <RadioGroup value={paymentType} onValueChange={(value) => setPaymentType(value as "CASH" | "CARD")}>
-                  <div className="flex items-center space-x-2">
+                  <div
+                    className={`flex items-center space-x-2 rounded-md border px-3 py-2 transition-colors ${
+                      paymentType === "CASH"
+                        ? "bg-green-500/20 border-green-500/50"
+                        : "bg-red-500/20 border-red-500/50"
+                    }`}
+                  >
                     <RadioGroupItem value="CASH" id="cash" />
                     <Label htmlFor="cash" className="text-sm font-normal cursor-pointer">
                       Cash
                     </Label>
                   </div>
-                  <div className="flex items-center space-x-2">
+                  <div
+                    className={`flex items-center space-x-2 rounded-md border px-3 py-2 transition-colors ${
+                      paymentType === "CARD"
+                        ? "bg-green-500/20 border-green-500/50"
+                        : "bg-red-500/20 border-red-500/50"
+                    }`}
+                  >
                     <RadioGroupItem value="CARD" id="card" />
                     <Label htmlFor="card" className="text-sm font-normal cursor-pointer">
                       Credit Card
