@@ -58,6 +58,7 @@ export default function NewOrder() {
   const [seating, setSeating] = useState("");
   const [cart, setCart] = useState<CartState>({});
   const [products, setProducts] = useState<Product[]>([]);
+  const [hiddenCategoryNames, setHiddenCategoryNames] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -110,6 +111,28 @@ const [lastOrderId, setLastOrderId] = useState<string>("");
     };
 
     fetchProducts();
+  }, []);
+
+  // Fetch which categories the owner has hidden (e.g. Food/Drinks turned
+  // off in favor of something else) so those items are left out of
+  // ordering entirely here too.
+  useEffect(() => {
+    const fetchHiddenCategories = async () => {
+      try {
+        const response = await fetch("/api/categories");
+        if (!response.ok) return;
+        const data = await response.json();
+        if (Array.isArray(data)) {
+          setHiddenCategoryNames(
+            data.filter((c: { hidden?: boolean }) => c.hidden).map((c: { name: string }) => c.name)
+          );
+        }
+      } catch (err) {
+        console.error("Error fetching categories:", err);
+      }
+    };
+
+    fetchHiddenCategories();
   }, []);
 
   const addToCart = (product: Product) => {
@@ -278,15 +301,21 @@ const handleConfirmOrder = async () => {
   );
   const totalItems = cartItems.reduce((sum, item) => sum + item.quantity, 0);
 
+  // Items in a hidden category are left out of ordering entirely — they
+  // won't show under their own tab or under "ALL".
+  const orderableProducts = products.filter(
+    (p) => !p.category || !hiddenCategoryNames.includes(p.category)
+  );
+
   const availableCategories = Array.from(
-    new Set(products.map((p) => p.category).filter((c): c is string => !!c))
+    new Set(orderableProducts.map((p) => p.category).filter((c): c is string => !!c))
   ).sort();
   const categoryTabs: CategoryTab[] = ["ALL", ...availableCategories];
 
   const visibleProducts =
     activeCategoryTab === "ALL"
-      ? products
-      : products.filter((p) => p.category === activeCategoryTab);
+      ? orderableProducts
+      : orderableProducts.filter((p) => p.category === activeCategoryTab);
 return (
   <div className="flex flex-col h-screen bg-background">
     <header className="flex h-14 shrink-0 items-center gap-3 bg-card border-b border-border">
