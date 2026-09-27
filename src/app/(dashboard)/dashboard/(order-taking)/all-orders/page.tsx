@@ -520,10 +520,7 @@ export default function AllOrders() {
           </div>
         </CardHeader>
 
-        <CardContent className="px-4 flex items-center justify-between gap-3">
-          <span className="text-xl font-bold text-white">
-            ${order.subtotal.toFixed(2)}
-          </span>
+        <CardContent className="px-4 flex items-center justify-center gap-3">
           <Button
             onClick={(e) => {
               e.stopPropagation();
