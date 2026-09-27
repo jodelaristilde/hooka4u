@@ -50,12 +50,20 @@ function DialogContent({
   className,
   children,
   showCloseButton = true,
+  container,
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Content> & {
   showCloseButton?: boolean
+  // Where to portal this dialog into. Defaults to `document.body`, same as
+  // before. A page that puts one of its own elements into the browser's
+  // Fullscreen API (e.g. a TV/kiosk display) needs to pass that element
+  // here — anything portaled to `document.body` instead renders behind
+  // the fullscreen element and is invisible while fullscreen is active,
+  // even though it's still technically open.
+  container?: HTMLElement | null
 }) {
   return (
-    <DialogPortal data-slot="dialog-portal">
+    <DialogPortal data-slot="dialog-portal" container={container}>
       <DialogOverlay />
       <DialogPrimitive.Content
         data-slot="dialog-content"
