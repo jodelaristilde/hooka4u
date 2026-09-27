@@ -31,6 +31,15 @@ model VerificationToken {
   @@unique([identifier, token])
 }
 
+model MenuCategory {
+  id        String   @id @default(uuid()) @map("_id")
+  name      String   @unique
+  hidden    Boolean  @default(false)
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
 model MenuItems {
   id          String      @id @default(uuid()) @map("_id")
   name        String
