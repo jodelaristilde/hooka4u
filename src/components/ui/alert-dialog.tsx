@@ -46,10 +46,19 @@ function AlertDialogOverlay({
 
 function AlertDialogContent({
   className,
+  container,
   ...props
-}: React.ComponentProps<typeof AlertDialogPrimitive.Content>) {
+}: React.ComponentProps<typeof AlertDialogPrimitive.Content> & {
+  // Where to portal this dialog into. Defaults to `document.body`, same as
+  // before. A page that puts one of its own elements into the browser's
+  // Fullscreen API (e.g. a TV/kiosk display) needs to pass that element
+  // here — anything portaled to `document.body` instead renders behind
+  // the fullscreen element and is invisible while fullscreen is active,
+  // even though it's still technically open.
+  container?: HTMLElement | null
+}) {
   return (
-    <AlertDialogPortal>
+    <AlertDialogPortal container={container}>
       <AlertDialogOverlay />
       <AlertDialogPrimitive.Content
         data-slot="alert-dialog-content"
