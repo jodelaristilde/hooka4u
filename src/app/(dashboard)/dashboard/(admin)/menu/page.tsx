@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { Plus, Pencil, Trash2, Loader2, Upload, X, Image, UtensilsCrossed, CupSoda, Package } from 'lucide-react';
+import { Plus, Pencil, Trash2, Loader2, Upload, X, Image, UtensilsCrossed, CupSoda, Package, Tags, Eye, EyeOff } from 'lucide-react';
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -154,6 +154,13 @@ interface MenuItem {
   updatedAt: string;
 }
 
+interface DbCategory {
+  id: string;
+  name: string;
+  hidden: boolean;
+  order: number;
+}
+
 export default function MenuItemsPage() {
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -167,6 +174,10 @@ export default function MenuItemsPage() {
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [isAddingNewCategory, setIsAddingNewCategory] = useState(false);
   const [newCategoryInput, setNewCategoryInput] = useState("");
+  const [dbCategories, setDbCategories] = useState<DbCategory[]>([]);
+  const [isCategoryDialogOpen, setIsCategoryDialogOpen] = useState(false);
+  const [newManagedCategoryName, setNewManagedCategoryName] = useState("");
+  const [categorySubmitting, setCategorySubmitting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Form state
@@ -176,9 +187,25 @@ export default function MenuItemsPage() {
     category: "" as Category,
   });
 
-  const categories = Array.from(
+  // The full list of category names to show, in order: every category
+  // that's been explicitly registered (via Manage Categories), followed by
+  // any older category names that only exist because a menu item still
+  // uses them (covers categories like "FOOD"/"DRINKS" that predate the
+  // category manager). This is what drives the tabs and the item form's
+  // category dropdown on THIS admin page — hidden categories still show
+  // here so items in them stay manageable; only the customer/staff
+  // ordering screens filter hidden ones out.
+  const itemOnlyCategoryNames = Array.from(
     new Set(menuItems.map((item) => item.category).filter((c): c is string => !!c))
-  ).sort();
+  ).filter((name) => !dbCategories.some((c) => c.name === name));
+
+  const categories = [
+    ...dbCategories.slice().sort((a, b) => a.order - b.order).map((c) => c.name),
+    ...itemOnlyCategoryNames.sort(),
+  ];
+
+  const isCategoryHidden = (name: string) =>
+    dbCategories.find((c) => c.name === name)?.hidden ?? false;
 
   // Keep the active tab pointing at a real category once items load.
   useEffect(() => {
@@ -192,10 +219,140 @@ export default function MenuItemsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [categories.join("|")]);
 
-  // Fetch menu items
+  // Fetch menu items and categories
   useEffect(() => {
     fetchMenuItems();
+    fetchCategories();
   }, []);
+
+  const fetchCategories = async () => {
+    try {
+      const response = await fetch("/api/categories");
+      if (!response.ok) throw new Error("Failed to fetch categories");
+      const data = await response.json();
+      setDbCategories(data);
+    } catch (error) {
+      console.error("Error fetching categories:", error);
+    }
+  };
+
+  // Makes sure a category name has a registered row (so it can be hidden
+  // later, and so it survives even if every item in it is deleted).
+  // Silently no-ops if it's already registered.
+  const ensureCategoryRegistered = async (name: string) => {
+    const trimmed = name.trim().toUpperCase();
+    if (!trimmed || dbCategories.some((c) => c.name === trimmed)) return;
+
+    try {
+      const response = await fetch("/api/categories", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: trimmed }),
+      });
+      if (response.ok) {
+        const created = await response.json();
+        setDbCategories((prev) => [...prev, created]);
+      }
+    } catch (error) {
+      console.error("Error registering category:", error);
+    }
+  };
+
+  const handleAddManagedCategory = async () => {
+    const trimmed = newManagedCategoryName.trim();
+    if (!trimmed) {
+      toast.error("Category name is required");
+      return;
+    }
+
+    try {
+      setCategorySubmitting(true);
+      const response = await fetch("/api/categories", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: trimmed }),
+      });
+
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({}));
+        throw new Error(body.error || "Failed to create category");
+      }
+
+      const created = await response.json();
+      setDbCategories((prev) => [...prev, created]);
+      setNewManagedCategoryName("");
+      toast.success("Category added");
+    } catch (error) {
+      console.error("Error adding category:", error);
+      toast.error(error instanceof Error ? error.message : "Failed to add category");
+    } finally {
+      setCategorySubmitting(false);
+    }
+  };
+
+  const handleToggleCategoryHidden = async (name: string) => {
+    const existing = dbCategories.find((c) => c.name === name);
+    setCategorySubmitting(true);
+    try {
+      if (existing) {
+        const response = await fetch(`/api/categories/${existing.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ hidden: !existing.hidden }),
+        });
+        if (!response.ok) throw new Error("Failed to update category");
+        const updated = await response.json();
+        setDbCategories((prev) => prev.map((c) => (c.id === updated.id ? updated : c)));
+      } else {
+        // Category only exists implicitly via items so far — register it
+        // and mark it hidden in one go.
+        const response = await fetch("/api/categories", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name }),
+        });
+        if (!response.ok) throw new Error("Failed to update category");
+        const created = await response.json();
+        const patchResponse = await fetch(`/api/categories/${created.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ hidden: true }),
+        });
+        const updated = patchResponse.ok ? await patchResponse.json() : { ...created, hidden: true };
+        setDbCategories((prev) => [...prev, updated]);
+      }
+    } catch (error) {
+      console.error("Error toggling category:", error);
+      toast.error("Failed to update category");
+    } finally {
+      setCategorySubmitting(false);
+    }
+  };
+
+  const handleDeleteManagedCategory = async (name: string) => {
+    const existing = dbCategories.find((c) => c.name === name);
+    const stillHasItems = menuItems.some((item) => item.category === name);
+    if (stillHasItems) {
+      toast.error("Category still has items", {
+        description: "Move or delete its menu items first, then remove the category.",
+      });
+      return;
+    }
+    if (!existing) return;
+
+    try {
+      setCategorySubmitting(true);
+      const response = await fetch(`/api/categories/${existing.id}`, { method: "DELETE" });
+      if (!response.ok) throw new Error("Failed to delete category");
+      setDbCategories((prev) => prev.filter((c) => c.id !== existing.id));
+      toast.success("Category removed");
+    } catch (error) {
+      console.error("Error deleting category:", error);
+      toast.error("Failed to delete category");
+    } finally {
+      setCategorySubmitting(false);
+    }
+  };
 
   const fetchMenuItems = async () => {
     try {
@@ -367,6 +524,10 @@ export default function MenuItemsPage() {
 
       if (!response.ok) {
         throw new Error(`Failed to ${selectedItem ? "update" : "create"} menu item`);
+      }
+
+      if (isAddingNewCategory) {
+        await ensureCategoryRegistered(finalCategory);
       }
 
       await fetchMenuItems();
@@ -554,13 +715,22 @@ export default function MenuItemsPage() {
                 Manage your menu items and categories.
               </p>
             </div>
-            <Button
-              onClick={() => handleOpenDialog()}
-              className="bg-primary hover:bg-primary/90 text-primary-foreground"
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              Add Menu Item
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                onClick={() => setIsCategoryDialogOpen(true)}
+              >
+                <Tags className="w-4 h-4 mr-2" />
+                Manage Categories
+              </Button>
+              <Button
+                onClick={() => handleOpenDialog()}
+                className="bg-primary hover:bg-primary/90 text-primary-foreground"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Add Menu Item
+              </Button>
+            </div>
           </div>
 
           {categories.length === 0 ? (
@@ -592,6 +762,11 @@ export default function MenuItemsPage() {
                     <TabsTrigger key={cat} value={cat} className="gap-1.5">
                       <Icon className="w-4 h-4" />
                       {titleCase(cat)}
+                      {isCategoryHidden(cat) && (
+                        <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 ml-1">
+                          Hidden
+                        </Badge>
+                      )}
                     </TabsTrigger>
                   );
                 })}
@@ -787,6 +962,113 @@ export default function MenuItemsPage() {
               ) : (
                 selectedItem ? "Update Item" : "Create Item"
               )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Manage Categories Dialog */}
+      <Dialog open={isCategoryDialogOpen} onOpenChange={setIsCategoryDialogOpen}>
+        <DialogContent className="sm:max-w-[480px] max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Manage Categories</DialogTitle>
+            <DialogDescription>
+              Add new categories, or hide ones you don&apos;t use (like Food or Drinks) so
+              they no longer show up on the ordering screens. Hidden categories and their
+              items stay here so you can bring them back anytime.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            <div className="flex gap-2">
+              <Input
+                placeholder="e.g., Clothes, Merch, Accessories"
+                value={newManagedCategoryName}
+                onChange={(e) => setNewManagedCategoryName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleAddManagedCategory();
+                }}
+                disabled={categorySubmitting}
+              />
+              <Button
+                onClick={handleAddManagedCategory}
+                disabled={categorySubmitting}
+                className="bg-primary hover:bg-primary/90 text-primary-foreground shrink-0"
+              >
+                <Plus className="w-4 h-4 mr-1" />
+                Add
+              </Button>
+            </div>
+
+            {categories.length === 0 ? (
+              <p className="text-sm text-muted-foreground py-4 text-center">
+                No categories yet. Add one above.
+              </p>
+            ) : (
+              <div className="space-y-2">
+                {categories.map((cat) => {
+                  const hidden = isCategoryHidden(cat);
+                  const itemCount = menuItems.filter((item) => item.category === cat).length;
+                  return (
+                    <div
+                      key={cat}
+                      className="flex items-center justify-between gap-2 border border-border rounded-lg p-3"
+                    >
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-foreground truncate">
+                          {titleCase(cat)}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {itemCount} item{itemCount === 1 ? "" : "s"}
+                          {hidden ? " · hidden from ordering" : ""}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-1 shrink-0">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          disabled={categorySubmitting}
+                          onClick={() => handleToggleCategoryHidden(cat)}
+                        >
+                          {hidden ? (
+                            <>
+                              <Eye className="w-4 h-4 mr-1" />
+                              Show
+                            </>
+                          ) : (
+                            <>
+                              <EyeOff className="w-4 h-4 mr-1" />
+                              Hide
+                            </>
+                          )}
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 hover:bg-destructive/10 hover:text-destructive"
+                          disabled={categorySubmitting || itemCount > 0}
+                          title={itemCount > 0 ? "Remove its items first" : "Delete category"}
+                          onClick={() => handleDeleteManagedCategory(cat)}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button
+              type="button"
+              onClick={() => setIsCategoryDialogOpen(false)}
+              className="bg-primary hover:bg-primary/90 text-primary-foreground"
+            >
+              Done
             </Button>
           </DialogFooter>
         </DialogContent>
