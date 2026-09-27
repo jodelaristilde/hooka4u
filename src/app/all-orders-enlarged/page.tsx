@@ -22,6 +22,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   AlertCircle,
+  Bell,
   Banknote,
   CheckCircle2,
   ChevronLeft,
@@ -63,6 +64,11 @@ interface Order {
   status?: "PENDING" | "DELIVERED";
 }
 
+// This screen is a duplicate of the main dashboard's All Orders board (same
+// card design, same tap-to-expand popup, same alert-until-acknowledged
+// sound) with two differences: it puts itself into the browser's Fullscreen
+// API for display on a TV around the venue, and it never shows a price
+// anywhere (subtotal, item prices) since anyone can walk by and see it.
 export default function AllOrdersEnlarged() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
@@ -70,14 +76,18 @@ export default function AllOrdersEnlarged() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [orderToDelete, setOrderToDelete] = useState<Order | null>(null);
   const [deleting, setDeleting] = useState(false);
-  const [newOrderAnimation, setNewOrderAnimation] = useState<string | null>(
-    null
-  );
   const [lastFetchTime, setLastFetchTime] = useState<Date | null>(null);
   const [updatingStatus, setUpdatingStatus] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("pending");
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [hasUnacknowledgedOrder, setHasUnacknowledgedOrder] = useState(false);
+  const [unacknowledgedOrderIds, setUnacknowledgedOrderIds] = useState<
+    Set<string>
+  >(new Set());
+  const [productImages, setProductImages] = useState<Record<string, string>>(
+    {}
+  );
   const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
 
   // This page is only ever meaningful once it's running in the browser (it
@@ -93,7 +103,29 @@ export default function AllOrdersEnlarged() {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const previousOrderIdsRef = useRef<Set<string>>(new Set());
   const isInitialLoadRef = useRef(true);
+  const alertLoopRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const audioUnlockedRef = useRef(false);
   const containerRef = useRef<HTMLDivElement | null>(null);
+  // This screen puts itself into the browser's Fullscreen API on load (see
+  // enterFullscreen below). Anything a popup portals to `document.body` —
+  // which is the default for the Dialog/AlertDialog components — renders
+  // behind that fullscreen element and is invisible while fullscreen is
+  // active, even though tapping "View Order" still opens it under the
+  // hood. Tracking the actual container element (once it's mounted, via
+  // state so this re-renders) and handing it to the dialogs below as
+  // their portal target fixes that.
+  const [dialogContainer, setDialogContainer] = useState<HTMLDivElement | null>(
+    null
+  );
+
+  // Runs after the real DOM node exists (mounted flips true, this page
+  // renders its container div, then this effect fires), so the ref is
+  // actually populated by the time we read it.
+  useEffect(() => {
+    if (mounted) {
+      setDialogContainer(containerRef.current);
+    }
+  }, [mounted]);
 
   useEffect(() => {
     audioRef.current = new Audio(
@@ -101,12 +133,35 @@ export default function AllOrdersEnlarged() {
     );
 
     fetchOrders();
+    fetchProductImages();
     requestNotificationPermission();
     enterFullscreen();
 
+    // Browsers block audio from playing automatically until the page has
+    // had at least one real click/tap/keypress. "Unlock" it as early as
+    // possible (silently play + immediately pause) on the first
+    // interaction, so the alert sound actually plays later when a new
+    // order comes in with no direct click on the audio itself.
+    const unlockAudio = () => {
+      if (audioUnlockedRef.current || !audioRef.current) return;
+      audioRef.current
+        .play()
+        .then(() => {
+          audioRef.current?.pause();
+          if (audioRef.current) audioRef.current.currentTime = 0;
+          audioUnlockedRef.current = true;
+        })
+        .catch(() => {
+          // Still locked; a later real interaction will retry.
+        });
+    };
+    window.addEventListener("click", unlockAudio);
+    window.addEventListener("keydown", unlockAudio);
+    window.addEventListener("touchstart", unlockAudio);
+
     const pollInterval = setInterval(() => {
       fetchOrdersQuietly();
-    }, 60000);
+    }, 5000);
 
     // Listen for fullscreen changes
     const handleFullscreenChange = () => {
@@ -118,6 +173,13 @@ export default function AllOrdersEnlarged() {
     return () => {
       clearInterval(pollInterval);
       document.removeEventListener("fullscreenchange", handleFullscreenChange);
+      window.removeEventListener("click", unlockAudio);
+      window.removeEventListener("keydown", unlockAudio);
+      window.removeEventListener("touchstart", unlockAudio);
+      if (alertLoopRef.current) {
+        clearInterval(alertLoopRef.current);
+        alertLoopRef.current = null;
+      }
       if (audioRef.current) {
         audioRef.current.pause();
         audioRef.current = null;
@@ -156,7 +218,7 @@ export default function AllOrdersEnlarged() {
   };
 
   const handleNewOrder = (newOrder: Order) => {
-    playNotificationSound();
+    startAlertLoop();
 
     if ("Notification" in window && Notification.permission === "granted") {
       new Notification("🔔 New Order Received!", {
@@ -167,8 +229,10 @@ export default function AllOrdersEnlarged() {
       });
     }
 
-    setNewOrderAnimation(newOrder.id);
-    setTimeout(() => setNewOrderAnimation(null), 3000);
+    // Keep this order visually flagged (pulsing, red border) until
+    // someone taps its card to acknowledge it — not just for a few
+    // seconds, since the sound keeps playing until then too.
+    setUnacknowledgedOrderIds((prev) => new Set(prev).add(newOrder.id));
   };
 
   const playNotificationSound = () => {
@@ -177,6 +241,52 @@ export default function AllOrdersEnlarged() {
       audioRef.current.play().catch((err) => {
         console.log("Could not play notification sound:", err);
       });
+    }
+  };
+
+  // Keep playing the notification sound every few seconds until someone
+  // taps anywhere on an order card (or the banner) to acknowledge it,
+  // instead of just chiming once and possibly going unnoticed on a TV
+  // display nobody's looking at yet.
+  const startAlertLoop = () => {
+    setHasUnacknowledgedOrder(true);
+    playNotificationSound();
+
+    if (alertLoopRef.current) return; // already looping
+
+    alertLoopRef.current = setInterval(() => {
+      playNotificationSound();
+    }, 2500);
+  };
+
+  const acknowledgeNewOrders = () => {
+    if (alertLoopRef.current) {
+      clearInterval(alertLoopRef.current);
+      alertLoopRef.current = null;
+    }
+    setHasUnacknowledgedOrder(false);
+    setUnacknowledgedOrderIds(new Set());
+  };
+
+  // Fetch the product catalog's images once (it rarely changes) and build
+  // a lookup map, instead of the orders endpoint re-sending every image
+  // over and over with every order, on every 5-second refresh.
+  const fetchProductImages = async () => {
+    try {
+      const response = await fetch("/api/menu-items/get-all-items");
+      if (!response.ok) return;
+      const items = await response.json();
+      if (!Array.isArray(items)) return;
+
+      const map: Record<string, string> = {};
+      for (const item of items) {
+        if (item?.id && item?.image) {
+          map[item.id] = item.image;
+        }
+      }
+      setProductImages(map);
+    } catch (err) {
+      console.error("Error fetching product images:", err);
     }
   };
 
@@ -304,10 +414,6 @@ export default function AllOrdersEnlarged() {
     return `${Math.floor(diffInSeconds / 60)}m ago`;
   };
 
-  const getTotalItems = (items: OrderItem[]) => {
-    return items.reduce((sum, item) => sum + item.quantity, 0);
-  };
-
   const handleStatusToggle = async (order: Order) => {
     const newStatus = order.status === "DELIVERED" ? "PENDING" : "DELIVERED";
 
@@ -349,24 +455,26 @@ export default function AllOrdersEnlarged() {
   const deliveredOrders = orders.filter((o) => o.status === "DELIVERED");
   const expandedOrder = orders.find((o) => o.id === expandedOrderId) ?? null;
 
-  // Bigger, easy-to-read tile for the grid — matches the main dashboard's
-  // All Orders board. No prices are shown on this screen since it's the
-  // one meant to be visible around the venue. Tapping "View Order" opens
-  // the full details below in a popup, and marking an order delivered only
-  // happens from there.
+  // Bigger, easy-to-read tile for the grid — same card design as the main
+  // dashboard's All Orders board, just without any price. Marking an order
+  // ready only happens from the full detail popup — this card's button
+  // just opens that popup ("View Order").
   const renderOrderCard = (order: Order) => {
     const isDelivered = order.status === "DELIVERED";
     const isVIP = order.Seating?.toUpperCase().includes("VIP");
 
-    const openOrder = () => setExpandedOrderId(order.id);
+    const openOrder = () => {
+      acknowledgeNewOrders();
+      setExpandedOrderId(order.id);
+    };
 
     return (
       <Card
         key={order.id}
         onClick={openOrder}
         className={`group bg-black border hover:border-primary/50 transition-all duration-200 cursor-pointer gap-2 py-4 w-full sm:w-80 ${
-          newOrderAnimation === order.id
-            ? "animate-[pulse_0.5s_ease-in-out_4] border-blue-500"
+          unacknowledgedOrderIds.has(order.id)
+            ? "animate-pulse border-red-500 ring-2 ring-red-500/50"
             : "border-border"
         }`}
       >
@@ -385,15 +493,15 @@ export default function AllOrdersEnlarged() {
                 <h3 className="font-bold text-lg text-white truncate">
                   {order.customerName || "Guest"}
                 </h3>
+                <span className="text-sm text-muted-foreground shrink-0">
+                  {formatDate(order.createdAt)}
+                </span>
                 {isVIP && (
                   <Badge className="bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-400 text-xs px-1.5 py-0 border-amber-300 dark:border-amber-800 shrink-0">
                     VIP
                   </Badge>
                 )}
               </div>
-              <p className="text-sm text-muted-foreground mt-0.5">
-                {formatDate(order.createdAt)}
-              </p>
             </div>
             <Button
               variant="ghost"
@@ -410,22 +518,16 @@ export default function AllOrdersEnlarged() {
 
           <Badge
             variant="outline"
-            className={`self-start text-sm font-bold px-3 py-1 ${
+            className={`self-center text-sm font-bold px-3 py-1 ${
               isDelivered
                 ? "bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400 border-emerald-300 dark:border-emerald-800"
                 : "bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-400 border-amber-300 dark:border-amber-800"
             }`}
           >
-            {isDelivered ? "DELIVERED" : "PENDING"}
+            {isDelivered ? "READY" : "PENDING"}
           </Badge>
 
           <div className="flex items-center gap-2 flex-wrap">
-            <Badge
-              variant="outline"
-              className="text-sm border-border bg-muted text-foreground px-2.5 py-1"
-            >
-              {getTotalItems(order.items)} items
-            </Badge>
             <Badge
               variant="outline"
               className={`text-sm font-bold px-2.5 py-1 ${
@@ -453,7 +555,7 @@ export default function AllOrdersEnlarged() {
           </div>
         </CardHeader>
 
-        <CardContent className="px-4 flex items-center justify-end gap-3">
+        <CardContent className="px-4 flex items-center justify-center gap-3">
           <Button
             onClick={(e) => {
               e.stopPropagation();
@@ -470,93 +572,89 @@ export default function AllOrdersEnlarged() {
     );
   };
 
-  // Full detail popup for whichever order was tapped in the grid. No prices
-  // are shown here either — this whole screen is meant to be visible
-  // around the venue.
+  // Full detail view for whichever order was tapped in the grid — item
+  // images included, no prices anywhere on this screen.
   const renderExpandedOrderDetails = (order: Order) => {
     const isDelivered = order.status === "DELIVERED";
     const isVIP = order.Seating?.toUpperCase().includes("VIP");
 
     return (
-      <div className="flex flex-col gap-4">
-        <div className="flex items-center gap-2 flex-wrap">
-          {order.orderNumber != null && (
-            <Badge
-              variant="outline"
-              className="text-xs font-bold border-lime-500/50 bg-lime-500/10 text-lime-400 tabular-nums px-1.5 py-0"
-            >
-              #{order.orderNumber}
-            </Badge>
-          )}
-          {isVIP && (
-            <Badge className="bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-400 text-xs px-1.5 py-0 border-amber-300 dark:border-amber-800">
+      <div className="flex flex-col gap-5">
+        {isVIP && (
+          <div className="flex items-center gap-2.5 flex-wrap">
+            <Badge className="bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-400 text-sm px-2.5 py-1 border-amber-300 dark:border-amber-800">
               VIP
             </Badge>
-          )}
-          <Badge
-            variant="outline"
-            className={`text-xs font-medium ${
-              isDelivered
-                ? "bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400 border-emerald-300 dark:border-emerald-800"
-                : "bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-400 border-amber-300 dark:border-amber-800"
-            }`}
-          >
-            {isDelivered ? "DELIVERED" : "PENDING"}
-          </Badge>
-        </div>
+          </div>
+        )}
 
-        <p className="text-xs text-muted-foreground -mt-2">
-          {formatDate(order.createdAt)}
-        </p>
-
-        <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex items-center gap-2.5 flex-wrap">
           <Badge
             variant="outline"
-            className="text-xs border-border bg-muted text-foreground"
-          >
-            {getTotalItems(order.items)} items
-          </Badge>
-          <Badge
-            variant="outline"
-            className={`text-xs uppercase font-bold border-border px-2 py-1 ${
+            className={`text-sm uppercase font-bold border-border px-3 py-1.5 ${
               order.paymentType === "CARD"
                 ? "bg-muted text-foreground"
                 : "bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400 border-emerald-300 dark:border-emerald-800"
             }`}
           >
             {order.paymentType === "CARD" ? (
-              <CreditCard className="w-3.5 h-3.5 mr-1.5" />
+              <CreditCard className="w-4 h-4 mr-1.5" />
             ) : (
-              <Banknote className="w-3.5 h-3.5 mr-1.5" />
+              <Banknote className="w-4 h-4 mr-1.5" />
             )}
             {order.paymentType === "CARD" ? "Card" : "Cash"}
           </Badge>
           {order.Seating && (
             <Badge
               variant="outline"
-              className="text-xs border-border bg-muted text-muted-foreground"
+              className="text-sm border-border bg-muted text-muted-foreground px-3 py-1.5"
             >
-              <MapPin className="w-3 h-3 mr-1" />
+              <MapPin className="w-4 h-4 mr-1.5" />
               {order.Seating}
             </Badge>
           )}
+          <Badge
+            variant="outline"
+            className={`text-sm font-bold px-2.5 py-1 ${
+              isDelivered
+                ? "bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400 border-emerald-300 dark:border-emerald-800"
+                : "bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-400 border-amber-300 dark:border-amber-800"
+            }`}
+          >
+            {isDelivered ? "READY" : "PENDING"}
+          </Badge>
         </div>
 
-        <div className="space-y-2">
+        <div className="space-y-2.5">
           {order.items.map((item) => {
+            // A product can be deleted from the menu after an order was
+            // placed for it. When that happens, `item.product` comes back
+            // as null even though the TypeScript type claims it's always
+            // present. Guard every access so one deleted menu item can't
+            // crash this view.
+            const productId = item.product?.id;
             const productName =
               item.product?.name ?? "Item no longer available";
 
             return (
               <div
                 key={item.id}
-                className="flex items-center gap-2.5 p-2.5 bg-muted border border-border rounded"
+                className="flex items-center gap-3 p-3 bg-muted border border-border rounded-lg"
               >
+                {productId && productImages[productId] ? (
+                  <img
+                    src={productImages[productId]}
+                    alt={productName}
+                    className="w-14 h-14 rounded-md object-cover shrink-0"
+                  />
+                ) : (
+                  <div className="w-14 h-14 rounded-md bg-border shrink-0" />
+                )}
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm text-foreground truncate">
+                  <p className="text-base text-foreground truncate">
                     {productName}
                   </p>
-                  <p className="text-xs text-muted-foreground mt-0.5">
+                  <p className="text-sm text-muted-foreground mt-0.5">
                     × {item.quantity}
                   </p>
                 </div>
@@ -575,7 +673,8 @@ export default function AllOrdersEnlarged() {
                 setExpandedOrderId(null);
               }}
               disabled={updatingStatus === order.id}
-              className={`flex-1 font-medium transition-all ${
+              size="lg"
+              className={`flex-1 text-base font-medium transition-all ${
                 isDelivered
                   ? "bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-600 dark:hover:bg-emerald-700 text-white"
                   : "bg-amber-600 hover:bg-amber-700 dark:bg-amber-600 dark:hover:bg-amber-700 text-white"
@@ -583,27 +682,28 @@ export default function AllOrdersEnlarged() {
             >
               {updatingStatus === order.id ? (
                 <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  <Loader2 className="w-5 h-5 mr-2 animate-spin" />
                   Updating
                 </>
               ) : isDelivered ? (
                 <>
-                  <CheckCircle2 className="w-4 h-4 mr-2" />
-                  Delivered
+                  <CheckCircle2 className="w-5 h-5 mr-2" />
+                  Ready
                 </>
               ) : (
-                "Mark Delivered"
+                "Mark Ready"
               )}
             </Button>
             <Button
               variant="outline"
+              size="lg"
               className="text-muted-foreground hover:text-destructive hover:bg-destructive/10"
               onClick={() => {
                 setExpandedOrderId(null);
                 handleDeleteClick(order);
               }}
             >
-              <Trash2 className="h-4 w-4" />
+              <Trash2 className="h-5 w-5" />
             </Button>
           </div>
         </div>
@@ -659,6 +759,16 @@ export default function AllOrdersEnlarged() {
         </div>
       </header>
 
+      {hasUnacknowledgedOrder && (
+        <button
+          onClick={acknowledgeNewOrders}
+          className="flex w-full items-center justify-center gap-2 bg-red-600 hover:bg-red-700 text-white text-sm md:text-base font-semibold py-3 px-4 animate-pulse transition-colors shrink-0"
+        >
+          <Bell className="w-5 h-5" />
+          New order received — tap to acknowledge
+        </button>
+      )}
+
       <div className="flex-1 overflow-hidden">
         {loading ? (
           <div className="flex flex-col items-center justify-center h-full">
@@ -696,7 +806,8 @@ export default function AllOrdersEnlarged() {
           >
             {/* Compact side column: stats stacked vertically + tabs.
                 Slides away to w-0 when collapsed, leaving just the thin
-                toggle strip so it can be reopened. */}
+                toggle strip so it can be reopened. No Sales tile here —
+                this whole screen never shows a price. */}
             <div
               className={`shrink-0 border-r border-border bg-card overflow-hidden transition-all duration-300 ${
                 sidebarCollapsed ? "w-0" : "w-28 sm:w-32 md:w-36"
@@ -721,7 +832,7 @@ export default function AllOrdersEnlarged() {
                 </div>
                 <div className="bg-muted border border-border rounded-md px-2 py-1.5">
                   <div className="text-[9px] text-muted-foreground uppercase tracking-wider">
-                    Delivered
+                    Ready
                   </div>
                   <div className="text-base font-bold text-emerald-500 dark:text-emerald-400">
                     {deliveredOrders.length}
@@ -739,7 +850,7 @@ export default function AllOrdersEnlarged() {
                     value="delivered"
                     className="w-full justify-start text-xs data-[state=active]:bg-emerald-600 data-[state=active]:text-white"
                   >
-                    Delivered ({deliveredOrders.length})
+                    Ready ({deliveredOrders.length})
                   </TabsTrigger>
                 </TabsList>
               </div>
@@ -769,7 +880,7 @@ export default function AllOrdersEnlarged() {
                           No pending orders
                         </p>
                         <p className="text-muted-foreground text-xs mt-1">
-                          All orders have been delivered
+                          All orders are ready
                         </p>
                       </div>
                     ) : (
@@ -788,10 +899,10 @@ export default function AllOrdersEnlarged() {
                       <div className="flex flex-col items-center justify-center py-16">
                         <CheckCircle2 className="w-16 h-16 text-muted-foreground/50 mb-4" />
                         <p className="text-gray-700 text-sm font-medium">
-                          No delivered orders
+                          No ready orders
                         </p>
                         <p className="text-muted-foreground text-xs mt-1">
-                          Orders will appear here once delivered
+                          Orders will appear here once ready
                         </p>
                       </div>
                     ) : (
@@ -809,7 +920,10 @@ export default function AllOrdersEnlarged() {
 
       {/* Delete Dialog */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <AlertDialogContent className="bg-card border-border w-[calc(100%-2rem)] max-w-lg">
+        <AlertDialogContent
+          container={dialogContainer}
+          className="bg-card border-border w-[calc(100%-2rem)] max-w-lg"
+        >
           <AlertDialogHeader>
             <AlertDialogTitle className="text-foreground">
               Delete Order
@@ -854,10 +968,26 @@ export default function AllOrdersEnlarged() {
           if (!open) setExpandedOrderId(null);
         }}
       >
-        <DialogContent className="bg-card border-border w-[calc(100%-2rem)] max-w-lg max-h-[85vh] overflow-y-auto">
+        <DialogContent
+          container={dialogContainer}
+          className="bg-card border-border w-[calc(100%-2rem)] max-w-2xl max-h-[90vh] overflow-y-auto"
+        >
           <DialogHeader>
-            <DialogTitle className="text-foreground">
-              {expandedOrder?.customerName || "Guest"}
+            <DialogTitle className="text-foreground text-xl flex items-baseline gap-2 flex-wrap">
+              {expandedOrder?.orderNumber != null && (
+                <Badge
+                  variant="outline"
+                  className="text-base font-bold border-lime-500/50 bg-lime-500/10 text-lime-400 tabular-nums px-2.5 py-1"
+                >
+                  #{expandedOrder.orderNumber}
+                </Badge>
+              )}
+              <span>{expandedOrder?.customerName || "Guest"}</span>
+              {expandedOrder && (
+                <span className="text-sm font-normal text-muted-foreground">
+                  {formatDate(expandedOrder.createdAt)}
+                </span>
+              )}
             </DialogTitle>
           </DialogHeader>
           {expandedOrder && renderExpandedOrderDetails(expandedOrder)}
