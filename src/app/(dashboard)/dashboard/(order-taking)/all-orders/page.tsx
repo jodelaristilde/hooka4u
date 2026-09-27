@@ -452,15 +452,15 @@ export default function AllOrders() {
                 <h3 className="font-bold text-lg text-white truncate">
                   {order.customerName || "Guest"}
                 </h3>
+                <span className="text-sm text-muted-foreground shrink-0">
+                  {formatDate(order.createdAt)}
+                </span>
                 {isVIP && (
                   <Badge className="bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-400 text-xs px-1.5 py-0 border-amber-300 dark:border-amber-800 shrink-0">
                     VIP
                   </Badge>
                 )}
               </div>
-              <p className="text-sm text-muted-foreground mt-0.5">
-                {formatDate(order.createdAt)}
-              </p>
             </div>
             <Button
               variant="ghost"
@@ -477,7 +477,7 @@ export default function AllOrders() {
 
           <Badge
             variant="outline"
-            className={`self-start text-sm font-bold px-3 py-1 ${
+            className={`self-center text-sm font-bold px-3 py-1 ${
               isDelivered
                 ? "bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400 border-emerald-300 dark:border-emerald-800"
                 : "bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-400 border-amber-300 dark:border-amber-800"
@@ -554,21 +554,7 @@ export default function AllOrders() {
               VIP
             </Badge>
           )}
-          <Badge
-            variant="outline"
-            className={`text-sm font-bold px-2.5 py-1 ${
-              isDelivered
-                ? "bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400 border-emerald-300 dark:border-emerald-800"
-                : "bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-400 border-amber-300 dark:border-amber-800"
-            }`}
-          >
-            {isDelivered ? "READY" : "PENDING"}
-          </Badge>
         </div>
-
-        <p className="text-sm text-muted-foreground -mt-3">
-          {formatDate(order.createdAt)}
-        </p>
 
         <div className="flex items-center gap-2.5 flex-wrap">
           <Badge
@@ -595,6 +581,16 @@ export default function AllOrders() {
               {order.Seating}
             </Badge>
           )}
+          <Badge
+            variant="outline"
+            className={`text-sm font-bold px-2.5 py-1 ${
+              isDelivered
+                ? "bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400 border-emerald-300 dark:border-emerald-800"
+                : "bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-400 border-amber-300 dark:border-amber-800"
+            }`}
+          >
+            {isDelivered ? "READY" : "PENDING"}
+          </Badge>
         </div>
 
         <div className="space-y-2.5">
@@ -970,8 +966,13 @@ export default function AllOrders() {
       >
         <DialogContent className="bg-card border-border w-[calc(100%-2rem)] max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="text-foreground text-xl">
-              {expandedOrder?.customerName || "Guest"}
+            <DialogTitle className="text-foreground text-xl flex items-baseline gap-2">
+              <span>{expandedOrder?.customerName || "Guest"}</span>
+              {expandedOrder && (
+                <span className="text-sm font-normal text-muted-foreground">
+                  {formatDate(expandedOrder.createdAt)}
+                </span>
+              )}
             </DialogTitle>
           </DialogHeader>
           {expandedOrder && renderExpandedOrderDetails(expandedOrder)}
