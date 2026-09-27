@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { Plus, Minus, ShoppingCart, X, Loader2, ChevronUp, ArrowLeft } from 'lucide-react';
 import {
   Breadcrumb,
@@ -50,6 +51,7 @@ interface CartState {
 }
 
 export default function NewOrder() {
+  const router = useRouter();
   const [activeCategoryTab, setActiveCategoryTab] = useState<CategoryTab>("ALL");
   const [customerName, setCustomerName] = useState("");
   const [paymentType, setPaymentType] = useState<"CASH" | "CARD" | "">("");
@@ -66,6 +68,21 @@ export default function NewOrder() {
   const [mobileSheetView, setMobileSheetView] = useState<"cart" | "form">("cart");
 const [showSuccessDialog, setShowSuccessDialog] = useState(false);
 const [lastOrderId, setLastOrderId] = useState<string>("");
+
+  // This screen doubles as an in-venue self-order kiosk. Once an order is
+  // placed and the success dialog is showing, automatically close it and
+  // send the screen back to the public ordering page after 3 seconds so
+  // it's ready for the next customer, without anyone having to tap Close.
+  useEffect(() => {
+    if (!showSuccessDialog) return;
+
+    const timer = setTimeout(() => {
+      setShowSuccessDialog(false);
+      router.push("/place-new-order");
+    }, 3000);
+
+    return () => clearTimeout(timer);
+  }, [showSuccessDialog, router]);
 
   // Fetch products from database
   useEffect(() => {
@@ -897,7 +914,10 @@ return (
             </div>
           </div>
           <Button
-            onClick={() => setShowSuccessDialog(false)}
+            onClick={() => {
+              setShowSuccessDialog(false);
+              router.push("/place-new-order");
+            }}
             className="w-full bg-lime-600 hover:bg-lime-700 text-white"
           >
             Close
