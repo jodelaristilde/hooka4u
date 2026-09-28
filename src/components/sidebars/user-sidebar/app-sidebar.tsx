@@ -1,6 +1,6 @@
 "use client"
 
-import { BookA, Bot, DollarSign, Frame, GalleryVerticalEnd, Library, ListOrdered, Menu, MenuSquare, Users } from "lucide-react"
+import { BookA, Bot, DollarSign, Frame, GalleryVerticalEnd, Home, Library, ListOrdered, Menu, MenuSquare, Users } from "lucide-react"
 import { useSession } from "next-auth/react"
 import * as React from "react"
 import { NavMain } from "@/components/sidebars/user-sidebar/nav-main"
@@ -19,6 +19,11 @@ const sidebarData = {
     plan: "Enterprise",
   },
   navMain: [
+    {
+      title: "Dashboard",
+      url: "/dashboard",
+      icon: Home,
+    },
     {
       title: "New Order",
       url: "/dashboard/new-order",
