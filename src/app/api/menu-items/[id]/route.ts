@@ -71,18 +71,23 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
+    const { searchParams } = new URL(request.url);
+    const force = searchParams.get("force") === "true";
 
     // Items that have ever been ordered are still referenced by past
     // OrderItem records. Deleting them anyway would either fail (Prisma
     // enforces the required relation) or silently break past orders'
-    // display (missing product name/price). Either way, tell the caller
-    // clearly so the UI can offer "hide instead" (set available: false),
-    // which removes it from ordering without touching order history.
+    // display (missing product name/price). By default we block the
+    // delete and tell the caller clearly, so the UI can offer "hide
+    // instead" (set available: false), which removes it from ordering
+    // without touching order history. Passing ?force=true means the
+    // caller has explicitly chosen to delete it anyway, which also wipes
+    // it from those past orders' item lists.
     const orderItemCount = await prisma.orderItem.count({
       where: { productId: id },
     });
 
-    if (orderItemCount > 0) {
+    if (orderItemCount > 0 && !force) {
       return NextResponse.json(
         {
           error: "HAS_ORDER_HISTORY",
@@ -91,6 +96,10 @@ export async function DELETE(
         },
         { status: 409 }
       );
+    }
+
+    if (orderItemCount > 0 && force) {
+      await prisma.orderItem.deleteMany({ where: { productId: id } });
     }
 
     await prisma.menuItems.delete({ where: { id } });
