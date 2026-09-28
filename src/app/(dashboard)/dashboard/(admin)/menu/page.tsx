@@ -62,8 +62,84 @@ const NEW_CATEGORY_VALUE = "__new__";
 
 // Images below this size get a "low resolution" warning on upload.
 const MIN_DIMENSION = 600;
-// Images larger than this get downscaled before processing/storage.
-const MAX_DIMENSION = 1600;
+// Every photo is center-cropped to a square and scaled to this size, so all
+// menu images end up the exact same shape and size no matter what the
+// original photo looked like.
+const OUTPUT_SIZE = 900;
+
+// Stretches each color channel so the darkest ~1% of pixels become black and
+// the brightest ~1% become white (classic "auto levels"), then gives colors a
+// gentle saturation boost. This is what makes photos taken in different
+// lighting/on different phones end up looking consistent with each other.
+function autoEnhanceImageData(data: Uint8ClampedArray, width: number, height: number) {
+  const totalPixels = width * height;
+  const histR = new Array(256).fill(0);
+  const histG = new Array(256).fill(0);
+  const histB = new Array(256).fill(0);
+
+  for (let i = 0; i < data.length; i += 4) {
+    histR[data[i]]++;
+    histG[data[i + 1]]++;
+    histB[data[i + 2]]++;
+  }
+
+  const findBounds = (hist: number[]) => {
+    const lowCutoff = totalPixels * 0.01;
+    const highCutoff = totalPixels * 0.99;
+    let cumulative = 0;
+    let low = 0;
+    let high = 255;
+
+    for (let v = 0; v < 256; v++) {
+      cumulative += hist[v];
+      if (cumulative >= lowCutoff) {
+        low = v;
+        break;
+      }
+    }
+
+    cumulative = 0;
+    for (let v = 255; v >= 0; v--) {
+      cumulative += hist[v];
+      if (cumulative >= totalPixels - highCutoff) {
+        high = v;
+        break;
+      }
+    }
+
+    if (high <= low) return { low: 0, high: 255 };
+    return { low, high };
+  };
+
+  const rBounds = findBounds(histR);
+  const gBounds = findBounds(histG);
+  const bBounds = findBounds(histB);
+
+  const buildLut = (low: number, high: number) => {
+    const lut = new Uint8ClampedArray(256);
+    for (let v = 0; v < 256; v++) {
+      lut[v] = Math.round(((v - low) * 255) / (high - low));
+    }
+    return lut;
+  };
+
+  const lutR = buildLut(rBounds.low, rBounds.high);
+  const lutG = buildLut(gBounds.low, gBounds.high);
+  const lutB = buildLut(bBounds.low, bBounds.high);
+
+  const saturationBoost = 1.15;
+
+  for (let i = 0; i < data.length; i += 4) {
+    const r = lutR[data[i]];
+    const g = lutG[data[i + 1]];
+    const b = lutB[data[i + 2]];
+
+    const gray = 0.299 * r + 0.587 * g + 0.114 * b;
+    data[i] = Math.min(255, Math.max(0, gray + (r - gray) * saturationBoost));
+    data[i + 1] = Math.min(255, Math.max(0, gray + (g - gray) * saturationBoost));
+    data[i + 2] = Math.min(255, Math.max(0, gray + (b - gray) * saturationBoost));
+  }
+}
 
 // Simple 3x3 unsharp-mask style convolution to make soft/blurry photos look crisper.
 function sharpenImageData(data: Uint8ClampedArray, width: number, height: number) {
@@ -114,27 +190,28 @@ async function processImageFile(
   const originalWidth = img.naturalWidth;
   const originalHeight = img.naturalHeight;
 
-  let targetWidth = originalWidth;
-  let targetHeight = originalHeight;
-  if (targetWidth > MAX_DIMENSION || targetHeight > MAX_DIMENSION) {
-    const scale = MAX_DIMENSION / Math.max(targetWidth, targetHeight);
-    targetWidth = Math.round(targetWidth * scale);
-    targetHeight = Math.round(targetHeight * scale);
-  }
+  // Center-crop to a square using the shorter side, so every photo — portrait,
+  // landscape, or already-square — contributes the same "cover" crop instead
+  // of getting stretched or squished to fit.
+  const side = Math.min(originalWidth, originalHeight);
+  const sx = (originalWidth - side) / 2;
+  const sy = (originalHeight - side) / 2;
 
   const canvas = document.createElement("canvas");
-  canvas.width = targetWidth;
-  canvas.height = targetHeight;
+  canvas.width = OUTPUT_SIZE;
+  canvas.height = OUTPUT_SIZE;
   const ctx = canvas.getContext("2d");
   if (!ctx) {
     return { dataUrl: rawDataUrl, width: originalWidth, height: originalHeight };
   }
 
-  ctx.drawImage(img, 0, 0, targetWidth, targetHeight);
-  const imageData = ctx.getImageData(0, 0, targetWidth, targetHeight);
-  const sharpened = sharpenImageData(imageData.data, targetWidth, targetHeight);
+  ctx.drawImage(img, sx, sy, side, side, 0, 0, OUTPUT_SIZE, OUTPUT_SIZE);
+
+  const imageData = ctx.getImageData(0, 0, OUTPUT_SIZE, OUTPUT_SIZE);
+  autoEnhanceImageData(imageData.data, OUTPUT_SIZE, OUTPUT_SIZE);
+  const sharpened = sharpenImageData(imageData.data, OUTPUT_SIZE, OUTPUT_SIZE);
   ctx.putImageData(
-    new ImageData(sharpened as unknown as Uint8ClampedArray<ArrayBuffer>, targetWidth, targetHeight),
+    new ImageData(sharpened as unknown as Uint8ClampedArray<ArrayBuffer>, OUTPUT_SIZE, OUTPUT_SIZE),
     0,
     0
   );
@@ -403,10 +480,10 @@ export default function MenuItemsPage() {
       const { dataUrl, width, height } = await processImageFile(file);
       setImagePreview(dataUrl);
 
-      if (width < MIN_DIMENSION || height < MIN_DIMENSION) {
+      if (Math.min(width, height) < MIN_DIMENSION) {
         toast.warning("Low-resolution image", {
           description:
-            "This photo is a bit small and may look soft on the kiosk. We've sharpened it automatically, but a higher-resolution photo will look best.",
+            "This photo is a bit small and may look soft on the kiosk. We've enhanced and sharpened it automatically, but a higher-resolution photo will look best.",
         });
       }
     } catch (err) {
@@ -707,7 +784,7 @@ export default function MenuItemsPage() {
                 <img
                   src={item.image}
                   alt={item.name}
-                  className="w-full h-64 aspect-square"
+                  className="w-full h-64 aspect-square object-cover"
                 />
               </div>
             )}
