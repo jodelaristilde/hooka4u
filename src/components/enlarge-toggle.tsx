@@ -1,77 +1,106 @@
-"use client";
+"use client"
 
-import { useEffect, useState } from "react";
-import { Maximize, X } from "lucide-react";
+import { BookA, Bot, DollarSign, Frame, GalleryVerticalEnd, ListOrdered, Menu, MenuSquare, Users } from "lucide-react"
+import { useSession } from "next-auth/react"
+import * as React from "react"
+import { NavMain } from "@/components/sidebars/user-sidebar/nav-main"
+import { HomepageQR } from "@/components/sidebars/user-sidebar/nav-projects"
+import { NavUser } from "@/components/sidebars/user-sidebar/nav-user"
+import { TeamSwitcher } from "@/components/sidebars/user-sidebar/team-switcher"
+import { MobileBottomNav } from "@/components/sidebars/user-sidebar/mobile-bottom-nav"
+import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarRail } from "@/components/ui/sidebar"
+import { useIsMobile } from "@/hooks/use-mobile"
 
-// A single floating button, mounted once in the dashboard layout, so it
-// shows up automatically on every dashboard page (New Order, All Orders,
-// Menu, Menu Prices, Users Management, the home screen, all of it) without
-// needing to add anything to each page individually.
-//
-// It uses the browser's Fullscreen API to enlarge whichever page you're
-// currently on — same "Enlarge" feature the All Orders board already had,
-// just available everywhere now. Browsers only allow entering fullscreen
-// from a real click (not automatically on page load), so this can't turn
-// itself on by itself — but once it's on, a clear "Exit" button appears so
-// you can close it any time you don't need it, and it also turns itself
-// off automatically if you leave fullscreen any other way (Esc key, etc).
-export function EnlargeToggle() {
-  const [isFullscreen, setIsFullscreen] = useState(false);
+// Sidebar static data
+const sidebarData = {
+  teams: {
+    name: "VIPService4U",
+    logo: GalleryVerticalEnd,
+    plan: "Enterprise",
+  },
+  navMain: [
+    {
+      title: "New Order",
+      url: "/dashboard/new-order",
+      icon: BookA,
+      isActive: true,
+    },
+    {
+      title: "All Orders",
+      url: "/dashboard/all-orders",
+      icon: ListOrdered,
+    },
+    {
+      title: "Menu Prices",
+      url: "/dashboard/menu-prices",
+      icon: DollarSign,
+    },
+    {
+      title: "Menu",
+      url: "/dashboard/menu",
+      icon: Menu,
+      requiresAdmin: true,
+    },
+    {
+      title: "Users Management",
+      url: "/dashboard/users-management",
+      icon: Users,
+      requiresAdmin: true,
+    },
+  ],
+}
 
-  useEffect(() => {
-    const handleFullscreenChange = () => {
-      setIsFullscreen(!!document.fullscreenElement);
-    };
-    document.addEventListener("fullscreenchange", handleFullscreenChange);
-    return () =>
-      document.removeEventListener("fullscreenchange", handleFullscreenChange);
-  }, []);
+export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+  const { data: session } = useSession()
+  const isMobile = useIsMobile()
 
-  const enterFullscreen = async () => {
-    try {
-      if (!document.fullscreenElement) {
-        await document.documentElement.requestFullscreen();
+  // Map NextAuth user to NavUser props
+  const user = session?.user
+    ? {
+        name: session.user.name ?? "Guest",
+        email: session.user.username ?? "",
+        avatar: session.user.image ?? "/avatars/default.jpg",
       }
-    } catch (err) {
-      console.error("Error entering fullscreen:", err);
-    }
-  };
-
-  const exitFullscreen = async () => {
-    try {
-      if (document.fullscreenElement) {
-        await document.exitFullscreen();
+    : {
+        name: "Guest",
+        email: "",
+        avatar: "/avatars/default.jpg",
       }
-    } catch (err) {
-      console.error("Error exiting fullscreen:", err);
-    }
-  };
+
+  // Filter navigation items based on user role
+  const filteredNavMain = React.useMemo(() => {
+    const userRole = session?.user?.role
+    return sidebarData.navMain.filter((item) => {
+      if (item.requiresAdmin) {
+        return userRole === "ADMIN"
+      }
+      return true
+    })
+  }, [session?.user?.role])
+
+  if (isMobile) {
+    return (
+      <>
+        <MobileBottomNav items={filteredNavMain} />
+        {/* Add padding to main content to avoid overlap with bottom nav */}
+        <div className="pb-20" />
+      </>
+    )
+  }
 
   return (
-    <>
-      {/* While the page is enlarged (browser fullscreen), hide the sidebar
-          nav icons — there's no reason to see the nav strip on a big TV
-          display, and this frees up the whole screen for the content. The
-          sidebar comes right back the moment fullscreen is exited. */}
-      <style>{`:fullscreen [data-slot="sidebar"] { display: none !important; }`}</style>
-
-      {isFullscreen ? (
-        <button
-          onClick={exitFullscreen}
-          title="Exit enlarged view"
-          className="fixed top-3 right-3 z-50 flex h-9 w-9 items-center justify-center rounded-full bg-black/70 text-white shadow-lg backdrop-blur transition-colors hover:bg-black/90"
-        >
-          <X className="h-4 w-4" />
-        </button>
-      ) : (
-        <button
-          onClick={enterFullscreen}
-          title="Enlarge this page"
-          className="fixed bottom-4 right-4 z-50 flex h-11 w-11 items-center justify-center rounded-full bg-lime-500 text-zinc-950 shadow-lg transition-transform hover:scale-105 hover:bg-lime-400"
-        >
-          <Maximize className="h-5 w-5" />
-        </button>
-      )}
-    </>
-  );
+    <Sidebar collapsible="icon" {...props}>
+      <SidebarHeader>
+        <TeamSwitcher team={sidebarData.teams} />
+      </SidebarHeader>
+      <SidebarContent>
+        <NavMain items={filteredNavMain} />
+        {session?.user?.role === "ADMIN" && <HomepageQR/>}
+      </SidebarContent>
+      <SidebarFooter>
+        <NavUser user={user} />
+      </SidebarFooter>
+      <SidebarRail />
+    </Sidebar>
+  )
 }
