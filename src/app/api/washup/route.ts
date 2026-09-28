@@ -16,24 +16,22 @@ export async function POST(request: Request) {
     const { step } = await request.json();
 
     switch (step) {
-      case "menu-prices":
-        // Set all menu item prices to 0
-        await prisma.menuItems.updateMany({
-          data: { price: 0 },
-        });
-        return NextResponse.json({ success: true, step: "menu-prices" });
-
-      case "menu-availability":
-        // Set all menu items to unavailable
-        await prisma.menuItems.updateMany({
-          data: { available: false },
-        });
-        return NextResponse.json({ success: true, step: "menu-availability" });
-
       case "order-items":
-        // Delete all order items
+        // Delete all order items first — menu items and orders both have a
+        // required relation to order items, so this has to clear before
+        // either of those can be deleted.
         await prisma.orderItem.deleteMany({});
         return NextResponse.json({ success: true, step: "order-items" });
+
+      case "menu-items":
+        // Delete every menu item completely (not just zero the price)
+        await prisma.menuItems.deleteMany({});
+        return NextResponse.json({ success: true, step: "menu-items" });
+
+      case "menu-categories":
+        // Delete every menu category completely
+        await prisma.menuCategory.deleteMany({});
+        return NextResponse.json({ success: true, step: "menu-categories" });
 
       case "orders":
         // Delete all orders
