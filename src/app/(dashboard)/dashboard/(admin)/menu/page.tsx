@@ -150,6 +150,7 @@ interface MenuItem {
   price: number;
   image?: string;
   category?: Category | null;
+  available: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -558,22 +559,38 @@ export default function MenuItemsPage() {
 
   const handleDeleteConfirm = async () => {
     if (!itemToDelete) return;
+    const item = itemToDelete;
 
     try {
       setSubmitting(true);
-      
-      const response = await fetch(`/api/menu-items/${itemToDelete.id}`, {
+
+      const response = await fetch(`/api/menu-items/${item.id}`, {
         method: "DELETE",
       });
 
       if (!response.ok) {
-        throw new Error("Failed to delete menu item");
+        const body = await response.json().catch(() => ({}));
+
+        if (response.status === 409 && body.error === "HAS_ORDER_HISTORY") {
+          setIsDeleteDialogOpen(false);
+          setItemToDelete(null);
+          toast.error("Can't delete — it's part of past orders", {
+            description: "Hide it instead so it stops showing up on the ordering screens.",
+            action: {
+              label: "Hide Instead",
+              onClick: () => handleToggleItemAvailable(item),
+            },
+          });
+          return;
+        }
+
+        throw new Error(body.message || "Failed to delete menu item");
       }
 
       await fetchMenuItems();
       setIsDeleteDialogOpen(false);
       setItemToDelete(null);
-      
+
       toast.success("Menu item deleted!", {
         description: "The menu item has been successfully removed.",
       });
@@ -582,6 +599,34 @@ export default function MenuItemsPage() {
       toast.error("Failed to delete menu item", {
         description: "Please try again later.",
       });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // Toggling this is how items with order history get "removed" — they
+  // can't be hard-deleted (see handleDeleteConfirm), but marking them
+  // unavailable takes them off both ordering screens immediately.
+  const handleToggleItemAvailable = async (item: MenuItem) => {
+    try {
+      setSubmitting(true);
+      const response = await fetch(`/api/menu-items/${item.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ available: !item.available }),
+      });
+
+      if (!response.ok) throw new Error("Failed to update menu item");
+
+      await fetchMenuItems();
+      toast.success(item.available ? "Item hidden" : "Item shown again", {
+        description: item.available
+          ? "It no longer shows up on the ordering screens."
+          : "It's back on the ordering screens.",
+      });
+    } catch (error) {
+      console.error("Error toggling item availability:", error);
+      toast.error("Failed to update item");
     } finally {
       setSubmitting(false);
     }
@@ -638,12 +683,30 @@ export default function MenuItemsPage() {
                     <Badge variant="secondary" className="text-xs">
                       {titleCase(item.category || "")}
                     </Badge>
+                    {!item.available && (
+                      <Badge variant="outline" className="text-xs">
+                        Hidden
+                      </Badge>
+                    )}
                   </div>
                   <p className="text-2xl font-bold text-primary mt-1">
                     ${item.price.toFixed(2)}
                   </p>
                 </div>
                 <div className="flex gap-1">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 hover:bg-primary/10 hover:text-primary"
+                    title={item.available ? "Hide from ordering" : "Show on ordering"}
+                    onClick={() => handleToggleItemAvailable(item)}
+                  >
+                    {item.available ? (
+                      <Eye className="w-4 h-4" />
+                    ) : (
+                      <EyeOff className="w-4 h-4" />
+                    )}
+                  </Button>
                   <Button
                     variant="ghost"
                     size="icon"
