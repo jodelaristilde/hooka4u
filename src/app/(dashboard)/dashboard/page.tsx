@@ -43,6 +43,7 @@ export default async function Dashboard() {
       url: "/dashboard/menu-prices",
       icon: DollarSign,
       description: "Check current menu pricing",
+      requiresAdmin: true,
     },
     {
       title: "Menu",
