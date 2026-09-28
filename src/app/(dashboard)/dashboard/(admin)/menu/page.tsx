@@ -1149,7 +1149,7 @@ export default function MenuItemsPage() {
                           variant="ghost"
                           size="icon"
                           className="h-8 w-8 hover:bg-destructive/10 hover:text-destructive"
-                          disabled={categorySubmitting || itemCount > 0}
+                          disabled={categorySubmitting}
                           title={itemCount > 0 ? "Remove its items first" : "Delete category"}
                           onClick={() => handleDeleteManagedCategory(cat)}
                         >
