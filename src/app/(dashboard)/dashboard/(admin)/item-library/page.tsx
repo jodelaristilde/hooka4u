@@ -16,6 +16,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import {
   Select,
@@ -221,6 +222,7 @@ interface BatchItem {
   file: File;
   preview: string | null;
   name: string;
+  description: string;
   processing: boolean;
 }
 
@@ -306,6 +308,7 @@ export default function ItemLibraryPage() {
       file,
       preview: null,
       name: deriveNameFromFilename(file.name),
+      description: "",
       processing: true,
     }));
 
@@ -340,9 +343,13 @@ export default function ItemLibraryPage() {
     setBatchItems((prev) => prev.map((it) => (it.localId === localId ? { ...it, name } : it)));
   };
 
+  const handleBatchDescriptionChange = (localId: string, description: string) => {
+    setBatchItems((prev) => prev.map((it) => (it.localId === localId ? { ...it, description } : it)));
+  };
+
   const openAddDialog = () => {
     setBatchItems([]);
-    setBatchCategory(dbCategories[0]?.name || "");
+    setBatchCategory("");
     setIsDialogOpen(true);
   };
 
@@ -366,10 +373,6 @@ export default function ItemLibraryPage() {
       toast.error("Every item needs a name");
       return;
     }
-    if (!batchCategory) {
-      toast.error("Category is required", { description: "Choose which category these items belong to." });
-      return;
-    }
 
     try {
       setSubmitting(true);
@@ -380,9 +383,9 @@ export default function ItemLibraryPage() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             name: item.name.trim(),
-            description: "",
+            description: item.description.trim(),
             image: item.preview,
-            category: batchCategory,
+            category: batchCategory || null,
           }),
         });
         if (response.ok) successCount++;
@@ -393,7 +396,7 @@ export default function ItemLibraryPage() {
 
       if (successCount === batchItems.length) {
         toast.success(`Saved ${successCount} item${successCount === 1 ? "" : "s"} to library`, {
-          description: `Filed under ${batchCategory}.`,
+          description: batchCategory ? `Filed under ${batchCategory}.` : "No category set.",
         });
       } else {
         toast.warning(`Saved ${successCount} of ${batchItems.length} items`, {
@@ -600,10 +603,10 @@ export default function ItemLibraryPage() {
 
           <div className="space-y-4 py-2">
             <div className="space-y-2">
-              <Label>Category <span className="text-red-500">*</span></Label>
+              <Label>Category <span className="text-muted-foreground font-normal">(optional)</span></Label>
               <Select value={batchCategory} onValueChange={setBatchCategory}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Select a category" />
+                  <SelectValue placeholder="No category" />
                 </SelectTrigger>
                 <SelectContent>
                   {dbCategories.map((cat) => (
@@ -613,7 +616,7 @@ export default function ItemLibraryPage() {
                   ))}
                 </SelectContent>
               </Select>
-              <p className="text-xs text-muted-foreground">Applies to every photo you add below.</p>
+              <p className="text-xs text-muted-foreground">Applies to every photo you add below. Leave blank to save without one.</p>
             </div>
 
             <div className="space-y-2">
@@ -637,9 +640,9 @@ export default function ItemLibraryPage() {
             </div>
 
             {batchItems.length > 0 && (
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {batchItems.map((item) => (
-                  <div key={item.localId} className="relative border rounded-lg p-2 space-y-2">
+                  <div key={item.localId} className="relative border rounded-lg p-2 flex gap-2">
                     <button
                       onClick={() => handleRemoveBatchItem(item.localId)}
                       title="Remove"
@@ -647,21 +650,30 @@ export default function ItemLibraryPage() {
                     >
                       <X className="h-3.5 w-3.5" />
                     </button>
-                    <div className="aspect-square rounded-md bg-muted overflow-hidden flex items-center justify-center">
+                    <div className="w-16 h-16 shrink-0 rounded-md bg-muted overflow-hidden flex items-center justify-center">
                       {item.processing ? (
                         <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
                       ) : item.preview ? (
                         <img src={item.preview} alt={item.name} className="w-full h-full object-cover" />
                       ) : (
-                        <ImageIcon className="h-6 w-6 text-muted-foreground/40" />
+                        <ImageIcon className="h-5 w-5 text-muted-foreground/40" />
                       )}
                     </div>
-                    <Input
-                      value={item.name}
-                      onChange={(e) => handleBatchNameChange(item.localId, e.target.value)}
-                      placeholder="Item name"
-                      className="h-8 text-xs"
-                    />
+                    <div className="flex-1 space-y-1.5 min-w-0">
+                      <Input
+                        value={item.name}
+                        onChange={(e) => handleBatchNameChange(item.localId, e.target.value)}
+                        placeholder="Item name"
+                        className="h-8 text-xs"
+                      />
+                      <Textarea
+                        value={item.description}
+                        onChange={(e) => handleBatchDescriptionChange(item.localId, e.target.value)}
+                        placeholder="Description (optional)"
+                        rows={2}
+                        className="text-xs resize-none min-h-0 py-1.5"
+                      />
+                    </div>
                   </div>
                 ))}
               </div>
