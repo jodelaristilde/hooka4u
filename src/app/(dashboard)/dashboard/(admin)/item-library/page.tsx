@@ -251,6 +251,7 @@ export default function ItemLibraryPage() {
 
   const [addToMenuTemplate, setAddToMenuTemplate] = useState<MenuItemTemplate | null>(null);
   const [addToMenuPrice, setAddToMenuPrice] = useState("");
+  const [addToMenuCategory, setAddToMenuCategory] = useState("");
   const [addingToMenu, setAddingToMenu] = useState(false);
 
   useEffect(() => {
@@ -440,11 +441,13 @@ export default function ItemLibraryPage() {
   const openAddToMenuDialog = (template: MenuItemTemplate) => {
     setAddToMenuTemplate(template);
     setAddToMenuPrice("");
+    setAddToMenuCategory(template.category || "");
   };
 
   const closeAddToMenuDialog = () => {
     setAddToMenuTemplate(null);
     setAddToMenuPrice("");
+    setAddToMenuCategory("");
   };
 
   const handleAddToMenuConfirm = async () => {
@@ -453,6 +456,11 @@ export default function ItemLibraryPage() {
     const priceValue = parseFloat(addToMenuPrice);
     if (isNaN(priceValue) || priceValue < 0) {
       toast.error("Invalid price", { description: "Enter a valid price ≥ 0." });
+      return;
+    }
+
+    if (!addToMenuCategory) {
+      toast.error("Category is required", { description: "Choose which category this item goes in on the live menu." });
       return;
     }
 
@@ -465,7 +473,7 @@ export default function ItemLibraryPage() {
           name: addToMenuTemplate.name,
           description: addToMenuTemplate.description,
           image: addToMenuTemplate.image,
-          category: addToMenuTemplate.category,
+          category: addToMenuCategory,
           price: priceValue,
           available: true,
         }),
@@ -698,21 +706,40 @@ export default function ItemLibraryPage() {
           <DialogHeader>
             <DialogTitle>Add "{addToMenuTemplate?.name}" to the menu</DialogTitle>
             <DialogDescription>
-              This creates a live, orderable menu item using the saved photo and description. Just set a price.
+              This creates a live, orderable menu item using the saved photo and description. Set a price and
+              confirm the category.
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-2 py-2">
-            <Label htmlFor="add-to-menu-price">Price</Label>
-            <Input
-              id="add-to-menu-price"
-              type="number"
-              min="0"
-              step="0.01"
-              value={addToMenuPrice}
-              onChange={(e) => setAddToMenuPrice(e.target.value)}
-              placeholder="0.00"
-            />
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label>Category</Label>
+              <Select value={addToMenuCategory} onValueChange={setAddToMenuCategory}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a category" />
+                </SelectTrigger>
+                <SelectContent>
+                  {dbCategories.map((cat) => (
+                    <SelectItem key={cat.id} value={cat.name}>
+                      {cat.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="add-to-menu-price">Price</Label>
+              <Input
+                id="add-to-menu-price"
+                type="number"
+                min="0"
+                step="0.01"
+                value={addToMenuPrice}
+                onChange={(e) => setAddToMenuPrice(e.target.value)}
+                placeholder="0.00"
+              />
+            </div>
           </div>
 
           <DialogFooter>
