@@ -168,6 +168,7 @@ export default function MenuItemsPage() {
   const [activeTab, setActiveTab] = useState<Category>("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [deleteBlocked, setDeleteBlocked] = useState(false);
   const [selectedItem, setSelectedItem] = useState<MenuItem | null>(null);
   const [itemToDelete, setItemToDelete] = useState<MenuItem | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -554,6 +555,7 @@ export default function MenuItemsPage() {
 
   const handleDeleteClick = (item: MenuItem) => {
     setItemToDelete(item);
+    setDeleteBlocked(false);
     setIsDeleteDialogOpen(true);
   };
 
@@ -572,15 +574,9 @@ export default function MenuItemsPage() {
         const body = await response.json().catch(() => ({}));
 
         if (response.status === 409 && body.error === "HAS_ORDER_HISTORY") {
-          setIsDeleteDialogOpen(false);
-          setItemToDelete(null);
-          toast.error("Can't delete — it's part of past orders", {
-            description: "Hide it instead so it stops showing up on the ordering screens.",
-            action: {
-              label: "Hide Instead",
-              onClick: () => handleToggleItemAvailable(item),
-            },
-          });
+          // Don't close the dialog — switch it into "blocked" mode so the
+          // person can choose Hide, or confirm a real force-delete.
+          setDeleteBlocked(true);
           return;
         }
 
@@ -590,6 +586,7 @@ export default function MenuItemsPage() {
       await fetchMenuItems();
       setIsDeleteDialogOpen(false);
       setItemToDelete(null);
+      setDeleteBlocked(false);
 
       toast.success("Menu item deleted!", {
         description: "The menu item has been successfully removed.",
@@ -602,6 +599,47 @@ export default function MenuItemsPage() {
     } finally {
       setSubmitting(false);
     }
+  };
+
+  // Only reachable from the "blocked" delete dialog, after the person has
+  // been told this will also remove the item from its past orders' records.
+  const handleForceDeleteConfirm = async () => {
+    if (!itemToDelete) return;
+
+    try {
+      setSubmitting(true);
+      const response = await fetch(`/api/menu-items/${itemToDelete.id}?force=true`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to delete menu item");
+      }
+
+      await fetchMenuItems();
+      setIsDeleteDialogOpen(false);
+      setItemToDelete(null);
+      setDeleteBlocked(false);
+
+      toast.success("Menu item permanently deleted", {
+        description: "It's also been removed from any past orders that included it.",
+      });
+    } catch (error) {
+      console.error("Error force-deleting menu item:", error);
+      toast.error("Failed to delete menu item", {
+        description: "Please try again later.",
+      });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleHideFromDeleteDialog = async () => {
+    if (!itemToDelete) return;
+    await handleToggleItemAvailable(itemToDelete);
+    setIsDeleteDialogOpen(false);
+    setItemToDelete(null);
+    setDeleteBlocked(false);
   };
 
   // Toggling this is how items with order history get "removed" — they
@@ -1138,30 +1176,77 @@ export default function MenuItemsPage() {
       </Dialog>
 
       {/* Delete Confirmation Dialog */}
-      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+      <AlertDialog
+        open={isDeleteDialogOpen}
+        onOpenChange={(open) => {
+          setIsDeleteDialogOpen(open);
+          if (!open) setDeleteBlocked(false);
+        }}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This will permanently delete &quot;{itemToDelete?.name}&quot;. This action cannot be undone.
-            </AlertDialogDescription>
+            {deleteBlocked ? (
+              <>
+                <AlertDialogTitle>This item is part of past orders</AlertDialogTitle>
+                <AlertDialogDescription>
+                  &quot;{itemToDelete?.name}&quot; has already been ordered before. You can hide
+                  it instead — that keeps your order history intact and removes it from ordering
+                  right away — or delete it anyway, which will also remove it from those past
+                  orders&apos; records. This cannot be undone.
+                </AlertDialogDescription>
+              </>
+            ) : (
+              <>
+                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This will permanently delete &quot;{itemToDelete?.name}&quot;. This action cannot be undone.
+                </AlertDialogDescription>
+              </>
+            )}
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={submitting}>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDeleteConfirm}
-              disabled={submitting}
-              className="bg-destructive hover:bg-destructive/90 text-white"
-            >
-              {submitting ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Deleting...
-                </>
-              ) : (
-                "Delete"
-              )}
-            </AlertDialogAction>
+            {deleteBlocked ? (
+              <>
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={submitting}
+                  onClick={handleHideFromDeleteDialog}
+                >
+                  Hide Instead
+                </Button>
+                <AlertDialogAction
+                  onClick={handleForceDeleteConfirm}
+                  disabled={submitting}
+                  className="bg-destructive hover:bg-destructive/90 text-white"
+                >
+                  {submitting ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Deleting...
+                    </>
+                  ) : (
+                    "Delete Anyway"
+                  )}
+                </AlertDialogAction>
+              </>
+            ) : (
+              <AlertDialogAction
+                onClick={handleDeleteConfirm}
+                disabled={submitting}
+                className="bg-destructive hover:bg-destructive/90 text-white"
+              >
+                {submitting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Deleting...
+                  </>
+                ) : (
+                  "Delete"
+                )}
+              </AlertDialogAction>
+            )}
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
