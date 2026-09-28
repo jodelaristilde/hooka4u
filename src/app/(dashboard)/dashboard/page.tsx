@@ -13,6 +13,7 @@ import {
   ListOrdered,
   DollarSign,
   Menu,
+  Library,
   Users,
   Frame,
   Sparkles,
@@ -49,6 +50,13 @@ export default async function Dashboard() {
       url: "/dashboard/menu",
       icon: Menu,
       description: "Manage menu items and categories",
+      requiresAdmin: true,
+    },
+    {
+      title: "Item Library",
+      url: "/dashboard/item-library",
+      icon: Library,
+      description: "Save photos & details to reuse on the menu later",
       requiresAdmin: true,
     },
     {
