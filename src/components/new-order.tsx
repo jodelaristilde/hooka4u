@@ -279,10 +279,24 @@ export default function NewOrder({ onOrderComplete, onBack }: NewOrderProps) {
   const availableCategories = Array.from(
     new Set(orderableProducts.map((p) => p.category).filter((c): c is string => !!c))
   ).sort()
-  const categoryTabs: CategoryTab[] = ["ALL", ...availableCategories]
+  // "All" only makes sense once there's something to lump together — with
+  // just one category (or none), showing both "All" and that one category
+  // as separate tabs is redundant, so skip "All" in that case.
+  const categoryTabs: CategoryTab[] =
+    availableCategories.length >= 2 ? ["ALL", ...availableCategories] : availableCategories
 
   const visibleProducts =
     activeTab === "ALL" ? orderableProducts : orderableProducts.filter((p) => p.category === activeTab)
+
+  // If "All" just disappeared (down to one category, or none) while it was
+  // selected, fall back to a tab that still exists instead of showing a
+  // blank product grid.
+  useEffect(() => {
+    if (categoryTabs.length > 0 && !categoryTabs.includes(activeTab)) {
+      setActiveTab(categoryTabs[0])
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [categoryTabs.join("|")])
 
   return (
     <div className="flex flex-col h-screen bg-background">
