@@ -1,8 +1,14 @@
-// app/api/menu-items/route.ts
+// app/api/menu-prices/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
+
+// Always fetch fresh from the database — without this, Next.js caches this
+// route's response at build time since it doesn't read anything from the
+// request. That stale cache is what let Menu Prices keep showing items
+// after they were deleted elsewhere (like the "wash up" reset).
+export const dynamic = "force-dynamic";
 
 // GET all menu items
 export async function GET() {
