@@ -440,7 +440,7 @@ export default function ItemLibraryPage() {
 
   const openAddToMenuDialog = (template: MenuItemTemplate) => {
     setAddToMenuTemplate(template);
-    setAddToMenuPrice("");
+    setAddToMenuPrice("0.00");
     setAddToMenuCategory(template.category || "");
   };
 
