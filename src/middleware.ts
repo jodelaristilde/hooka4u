@@ -5,7 +5,6 @@ import { getToken } from "next-auth/jwt";
 const PUBLIC_ROUTES = ["/login", "/register"];
 const RESTRICTED_FOR_USER = [
   "/dashboard/menu",
-  "/dashboard/menu-prices",
   "/dashboard/users-management",
 ];
 
