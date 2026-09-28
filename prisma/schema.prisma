@@ -53,6 +53,21 @@ model MenuItems {
   OrderItem   OrderItem[]
 }
 
+// A reusable library of item photos/descriptions, separate from the live
+// menu (MenuItems). Washup and the Menu page's "Delete All" only ever touch
+// MenuItems, never this — so once a photo + description is saved here, it
+// can be reused to quickly re-populate the live menu for a new event
+// without re-uploading and re-editing the same image every time.
+model MenuItemTemplate {
+  id          String   @id @default(uuid()) @map("_id")
+  name        String
+  description String?
+  image       String?
+  category    String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
 model Order {
   id           String      @id @default(uuid()) @map("_id")
   orderNumber  Int?
