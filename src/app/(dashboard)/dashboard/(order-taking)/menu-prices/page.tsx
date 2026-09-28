@@ -30,12 +30,15 @@ interface MenuItem {
   id: string;
   name: string;
   description?: string;
+  category?: string;
   image?: string;
   available: boolean;
   price: number;
   createdAt: string;
   updatedAt: string;
 }
+
+type SortField = "description" | "category";
 
 export default function MenuPrices() {
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
@@ -47,6 +50,7 @@ export default function MenuPrices() {
   // Form state
   const [price, setPrice] = useState("");
   const [available, setAvailable] = useState(true);
+  const [sortField, setSortField] = useState<SortField | null>(null);
   const [sortAsc, setSortAsc] = useState(true);
 
   useEffect(() => {
@@ -69,13 +73,15 @@ export default function MenuPrices() {
     }
   };
 
-  const sortByDescription = () => {
-    setSortAsc(!sortAsc);
+  const sortBy = (field: SortField) => {
+    const nextAsc = sortField === field ? !sortAsc : true;
+    setSortField(field);
+    setSortAsc(nextAsc);
     setMenuItems((prev) =>
       [...prev].sort((a, b) => {
-        const da = a.description || "";
-        const db = b.description || "";
-        return sortAsc ? da.localeCompare(db) : db.localeCompare(da);
+        const va = (field === "category" ? a.category : a.description) || "";
+        const vb = (field === "category" ? b.category : b.description) || "";
+        return nextAsc ? va.localeCompare(vb) : vb.localeCompare(va);
       })
     );
   };
@@ -191,22 +197,41 @@ export default function MenuPrices() {
                         {/* Image FIRST */}
                         <th className="w-[12%] px-4 py-3 text-left">Image</th>
 
-                        <th className="w-[22%] px-4 py-3 text-left">Item Name</th>
+                        <th className="w-[18%] px-4 py-3 text-left">Item Name</th>
+
+                        {/* CATEGORY sort in header */}
+                        <th className="w-[15%] px-4 py-3 text-left">
+                          <div className="flex items-center gap-2">
+                            Category
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="p-1 h-6"
+                              onClick={() => sortBy("category")}
+                            >
+                              {sortField === "category" && !sortAsc ? (
+                                <ChevronUp className="h-4 w-4" />
+                              ) : (
+                                <ChevronDown className="h-4 w-4" />
+                              )}
+                            </Button>
+                          </div>
+                        </th>
 
                         {/* DESCRIPTION sort in header */}
-                        <th className="w-[30%] px-4 py-3 text-left hidden sm:table-cell">
+                        <th className="w-[27%] px-4 py-3 text-left hidden sm:table-cell">
                           <div className="flex items-center gap-2">
                             Description
                             <Button
                               variant="ghost"
                               size="sm"
                               className="p-1 h-6"
-                              onClick={sortByDescription}
+                              onClick={() => sortBy("description")}
                             >
-                              {sortAsc ? (
-                                <ChevronDown className="h-4 w-4" />
-                              ) : (
+                              {sortField === "description" && !sortAsc ? (
                                 <ChevronUp className="h-4 w-4" />
+                              ) : (
+                                <ChevronDown className="h-4 w-4" />
                               )}
                             </Button>
                           </div>
@@ -239,6 +264,17 @@ export default function MenuPrices() {
                           {/* NAME */}
                           <td className="px-4 py-3 font-medium">
                             {item.name}
+                          </td>
+
+                          {/* CATEGORY */}
+                          <td className="px-4 py-3">
+                            {item.category ? (
+                              <span className="inline-flex items-center rounded-full bg-lime-50 px-2 py-0.5 text-xs font-medium text-lime-700 ring-1 ring-lime-200">
+                                {item.category}
+                              </span>
+                            ) : (
+                              <span className="text-zinc-400">—</span>
+                            )}
                           </td>
 
                           {/* DESCRIPTION */}
