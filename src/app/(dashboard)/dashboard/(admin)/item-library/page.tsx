@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { Plus, Trash2, Loader2, Upload, X, Image as ImageIcon, ShoppingCart, Library } from "lucide-react";
+import { Plus, Trash2, Loader2, Upload, X, Image as ImageIcon, ShoppingCart, Library, CheckSquare, Check } from "lucide-react";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -254,6 +254,16 @@ export default function ItemLibraryPage() {
   const [addToMenuCategory, setAddToMenuCategory] = useState("");
   const [addingToMenu, setAddingToMenu] = useState(false);
 
+  // Multi-select: pick several library items at once and file them all
+  // under one category/price in a single trip.
+  const [selectMode, setSelectMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+  const [isBulkAddOpen, setIsBulkAddOpen] = useState(false);
+  const [bulkCategory, setBulkCategory] = useState("");
+  const [bulkPrice, setBulkPrice] = useState("0.00");
+  const [bulkAdding, setBulkAdding] = useState(false);
+
   useEffect(() => {
     fetchTemplates();
     fetchCategories();
@@ -493,6 +503,88 @@ export default function ItemLibraryPage() {
     }
   };
 
+  const toggleSelectMode = () => {
+    setSelectMode((prev) => !prev);
+    setSelectedIds(new Set());
+  };
+
+  const toggleItemSelected = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const openBulkAddDialog = () => {
+    if (selectedIds.size === 0) return;
+    setBulkPrice("0.00");
+    setBulkCategory("");
+    setIsBulkAddOpen(true);
+  };
+
+  const closeBulkAddDialog = () => {
+    setIsBulkAddOpen(false);
+    setBulkPrice("");
+    setBulkCategory("");
+  };
+
+  const handleBulkAddConfirm = async () => {
+    const priceValue = parseFloat(bulkPrice);
+    if (isNaN(priceValue) || priceValue < 0) {
+      toast.error("Invalid price", { description: "Enter a valid price ≥ 0." });
+      return;
+    }
+
+    if (!bulkCategory) {
+      toast.error("Category is required", { description: "Choose which category these items go in on the live menu." });
+      return;
+    }
+
+    const selectedTemplates = templates.filter((t) => selectedIds.has(t.id));
+    if (selectedTemplates.length === 0) return;
+
+    try {
+      setBulkAdding(true);
+      let successCount = 0;
+      for (const template of selectedTemplates) {
+        const response = await fetch("/api/menu-items", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: template.name,
+            description: template.description,
+            image: template.image,
+            category: bulkCategory,
+            price: priceValue,
+            available: true,
+          }),
+        });
+        if (response.ok) successCount++;
+      }
+
+      if (successCount === selectedTemplates.length) {
+        toast.success(`Added ${successCount} item${successCount === 1 ? "" : "s"} to menu!`, {
+          description: `Filed under ${bulkCategory}.`,
+        });
+      } else {
+        toast.warning(`Added ${successCount} of ${selectedTemplates.length} items`, {
+          description: "Some items failed to add — try the rest again.",
+        });
+      }
+
+      closeBulkAddDialog();
+      setSelectMode(false);
+      setSelectedIds(new Set());
+    } catch (error) {
+      console.error("Error bulk adding to menu:", error);
+      toast.error("Failed to add items", { description: "Please try again." });
+    } finally {
+      setBulkAdding(false);
+    }
+  };
+
   return (
     <div className="flex flex-col h-screen bg-background">
       <header className="flex h-14 shrink-0 items-center gap-3 bg-card border-b border-border">
@@ -528,10 +620,27 @@ export default function ItemLibraryPage() {
                 reuse any saved item to add it back to the live menu in one click, no re-uploading.
               </p>
             </div>
-            <Button onClick={openAddDialog} className="bg-lime-500 hover:bg-lime-400 text-zinc-950">
-              <Plus className="h-4 w-4 mr-1" />
-              Save New Item
-            </Button>
+            <div className="flex items-center gap-2">
+              {templates.length > 0 && (
+                <Button variant="outline" onClick={toggleSelectMode}>
+                  {selectMode ? (
+                    <>
+                      <X className="h-4 w-4 mr-1" />
+                      Cancel
+                    </>
+                  ) : (
+                    <>
+                      <CheckSquare className="h-4 w-4 mr-1" />
+                      Select Items
+                    </>
+                  )}
+                </Button>
+              )}
+              <Button onClick={openAddDialog} className="bg-lime-500 hover:bg-lime-400 text-zinc-950">
+                <Plus className="h-4 w-4 mr-1" />
+                Save New Item
+              </Button>
+            </div>
           </div>
 
           {loading ? (
@@ -548,55 +657,101 @@ export default function ItemLibraryPage() {
             </Card>
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-              {templates.map((template) => (
-                <Card key={template.id} className="overflow-hidden group">
-                  <div className="aspect-square bg-muted relative">
-                    {template.image ? (
-                      <img
-                        src={template.image}
-                        alt={template.name}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center">
-                        <ImageIcon className="h-8 w-8 text-muted-foreground/40" />
-                      </div>
-                    )}
-                    <button
-                      onClick={() => handleDeleteClick(template)}
-                      title="Remove from library"
-                      className="absolute top-2 right-2 flex h-7 w-7 items-center justify-center rounded-full bg-black/60 text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </button>
-                  </div>
-                  <CardContent className="p-3 space-y-2">
-                    <div>
-                      <p className="font-medium text-sm truncate">{template.name}</p>
-                      {template.category && (
-                        <Badge variant="outline" className="mt-1 text-[10px] bg-lime-50 text-lime-700 border-lime-200">
-                          {template.category}
-                        </Badge>
+              {templates.map((template) => {
+                const isSelected = selectedIds.has(template.id);
+                return (
+                  <Card
+                    key={template.id}
+                    className={`overflow-hidden group ${selectMode ? "cursor-pointer" : ""} ${
+                      isSelected ? "ring-2 ring-lime-500" : ""
+                    }`}
+                    onClick={() => selectMode && toggleItemSelected(template.id)}
+                  >
+                    <div className="aspect-square bg-muted relative">
+                      {template.image ? (
+                        <img
+                          src={template.image}
+                          alt={template.name}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <ImageIcon className="h-8 w-8 text-muted-foreground/40" />
+                        </div>
+                      )}
+                      {selectMode ? (
+                        <div
+                          className={`absolute top-2 left-2 flex h-6 w-6 items-center justify-center rounded-full border-2 transition-colors ${
+                            isSelected
+                              ? "bg-lime-500 border-lime-500 text-zinc-950"
+                              : "bg-white/80 border-white text-transparent"
+                          }`}
+                        >
+                          <Check className="h-4 w-4" />
+                        </div>
+                      ) : (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteClick(template);
+                          }}
+                          title="Remove from library"
+                          className="absolute top-2 right-2 flex h-7 w-7 items-center justify-center rounded-full bg-black/60 text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
                       )}
                     </div>
-                    {template.description && (
-                      <p className="text-xs text-muted-foreground line-clamp-2">{template.description}</p>
-                    )}
-                    <Button
-                      size="sm"
-                      className="w-full bg-lime-500 hover:bg-lime-400 text-zinc-950"
-                      onClick={() => openAddToMenuDialog(template)}
-                    >
-                      <ShoppingCart className="h-3.5 w-3.5 mr-1" />
-                      Add to Menu
-                    </Button>
-                  </CardContent>
-                </Card>
-              ))}
+                    <CardContent className="p-3 space-y-2">
+                      <div>
+                        <p className="font-medium text-sm truncate">{template.name}</p>
+                        {template.category && (
+                          <Badge variant="outline" className="mt-1 text-[10px] bg-lime-50 text-lime-700 border-lime-200">
+                            {template.category}
+                          </Badge>
+                        )}
+                      </div>
+                      {template.description && (
+                        <p className="text-xs text-muted-foreground line-clamp-2">{template.description}</p>
+                      )}
+                      {!selectMode && (
+                        <Button
+                          size="sm"
+                          className="w-full bg-lime-500 hover:bg-lime-400 text-zinc-950"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openAddToMenuDialog(template);
+                          }}
+                        >
+                          <ShoppingCart className="h-3.5 w-3.5 mr-1" />
+                          Add to Menu
+                        </Button>
+                      )}
+                    </CardContent>
+                  </Card>
+                );
+              })}
             </div>
           )}
         </div>
       </div>
+
+      {selectMode && selectedIds.size > 0 && (
+        <div className="border-t border-border bg-card px-4 py-3 flex items-center justify-between gap-3 shrink-0">
+          <p className="text-sm font-medium">
+            {selectedIds.size} item{selectedIds.size === 1 ? "" : "s"} selected
+          </p>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={() => setSelectedIds(new Set())}>
+              Clear
+            </Button>
+            <Button size="sm" className="bg-lime-500 hover:bg-lime-400 text-zinc-950" onClick={openBulkAddDialog}>
+              <ShoppingCart className="h-3.5 w-3.5 mr-1" />
+              Add to Menu
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* Save New Item(s) Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={(open) => (open ? setIsDialogOpen(true) : closeAddDialog())}>
@@ -753,6 +908,66 @@ export default function ItemLibraryPage() {
             >
               {addingToMenu ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
               Add to Menu
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Bulk Add to Menu Dialog */}
+      <Dialog open={isBulkAddOpen} onOpenChange={(open) => !open && closeBulkAddDialog()}>
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle>
+              Add {selectedIds.size} item{selectedIds.size === 1 ? "" : "s"} to the menu
+            </DialogTitle>
+            <DialogDescription>
+              Every selected item gets this same category and price. You can adjust any of them individually on
+              the Menu page afterward.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label>Category</Label>
+              <Select value={bulkCategory} onValueChange={setBulkCategory}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a category" />
+                </SelectTrigger>
+                <SelectContent>
+                  {dbCategories.map((cat) => (
+                    <SelectItem key={cat.id} value={cat.name}>
+                      {cat.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="bulk-add-price">Price</Label>
+              <Input
+                id="bulk-add-price"
+                type="number"
+                min="0"
+                step="0.01"
+                value={bulkPrice}
+                onChange={(e) => setBulkPrice(e.target.value)}
+                placeholder="0.00"
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={closeBulkAddDialog}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleBulkAddConfirm}
+              disabled={bulkAdding}
+              className="bg-lime-500 hover:bg-lime-400 text-zinc-950"
+            >
+              {bulkAdding ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
+              Add {selectedIds.size} Item{selectedIds.size === 1 ? "" : "s"}
             </Button>
           </DialogFooter>
         </DialogContent>
