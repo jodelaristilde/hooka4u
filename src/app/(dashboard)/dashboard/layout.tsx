@@ -1,5 +1,6 @@
 import { AppSidebar } from "@/components/sidebars/user-sidebar/app-sidebar";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
+import { EnlargeToggle } from "@/components/enlarge-toggle";
 import type { Metadata } from "next";
 import "../../globals.css";
 import { cookies } from "next/headers";
@@ -23,6 +24,7 @@ export default async function RootLayout({
           <SidebarProvider defaultOpen={defaultOpen} className="bg-lime-500/50">
             <AppSidebar />
             <SidebarInset>{children}</SidebarInset>
+            <EnlargeToggle />
           </SidebarProvider>
         {/* </ThemeContextProvider> */}
       </>
