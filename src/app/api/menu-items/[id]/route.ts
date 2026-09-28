@@ -71,6 +71,28 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
+
+    // Items that have ever been ordered are still referenced by past
+    // OrderItem records. Deleting them anyway would either fail (Prisma
+    // enforces the required relation) or silently break past orders'
+    // display (missing product name/price). Either way, tell the caller
+    // clearly so the UI can offer "hide instead" (set available: false),
+    // which removes it from ordering without touching order history.
+    const orderItemCount = await prisma.orderItem.count({
+      where: { productId: id },
+    });
+
+    if (orderItemCount > 0) {
+      return NextResponse.json(
+        {
+          error: "HAS_ORDER_HISTORY",
+          message:
+            "This item is part of past orders, so it can't be deleted. Hide it instead so it stops showing up on the ordering screens.",
+        },
+        { status: 409 }
+      );
+    }
+
     await prisma.menuItems.delete({ where: { id } });
     return NextResponse.json({ success: true });
   } catch (error) {
