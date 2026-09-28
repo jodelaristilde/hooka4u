@@ -47,26 +47,32 @@ export function EnlargeToggle() {
     }
   };
 
-  if (isFullscreen) {
-    return (
-      <button
-        onClick={exitFullscreen}
-        title="Exit enlarged view"
-        className="fixed top-3 right-3 z-50 flex items-center gap-1.5 rounded-full bg-black/70 px-3 py-2 text-xs font-medium text-white shadow-lg backdrop-blur transition-colors hover:bg-black/90"
-      >
-        <X className="h-3.5 w-3.5" />
-        Exit
-      </button>
-    );
-  }
-
   return (
-    <button
-      onClick={enterFullscreen}
-      title="Enlarge this page"
-      className="fixed bottom-4 right-4 z-50 flex h-11 w-11 items-center justify-center rounded-full bg-lime-500 text-zinc-950 shadow-lg transition-transform hover:scale-105 hover:bg-lime-400"
-    >
-      <Maximize className="h-5 w-5" />
-    </button>
+    <>
+      {/* While the page is enlarged (browser fullscreen), hide the sidebar
+          nav icons — there's no reason to see the nav strip on a big TV
+          display, and this frees up the whole screen for the content. The
+          sidebar comes right back the moment fullscreen is exited. */}
+      <style>{`:fullscreen [data-slot="sidebar"] { display: none !important; }`}</style>
+
+      {isFullscreen ? (
+        <button
+          onClick={exitFullscreen}
+          title="Exit enlarged view"
+          className="fixed top-3 right-3 z-50 flex items-center gap-1.5 rounded-full bg-black/70 px-3 py-2 text-xs font-medium text-white shadow-lg backdrop-blur transition-colors hover:bg-black/90"
+        >
+          <X className="h-3.5 w-3.5" />
+          Exit
+        </button>
+      ) : (
+        <button
+          onClick={enterFullscreen}
+          title="Enlarge this page"
+          className="fixed bottom-4 right-4 z-50 flex h-11 w-11 items-center justify-center rounded-full bg-lime-500 text-zinc-950 shadow-lg transition-transform hover:scale-105 hover:bg-lime-400"
+        >
+          <Maximize className="h-5 w-5" />
+        </button>
+      )}
+    </>
   );
 }
