@@ -34,7 +34,6 @@ const sidebarData = {
       title: "Menu Prices",
       url: "/dashboard/menu-prices",
       icon: DollarSign,
-      requiresAdmin: true,
     },
     {
       title: "Menu",
