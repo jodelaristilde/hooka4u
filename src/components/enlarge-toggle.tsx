@@ -59,10 +59,9 @@ export function EnlargeToggle() {
         <button
           onClick={exitFullscreen}
           title="Exit enlarged view"
-          className="fixed top-3 right-3 z-50 flex items-center gap-1.5 rounded-full bg-black/70 px-3 py-2 text-xs font-medium text-white shadow-lg backdrop-blur transition-colors hover:bg-black/90"
+          className="fixed top-3 right-3 z-50 flex h-9 w-9 items-center justify-center rounded-full bg-black/70 text-white shadow-lg backdrop-blur transition-colors hover:bg-black/90"
         >
-          <X className="h-3.5 w-3.5" />
-          Exit
+          <X className="h-4 w-4" />
         </button>
       ) : (
         <button
