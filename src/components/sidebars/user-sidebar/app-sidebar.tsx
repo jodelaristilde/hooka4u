@@ -1,57 +1,107 @@
-// src/middleware.ts
-import { NextRequest, NextResponse } from "next/server";
-import { getToken } from "next-auth/jwt";
+"use client"
 
-const PUBLIC_ROUTES = ["/login", "/register"];
-const RESTRICTED_FOR_USER = [
-  "/dashboard/menu",
-  "/dashboard/menu-prices",
-  "/dashboard/users-management",
-];
+import { BookA, Bot, DollarSign, Frame, GalleryVerticalEnd, ListOrdered, Menu, MenuSquare, Users } from "lucide-react"
+import { useSession } from "next-auth/react"
+import * as React from "react"
+import { NavMain } from "@/components/sidebars/user-sidebar/nav-main"
+import { HomepageQR } from "@/components/sidebars/user-sidebar/nav-projects"
+import { NavUser } from "@/components/sidebars/user-sidebar/nav-user"
+import { TeamSwitcher } from "@/components/sidebars/user-sidebar/team-switcher"
+import { MobileBottomNav } from "@/components/sidebars/user-sidebar/mobile-bottom-nav"
+import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarRail } from "@/components/ui/sidebar"
+import { useIsMobile } from "@/hooks/use-mobile"
 
-export async function middleware(req: NextRequest) {
-  const { pathname } = req.nextUrl;
-  const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
-
-  // If user is logged in
-  if (token) {
-    const role = token.role;
-
-    // Prevent logged user from going to login page again
-    if (pathname === "/login" || pathname === "/register") {
-      return NextResponse.redirect(new URL("/dashboard", req.url));
-    }
-
-    // Restrict user role from certain pages only
-if (role === "USER") {
-  if (
-    RESTRICTED_FOR_USER.some((route) =>
-      pathname === route || pathname.startsWith(route + "/")
-    )
-  ) {
-    return NextResponse.redirect(new URL("/dashboard", req.url));
-  }
-}
-
-
-    // Otherwise allow access
-    return NextResponse.next();
-  }
-
-  // If NOT logged in
-  const isPublic = PUBLIC_ROUTES.some((route) => pathname.startsWith(route));
-
-  if (!isPublic && pathname.startsWith("/dashboard")) {
-    return NextResponse.redirect(new URL("/login", req.url));
-  }
-
-  return NextResponse.next();
-}
-
-export const config = {
-  matcher: [
-    "/login",
-    "/register",
-    "/dashboard/:path*",
+// Sidebar static data
+const sidebarData = {
+  teams: {
+    name: "VIPService4U",
+    logo: GalleryVerticalEnd,
+    plan: "Enterprise",
+  },
+  navMain: [
+    {
+      title: "New Order",
+      url: "/dashboard/new-order",
+      icon: BookA,
+      isActive: true,
+    },
+    {
+      title: "All Orders",
+      url: "/dashboard/all-orders",
+      icon: ListOrdered,
+    },
+    {
+      title: "Menu Prices",
+      url: "/dashboard/menu-prices",
+      icon: DollarSign,
+      requiresAdmin: true,
+    },
+    {
+      title: "Menu",
+      url: "/dashboard/menu",
+      icon: Menu,
+      requiresAdmin: true,
+    },
+    {
+      title: "Users Management",
+      url: "/dashboard/users-management",
+      icon: Users,
+      requiresAdmin: true,
+    },
   ],
-};
+}
+
+export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+  const { data: session } = useSession()
+  const isMobile = useIsMobile()
+
+  // Map NextAuth user to NavUser props
+  const user = session?.user
+    ? {
+        name: session.user.name ?? "Guest",
+        email: session.user.username ?? "",
+        avatar: session.user.image ?? "/avatars/default.jpg",
+      }
+    : {
+        name: "Guest",
+        email: "",
+        avatar: "/avatars/default.jpg",
+      }
+
+  // Filter navigation items based on user role
+  const filteredNavMain = React.useMemo(() => {
+    const userRole = session?.user?.role
+    return sidebarData.navMain.filter((item) => {
+      if (item.requiresAdmin) {
+        return userRole === "ADMIN"
+      }
+      return true
+    })
+  }, [session?.user?.role])
+
+  if (isMobile) {
+    return (
+      <>
+        <MobileBottomNav items={filteredNavMain} />
+        {/* Add padding to main content to avoid overlap with bottom nav */}
+        <div className="pb-20" />
+      </>
+    )
+  }
+
+  return (
+    <Sidebar collapsible="icon" {...props}>
+      <SidebarHeader>
+        <TeamSwitcher team={sidebarData.teams} />
+      </SidebarHeader>
+      <SidebarContent>
+        <NavMain items={filteredNavMain} />
+        {session?.user?.role === "ADMIN" && <HomepageQR/>}
+      </SidebarContent>
+      <SidebarFooter>
+        <NavUser user={user} />
+      </SidebarFooter>
+      <SidebarRail />
+    </Sidebar>
+  )
+}
