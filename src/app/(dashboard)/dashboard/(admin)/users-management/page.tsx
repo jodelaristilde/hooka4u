@@ -77,9 +77,9 @@ export default function UserManagement() {
   const [isWashupRunning, setIsWashupRunning] = useState(false)
   const [washupProgress, setWashupProgress] = useState(0)
   const [washupSteps, setWashupSteps] = useState<WashupStep[]>([
-    { id: "menu-prices", description: "Setting all menu item prices to 0", status: "pending" },
-    { id: "menu-availability", description: "Setting all menu items to unavailable", status: "pending" },
     { id: "order-items", description: "Deleting all order items", status: "pending" },
+    { id: "menu-items", description: "Deleting all menu items", status: "pending" },
+    { id: "menu-categories", description: "Deleting all menu categories", status: "pending" },
     { id: "orders", description: "Deleting all orders", status: "pending" },
     { id: "users", description: "Deleting all users", status: "pending" },
   ])
@@ -223,9 +223,9 @@ export default function UserManagement() {
     setIsWashupRunning(false)
     setWashupProgress(0)
     setWashupSteps([
-      { id: "menu-prices", description: "Setting all menu item prices to 0", status: "pending" },
-      { id: "menu-availability", description: "Setting all menu items to unavailable", status: "pending" },
       { id: "order-items", description: "Deleting all order items", status: "pending" },
+      { id: "menu-items", description: "Deleting all menu items", status: "pending" },
+      { id: "menu-categories", description: "Deleting all menu categories", status: "pending" },
       { id: "orders", description: "Deleting all orders", status: "pending" },
       { id: "users", description: "Deleting all users", status: "pending" },
     ])
@@ -266,33 +266,10 @@ export default function UserManagement() {
         throw new Error(error.message || "Invalid password")
       }
 
-      // Step 1: Set all menu item prices to 0
-      updateStepStatus("menu-prices", "in-progress")
-      setWashupProgress(10)
-      const priceResponse = await fetch("/api/washup", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ step: "menu-prices" }),
-      })
-      if (!priceResponse.ok) throw new Error("Failed to reset menu prices")
-      updateStepStatus("menu-prices", "completed")
-      setWashupProgress(25)
-
-      // Step 2: Set all menu items to unavailable
-      updateStepStatus("menu-availability", "in-progress")
-      setWashupProgress(35)
-      const availabilityResponse = await fetch("/api/washup", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ step: "menu-availability" }),
-      })
-      if (!availabilityResponse.ok) throw new Error("Failed to update menu availability")
-      updateStepStatus("menu-availability", "completed")
-      setWashupProgress(50)
-
-      // Step 3: Delete all order items
+      // Step 1: Delete all order items (has to happen before menu items or
+      // orders can be deleted, since both are required relations of it)
       updateStepStatus("order-items", "in-progress")
-      setWashupProgress(60)
+      setWashupProgress(15)
       const orderItemsResponse = await fetch("/api/washup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -300,6 +277,30 @@ export default function UserManagement() {
       })
       if (!orderItemsResponse.ok) throw new Error("Failed to delete order items")
       updateStepStatus("order-items", "completed")
+      setWashupProgress(30)
+
+      // Step 2: Delete all menu items
+      updateStepStatus("menu-items", "in-progress")
+      setWashupProgress(40)
+      const menuItemsResponse = await fetch("/api/washup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ step: "menu-items" }),
+      })
+      if (!menuItemsResponse.ok) throw new Error("Failed to delete menu items")
+      updateStepStatus("menu-items", "completed")
+      setWashupProgress(55)
+
+      // Step 3: Delete all menu categories
+      updateStepStatus("menu-categories", "in-progress")
+      setWashupProgress(65)
+      const menuCategoriesResponse = await fetch("/api/washup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ step: "menu-categories" }),
+      })
+      if (!menuCategoriesResponse.ok) throw new Error("Failed to delete menu categories")
+      updateStepStatus("menu-categories", "completed")
       setWashupProgress(75)
 
       // Step 4: Delete all orders
@@ -713,8 +714,8 @@ export default function UserManagement() {
               Confirm Washup
             </DialogTitle>
             <DialogDescription>
-              This will reset all menu prices to 0, set all items to unavailable, and delete all orders. This action
-              cannot be undone.
+              This will permanently delete all menu items and categories, all orders and order items, and all
+              non-admin user accounts. This action cannot be undone.
             </DialogDescription>
           </DialogHeader>
 
