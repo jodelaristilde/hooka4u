@@ -16,7 +16,6 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import {
   Select,
@@ -216,6 +215,23 @@ interface DbCategory {
   order: number;
 }
 
+// One selected-but-not-yet-saved photo in the "Save New Item(s)" dialog.
+interface BatchItem {
+  localId: string;
+  file: File;
+  preview: string | null;
+  name: string;
+  processing: boolean;
+}
+
+// Turns a filename like "blue-hawaiian_hookah.jpg" into a starting guess at
+// a name ("Blue hawaiian hookah") — saves typing, and it's fully editable.
+const deriveNameFromFilename = (filename: string) => {
+  const base = filename.replace(/\.[^/.]+$/, "");
+  const spaced = base.replace(/[-_]+/g, " ").replace(/\s+/g, " ").trim();
+  return spaced.length === 0 ? "" : spaced.charAt(0).toUpperCase() + spaced.slice(1);
+};
+
 export default function ItemLibraryPage() {
   const [templates, setTemplates] = useState<MenuItemTemplate[]>([]);
   const [dbCategories, setDbCategories] = useState<DbCategory[]>([]);
@@ -223,11 +239,9 @@ export default function ItemLibraryPage() {
   const [submitting, setSubmitting] = useState(false);
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const [imageFile, setImageFile] = useState<File | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const [formData, setFormData] = useState({ name: "", description: "", category: "" });
+  const [batchItems, setBatchItems] = useState<BatchItem[]>([]);
+  const [batchCategory, setBatchCategory] = useState("");
+  const filesInputRef = useRef<HTMLInputElement>(null);
 
   const [templateToDelete, setTemplateToDelete] = useState<MenuItemTemplate | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -268,89 +282,127 @@ export default function ItemLibraryPage() {
     }
   };
 
-  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  // Handles picking several photos at once. Each one gets processed
+  // (cropped/enhanced/sharpened) independently and its thumbnail fills in
+  // as soon as it's ready, so a big batch doesn't feel like it's frozen.
+  const handleFilesSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
 
-    if (!file.type.startsWith("image/")) {
-      toast.error("Invalid file type", { description: "Please select an image file." });
-      return;
-    }
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error("File too large", { description: "Please select an image smaller than 5MB." });
-      return;
-    }
-
-    setImageFile(file);
-
-    try {
-      const { dataUrl, width, height } = await processImageFile(file);
-      setImagePreview(dataUrl);
-
-      if (Math.min(width, height) < MIN_DIMENSION) {
-        toast.warning("Low-resolution image", {
-          description:
-            "This photo is a bit small and may look soft on the kiosk. We've enhanced and sharpened it automatically, but a higher-resolution photo will look best.",
-        });
+    const validFiles = files.filter((file) => {
+      if (!file.type.startsWith("image/")) {
+        toast.error(`Skipped "${file.name}"`, { description: "Not an image file." });
+        return false;
       }
-    } catch (err) {
-      console.error("Error processing image:", err);
-      const reader = new FileReader();
-      reader.onloadend = () => setImagePreview(reader.result as string);
-      reader.readAsDataURL(file);
-    }
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error(`Skipped "${file.name}"`, { description: "Larger than 5MB." });
+        return false;
+      }
+      return true;
+    });
+
+    const newItems: BatchItem[] = validFiles.map((file) => ({
+      localId: `${file.name}-${file.lastModified}-${Math.random().toString(36).slice(2)}`,
+      file,
+      preview: null,
+      name: deriveNameFromFilename(file.name),
+      processing: true,
+    }));
+
+    setBatchItems((prev) => [...prev, ...newItems]);
+
+    newItems.forEach(async (item) => {
+      try {
+        const { dataUrl, width, height } = await processImageFile(item.file);
+        setBatchItems((prev) =>
+          prev.map((it) => (it.localId === item.localId ? { ...it, preview: dataUrl, processing: false } : it))
+        );
+        if (Math.min(width, height) < MIN_DIMENSION) {
+          toast.warning(`"${item.name || item.file.name}" is low-resolution`, {
+            description: "Enhanced and sharpened automatically, but a higher-res photo will look best.",
+          });
+        }
+      } catch (err) {
+        console.error("Error processing image:", err);
+        setBatchItems((prev) => prev.map((it) => (it.localId === item.localId ? { ...it, processing: false } : it)));
+        toast.error(`Failed to process "${item.file.name}"`);
+      }
+    });
+
+    if (filesInputRef.current) filesInputRef.current.value = "";
   };
 
-  const handleRemoveImage = () => {
-    setImageFile(null);
-    setImagePreview(null);
-    if (fileInputRef.current) fileInputRef.current.value = "";
+  const handleRemoveBatchItem = (localId: string) => {
+    setBatchItems((prev) => prev.filter((it) => it.localId !== localId));
+  };
+
+  const handleBatchNameChange = (localId: string, name: string) => {
+    setBatchItems((prev) => prev.map((it) => (it.localId === localId ? { ...it, name } : it)));
   };
 
   const openAddDialog = () => {
-    setFormData({ name: "", description: "", category: dbCategories[0]?.name || "" });
-    setImagePreview(null);
-    setImageFile(null);
+    setBatchItems([]);
+    setBatchCategory(dbCategories[0]?.name || "");
     setIsDialogOpen(true);
   };
 
   const closeAddDialog = () => {
     setIsDialogOpen(false);
-    setFormData({ name: "", description: "", category: "" });
-    setImagePreview(null);
-    setImageFile(null);
-    if (fileInputRef.current) fileInputRef.current.value = "";
+    setBatchItems([]);
+    setBatchCategory("");
+    if (filesInputRef.current) filesInputRef.current.value = "";
   };
 
-  const handleSaveTemplate = async () => {
-    if (!formData.name.trim()) {
-      toast.error("Name is required", { description: "Please enter a name for the item." });
+  const handleSaveBatch = async () => {
+    if (batchItems.length === 0) {
+      toast.error("Add at least one photo first");
+      return;
+    }
+    if (batchItems.some((it) => it.processing)) {
+      toast.error("Still processing photos", { description: "Give it a second and try again." });
+      return;
+    }
+    if (batchItems.some((it) => !it.name.trim())) {
+      toast.error("Every item needs a name");
+      return;
+    }
+    if (!batchCategory) {
+      toast.error("Category is required", { description: "Choose which category these items belong to." });
       return;
     }
 
     try {
       setSubmitting(true);
-      const response = await fetch("/api/menu-templates", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: formData.name.trim(),
-          description: formData.description.trim(),
-          image: imagePreview,
-          category: formData.category || null,
-        }),
-      });
-
-      if (!response.ok) throw new Error("Failed to save item");
+      let successCount = 0;
+      for (const item of batchItems) {
+        const response = await fetch("/api/menu-templates", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: item.name.trim(),
+            description: "",
+            image: item.preview,
+            category: batchCategory,
+          }),
+        });
+        if (response.ok) successCount++;
+      }
 
       await fetchTemplates();
       closeAddDialog();
-      toast.success("Saved to library", {
-        description: `${formData.name} is ready to add to the menu anytime.`,
-      });
+
+      if (successCount === batchItems.length) {
+        toast.success(`Saved ${successCount} item${successCount === 1 ? "" : "s"} to library`, {
+          description: `Filed under ${batchCategory}.`,
+        });
+      } else {
+        toast.warning(`Saved ${successCount} of ${batchItems.length} items`, {
+          description: "Some items failed to save — try adding the rest again.",
+        });
+      }
     } catch (error) {
-      console.error("Error saving template:", error);
-      toast.error("Failed to save item", { description: "Please try again." });
+      console.error("Error saving batch:", error);
+      toast.error("Failed to save items", { description: "Please try again." });
     } finally {
       setSubmitting(false);
     }
@@ -535,75 +587,21 @@ export default function ItemLibraryPage() {
         </div>
       </div>
 
-      {/* Save New Item Dialog */}
+      {/* Save New Item(s) Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={(open) => (open ? setIsDialogOpen(true) : closeAddDialog())}>
-        <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-[640px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Save Item to Library</DialogTitle>
+            <DialogTitle>Save Items to Library</DialogTitle>
             <DialogDescription>
-              This saves a photo and description you can reuse to quickly add the item back to the live menu later.
+              Pick as many photos as you want at once, choose the category they all belong to, then adjust each
+              name. Nothing here touches the live menu until you use "Add to Menu" later.
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4 py-2">
             <div className="space-y-2">
-              <Label>Image</Label>
-              {imagePreview ? (
-                <div className="relative w-32 h-32">
-                  <img src={imagePreview} alt="Preview" className="w-32 h-32 object-cover rounded-lg border" />
-                  <button
-                    onClick={handleRemoveImage}
-                    className="absolute -top-2 -right-2 flex h-6 w-6 items-center justify-center rounded-full bg-red-600 text-white"
-                  >
-                    <X className="h-3.5 w-3.5" />
-                  </button>
-                </div>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="flex flex-col items-center justify-center w-32 h-32 rounded-lg border-2 border-dashed border-border text-muted-foreground hover:border-lime-400 hover:text-lime-600 transition-colors"
-                >
-                  <Upload className="h-5 w-5 mb-1" />
-                  <span className="text-xs">Upload</span>
-                </button>
-              )}
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                onChange={handleImageChange}
-                className="hidden"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="template-name">Name</Label>
-              <Input
-                id="template-name"
-                value={formData.name}
-                onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))}
-                placeholder="e.g. Blue Hawaiian Hookah"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="template-description">Description</Label>
-              <Textarea
-                id="template-description"
-                value={formData.description}
-                onChange={(e) => setFormData((prev) => ({ ...prev, description: e.target.value }))}
-                placeholder="Short description shown to customers"
-                rows={3}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label>Category</Label>
-              <Select
-                value={formData.category}
-                onValueChange={(value) => setFormData((prev) => ({ ...prev, category: value }))}
-              >
+              <Label>Category <span className="text-red-500">*</span></Label>
+              <Select value={batchCategory} onValueChange={setBatchCategory}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select a category" />
                 </SelectTrigger>
@@ -615,16 +613,68 @@ export default function ItemLibraryPage() {
                   ))}
                 </SelectContent>
               </Select>
+              <p className="text-xs text-muted-foreground">Applies to every photo you add below.</p>
             </div>
+
+            <div className="space-y-2">
+              <Label>Photos</Label>
+              <button
+                type="button"
+                onClick={() => filesInputRef.current?.click()}
+                className="flex items-center justify-center gap-2 w-full h-20 rounded-lg border-2 border-dashed border-border text-muted-foreground hover:border-lime-400 hover:text-lime-600 transition-colors"
+              >
+                <Upload className="h-5 w-5" />
+                <span className="text-sm">Select one or more photos</span>
+              </button>
+              <input
+                ref={filesInputRef}
+                type="file"
+                accept="image/*"
+                multiple
+                onChange={handleFilesSelected}
+                className="hidden"
+              />
+            </div>
+
+            {batchItems.length > 0 && (
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                {batchItems.map((item) => (
+                  <div key={item.localId} className="relative border rounded-lg p-2 space-y-2">
+                    <button
+                      onClick={() => handleRemoveBatchItem(item.localId)}
+                      title="Remove"
+                      className="absolute -top-2 -right-2 flex h-6 w-6 items-center justify-center rounded-full bg-red-600 text-white z-10"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                    <div className="aspect-square rounded-md bg-muted overflow-hidden flex items-center justify-center">
+                      {item.processing ? (
+                        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                      ) : item.preview ? (
+                        <img src={item.preview} alt={item.name} className="w-full h-full object-cover" />
+                      ) : (
+                        <ImageIcon className="h-6 w-6 text-muted-foreground/40" />
+                      )}
+                    </div>
+                    <Input
+                      value={item.name}
+                      onChange={(e) => handleBatchNameChange(item.localId, e.target.value)}
+                      placeholder="Item name"
+                      className="h-8 text-xs"
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           <DialogFooter>
             <Button variant="outline" onClick={closeAddDialog}>
               Cancel
             </Button>
-            <Button onClick={handleSaveTemplate} disabled={submitting} className="bg-lime-500 hover:bg-lime-400 text-zinc-950">
+            <Button onClick={handleSaveBatch} disabled={submitting} className="bg-lime-500 hover:bg-lime-400 text-zinc-950">
               {submitting ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
-              Save to Library
+              Save {batchItems.length > 0 ? `${batchItems.length} Item${batchItems.length === 1 ? "" : "s"}` : "Items"} to Library
             </Button>
           </DialogFooter>
         </DialogContent>
