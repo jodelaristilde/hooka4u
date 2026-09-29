@@ -1,5 +1,6 @@
 import prisma from "@/lib/prisma";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import { getSiteFromRequest, siteWhere } from "@/lib/site";
 
 // The dashboard polls this every 5 seconds expecting fresh data every
 // time (to catch brand-new orders and trigger the alert sound). Force
@@ -8,9 +9,11 @@ import { NextResponse } from "next/server";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    // Fetch recent orders from database.
+    const site = getSiteFromRequest(request);
+
+    // Fetch recent orders from database, scoped to the current site.
     // - `select` on product intentionally leaves out `image`: product
     //   images are large base64 strings, and the same handful of product
     //   images would otherwise be re-sent once per item on every order,
@@ -21,6 +24,7 @@ export async function GET() {
     //   fast as order history grows, instead of re-downloading the entire
     //   order history every 5 seconds.
     const orders = await prisma.order.findMany({
+      where: siteWhere(site),
       include: {
         items: {
           include: {
