@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
+import { getSiteFromRequest, siteWhere } from "@/lib/site";
 
 const prisma = new PrismaClient();
 
 export async function POST(request: NextRequest) {
   try {
+    const site = getSiteFromRequest(request);
     const body = (await request.json()) as {
       customerName?: string;
       paymentType?: "CASH" | "CARD";
@@ -12,7 +14,7 @@ export async function POST(request: NextRequest) {
       items?: { productId: string; quantity: number }[];
       subtotal?: number;
     };
-    
+
     // Handle both 'Seating' and 'seating' for flexibility
     const { customerName, paymentType, items, subtotal } = body;
     const Seating = body.Seating || body.Seating;
@@ -34,8 +36,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Default to CASH if paymentType is not provided
-    const finalPaymentType = paymentType && ["CASH", "CARD"].includes(paymentType) 
-      ? paymentType 
+    const finalPaymentType = paymentType && ["CASH", "CARD"].includes(paymentType)
+      ? paymentType
       : "CASH";
 
     if (!items || !Array.isArray(items) || items.length === 0) {
@@ -52,9 +54,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Generate a short, human-friendly order number (starts at 100, always increasing)
+    // Generate a short, human-friendly order number (starts at 100, always
+    // increasing) — scoped to the current site, so each site's order
+    // numbers count up independently starting from 100.
     const lastOrder = await prisma.order.findFirst({
-      where: { orderNumber: { not: null } },
+      where: { orderNumber: { not: null }, ...siteWhere(site) },
       orderBy: { orderNumber: "desc" },
       select: { orderNumber: true },
     });
@@ -69,6 +73,7 @@ export async function POST(request: NextRequest) {
         Seating: Seating.trim(),
         subtotal,
         status: "PENDING", // Default status for new orders
+        site,
         items: {
           create: items.map((item: { productId: string; quantity: number }) => ({
             productId: item.productId,
