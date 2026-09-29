@@ -31,13 +31,29 @@ model VerificationToken {
   @@unique([identifier, token])
 }
 
+// NOTE on `site`: this app serves two domains (vipservice4u.us and
+// jaeky.us) from one shared database, partitioned by this field. Because
+// this is MongoDB via Prisma, `@default("vipservice4u")` only applies to
+// NEW documents written through Prisma — it does NOT backfill the field
+// onto documents that already existed before this field was added.
+// Application code must treat a MISSING/null `site` on an old document as
+// belonging to "vipservice4u" (see src/lib/site.ts for the shared helper
+// that applies this null-fallback consistently).
 model MenuCategory {
   id        String   @id @default(uuid()) @map("_id")
-  name      String   @unique
+  name      String
+  site      String   @default("vipservice4u")
   hidden    Boolean  @default(false)
   order     Int      @default(0)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  // Was a plain `name @unique`. Changed to compound so both sites can each
+  // have their own "DRINKS" category, etc., without colliding. Legacy
+  // category documents have no `site` field yet, so read/lookup code still
+  // needs the null-fallback treatment described above when matching
+  // vipservice4u's categories.
+  @@unique([name, site])
 }
 
 model MenuItems {
@@ -48,6 +64,7 @@ model MenuItems {
   price       Float
   category    String?     // Free-text category name, e.g. "FOOD", "DRINKS", or any custom category
   available   Boolean     @default(false)
+  site        String      @default("vipservice4u")
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
   OrderItem   OrderItem[]
@@ -64,6 +81,7 @@ model MenuItemTemplate {
   description String?
   image       String?
   category    String?
+  site        String   @default("vipservice4u")
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }
@@ -76,6 +94,7 @@ model Order {
   Seating      String
   subtotal     Float
   status       String      @default("PENDING")
+  site         String      @default("vipservice4u")
   createdAt    DateTime    @default(now())
   updatedAt    DateTime    @updatedAt
   items        OrderItem[]
