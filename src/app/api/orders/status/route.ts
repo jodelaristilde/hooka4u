@@ -1,11 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
+import { getSiteFromRequest, siteWhere } from "@/lib/site";
 
 const prisma = new PrismaClient();
 
-// Public endpoint: guests look up their order status by the short order number.
+// Public endpoint: guests look up their order status by the short order
+// number. Order numbers now count up independently per site, so the
+// lookup is scoped to whichever site the guest is browsing (via Host).
 export async function GET(request: NextRequest) {
   try {
+    const site = getSiteFromRequest(request);
     const { searchParams } = new URL(request.url);
     const orderNumberParam = searchParams.get("orderNumber");
 
@@ -25,7 +29,7 @@ export async function GET(request: NextRequest) {
     }
 
     const order = await prisma.order.findFirst({
-      where: { orderNumber },
+      where: { orderNumber, ...siteWhere(site) },
       orderBy: { createdAt: "desc" },
       select: {
         orderNumber: true,
