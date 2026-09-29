@@ -6,17 +6,23 @@
 // an admin can save a photo + name + description + category once, then
 // reuse it to quickly rebuild the live menu for a new event without
 // re-uploading and re-editing the same image every time.
+//
+// Templates are partitioned per site (vipservice4u vs jaeky), same as
+// live menu items — see src/lib/site.ts.
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { getSiteFromRequest, siteWhere } from "@/lib/site";
 
 // Always fetch fresh — same reasoning as the menu-prices route fix: a GET
 // handler with no request-specific data gets statically cached by Next.js
 // otherwise, and would keep showing stale templates after edits/deletes.
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    const site = getSiteFromRequest(request);
     const templates = await prisma.menuItemTemplate.findMany({
+      where: siteWhere(site),
       orderBy: { name: "asc" },
     });
     return NextResponse.json(templates);
@@ -31,6 +37,7 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
+    const site = getSiteFromRequest(request);
     const body = await request.json();
     const { name, description, image, category } = body;
 
@@ -47,6 +54,7 @@ export async function POST(request: Request) {
         description: description || null,
         image: image || null,
         category: category || null,
+        site,
       },
     });
 
