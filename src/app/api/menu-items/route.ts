@@ -1,13 +1,16 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { getSiteFromRequest, siteWhere } from "@/lib/site";
 
 export async function GET(request: Request) {
   try {
+    const site = getSiteFromRequest(request);
     const { searchParams } = new URL(request.url);
     const category = searchParams.get("category");
     const admin = searchParams.get("admin");
 
     const allItems = await prisma.menuItems.findMany({
+      where: siteWhere(site),
       orderBy: { createdAt: 'desc' }
     });
 
@@ -33,6 +36,7 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    const site = getSiteFromRequest(request);
     const body = await request.json();
     const { name, description, price, image, category, available } = body;
 
@@ -44,6 +48,7 @@ export async function POST(request: Request) {
         price: price ?? 0,
         category: category || null,
         available: available ?? false,
+        site,
       },
     });
 
