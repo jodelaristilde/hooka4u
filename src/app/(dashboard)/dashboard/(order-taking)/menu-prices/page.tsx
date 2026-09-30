@@ -25,7 +25,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { useBrand } from "@/lib/brand";
+import { useBrand } from "@/lib/use-brand";
 
 interface MenuItem {
   id: string;
