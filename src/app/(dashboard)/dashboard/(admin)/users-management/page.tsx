@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/dialog"
 import { toast } from "sonner"
 import { useSession } from "next-auth/react"
+import { useBrand } from "@/lib/brand"
 
 interface User {
   id: string
@@ -55,6 +56,7 @@ interface WashupStep {
 
 export default function UserManagement() {
   const { data: session } = useSession()
+  const brand = useBrand()
   const [users, setUsers] = useState<User[]>([])
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
@@ -589,7 +591,7 @@ export default function UserManagement() {
               {/* Sheet Header */}
               <div className="flex items-center justify-between p-4 border-b border-zinc-800 bg-zinc-900">
                 <h2 className="text-lg font-semibold flex items-center gap-2">
-                  <UserPlus className="w-5 h-5 text-lime-500" />
+                  <UserPlus className={`w-5 h-5 ${brand.accentText}`} />
                   Add New User
                 </h2>
                 <Button
@@ -685,7 +687,11 @@ export default function UserManagement() {
                 <Button
                   onClick={handleAddUser}
                   disabled={submitting}
-                  className="w-full bg-lime-500 hover:bg-lime-600 text-black h-12"
+                  className={
+                    brand.site === "jaeky"
+                      ? "w-full bg-purple-500 hover:bg-purple-600 text-white h-12"
+                      : "w-full bg-lime-500 hover:bg-lime-600 text-black h-12"
+                  }
                 >
                   {submitting ? (
                     <>
