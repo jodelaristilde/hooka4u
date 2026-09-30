@@ -136,7 +136,7 @@ export default function OrderLanding({
             />
             {subLine && (
               <p
-                className={`-mt-2 sm:-mt-4 uppercase tracking-[0.2em] sm:tracking-[0.3em] text-3xl sm:text-5xl md:text-6xl font-black bg-gradient-to-r ${c.subLine} text-transparent bg-clip-text`}
+                className={`-mt-2 sm:-mt-4 uppercase tracking-[0.2em] sm:tracking-[0.3em] text-4xl sm:text-6xl md:text-7xl font-black bg-gradient-to-r ${c.subLine} text-transparent bg-clip-text`}
                 style={{ fontFamily: LOGO_FONT_STACK }}
               >
                 {subLine}
@@ -147,7 +147,7 @@ export default function OrderLanding({
               <img
                 src={taglineSrc}
                 alt=""
-                className="mx-auto mt-4 sm:mt-6 w-full max-w-[220px] sm:max-w-xs md:max-w-sm h-auto"
+                className="mx-auto mt-4 sm:mt-6 w-full max-w-[260px] sm:max-w-sm md:max-w-md h-auto"
               />
             ) : (
               slogan && (
