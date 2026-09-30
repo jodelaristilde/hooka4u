@@ -28,6 +28,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { useBrand } from "@/lib/brand";
 interface Product {
   id: string;
   name: string;
@@ -52,6 +53,8 @@ interface CartState {
 
 export default function NewOrder() {
   const router = useRouter();
+  const brand = useBrand();
+  const isJaeky = brand.site === "jaeky";
   const [activeCategoryTab, setActiveCategoryTab] = useState<CategoryTab>("ALL");
   const [customerName, setCustomerName] = useState("");
   const [paymentType, setPaymentType] = useState<"CASH" | "CARD" | "">("");
@@ -418,7 +421,9 @@ return (
                     key={product.id}
                     className={`cursor-pointer transition-all border overflow-hidden ${
                       isSelected
-                        ? "bg-lime-100 dark:bg-lime-950 shadow-md border-lime-300 dark:border-lime-800"
+                        ? isJaeky
+                          ? "bg-purple-100 dark:bg-purple-950 shadow-md border-purple-300 dark:border-purple-800"
+                          : "bg-lime-100 dark:bg-lime-950 shadow-md border-lime-300 dark:border-lime-800"
                         : "border-border/10 bg-card hover:border-primary/50 hover:shadow-sm"
                     }`}
                     onClick={() => handleProductClick(product)}
@@ -513,7 +518,7 @@ return (
                 <ArrowLeft className="w-4 h-4" />
               </Button>
             )}
-            <ShoppingCart className="w-5 h-5 text-lime-500" />
+            <ShoppingCart className={isJaeky ? "w-5 h-5 text-purple-500" : "w-5 h-5 text-lime-500"} />
             {mobileSheetView === "cart" ? "Current Order" : "Order Details"}
           </h2>
           <Button
@@ -586,7 +591,7 @@ return (
                             <Plus className="w-3 h-3" />
                           </Button>
                         </div>
-                        <span className="font-semibold text-sm text-lime-500">
+                        <span className={isJaeky ? "font-semibold text-sm text-purple-500" : "font-semibold text-sm text-lime-500"}>
                           ${(item.price * item.quantity).toFixed(2)}
                         </span>
                       </div>
@@ -600,12 +605,12 @@ return (
             <div className="border-t border-zinc-800 dark:border-zinc-800 bg-zinc-900 dark:bg-zinc-900 p-4 space-y-4">
               <div className="flex justify-between items-center">
                 <span className="text-sm font-semibold text-white">Total</span>
-                <span className="text-xl font-bold text-lime-500">
+                <span className={isJaeky ? "text-xl font-bold text-purple-500" : "text-xl font-bold text-lime-500"}>
                   ${subtotal.toFixed(2)}
                 </span>
               </div>
               <Button
-                className="w-full bg-lime-600 hover:bg-lime-700 text-white h-10 text-sm font-medium transition-colors"
+                className={isJaeky ? "w-full bg-purple-600 hover:bg-purple-700 text-white h-10 text-sm font-medium transition-colors" : "w-full bg-lime-600 hover:bg-lime-700 text-white h-10 text-sm font-medium transition-colors"}
                 disabled={cartItems.length === 0}
                 onClick={handleMobileSheetPlaceOrder}
               >
@@ -644,7 +649,7 @@ return (
                         : "bg-red-500/20 border-red-500/50"
                     }`}
                   >
-                    <RadioGroupItem value="CASH" id="cash" className="border-zinc-600 text-lime-500" />
+                    <RadioGroupItem value="CASH" id="cash" className={isJaeky ? "border-zinc-600 text-purple-500" : "border-zinc-600 text-lime-500"} />
                     <Label htmlFor="cash" className="text-sm font-normal cursor-pointer text-white">
                       Cash
                     </Label>
@@ -656,7 +661,7 @@ return (
                         : "bg-red-500/20 border-red-500/50"
                     }`}
                   >
-                    <RadioGroupItem value="CARD" id="card" className="border-zinc-600 text-lime-500" />
+                    <RadioGroupItem value="CARD" id="card" className={isJaeky ? "border-zinc-600 text-purple-500" : "border-zinc-600 text-lime-500"} />
                     <Label htmlFor="card" className="text-sm font-normal cursor-pointer text-white">
                       Credit Card
                     </Label>
@@ -690,7 +695,7 @@ return (
                       <span className="text-zinc-400 dark:text-zinc-400">
                         {item.quantity}x {item.name}
                       </span>
-                      <span className="font-medium text-lime-500">
+                      <span className={isJaeky ? "font-medium text-purple-500" : "font-medium text-lime-500"}>
                         ${(item.price * item.quantity).toFixed(2)}
                       </span>
                     </div>
@@ -703,12 +708,12 @@ return (
             <div className="border-t border-zinc-800 dark:border-zinc-800 bg-zinc-900 dark:bg-zinc-900 p-4 space-y-4">
               <div className="flex justify-between items-center">
                 <span className="text-sm font-semibold text-white">Total</span>
-                <span className="text-xl font-bold text-lime-500">
+                <span className={isJaeky ? "text-xl font-bold text-purple-500" : "text-xl font-bold text-lime-500"}>
                   ${subtotal.toFixed(2)}
                 </span>
               </div>
               <Button
-                className="w-full bg-lime-600 hover:bg-lime-700 text-white h-10 text-sm font-medium transition-colors disabled:opacity-50"
+                className={isJaeky ? "w-full bg-purple-600 hover:bg-purple-700 text-white h-10 text-sm font-medium transition-colors disabled:opacity-50" : "w-full bg-lime-600 hover:bg-lime-700 text-white h-10 text-sm font-medium transition-colors disabled:opacity-50"}
                 disabled={submitting}
                 onClick={handleConfirmOrder}
               >
@@ -967,7 +972,7 @@ return (
         className="sm:max-w-md bg-zinc-900 text-white border-zinc-800"
       >
         <DialogHeader>
-          <DialogTitle className="text-lime-500 text-xl">Order Placed Successfully!</DialogTitle>
+          <DialogTitle className={isJaeky ? "text-purple-500 text-xl" : "text-lime-500 text-xl"}>Order Placed Successfully!</DialogTitle>
           <DialogDescription className="text-zinc-400">
             Your order has been placed and is being prepared.
           </DialogDescription>
@@ -975,8 +980,8 @@ return (
         <div className="flex flex-col gap-6 py-4">
           <div className="flex flex-col items-center gap-2">
             <p className="text-sm uppercase tracking-widest text-zinc-400">Order Number</p>
-            <div className="flex items-center justify-center w-full rounded-2xl border-4 border-lime-500 bg-zinc-950 py-6">
-              <p className="text-7xl sm:text-8xl font-black text-lime-500 tabular-nums tracking-wider">
+            <div className={isJaeky ? "flex items-center justify-center w-full rounded-2xl border-4 border-purple-500 bg-zinc-950 py-6" : "flex items-center justify-center w-full rounded-2xl border-4 border-lime-500 bg-zinc-950 py-6"}>
+              <p className={isJaeky ? "text-7xl sm:text-8xl font-black text-purple-500 tabular-nums tracking-wider" : "text-7xl sm:text-8xl font-black text-lime-500 tabular-nums tracking-wider"}>
                 {lastOrderId}
               </p>
             </div>
@@ -986,7 +991,7 @@ return (
               setShowSuccessDialog(false);
               router.push("/place-new-order");
             }}
-            className="w-full bg-lime-600 hover:bg-lime-700 text-white"
+            className={isJaeky ? "w-full bg-purple-600 hover:bg-purple-700 text-white" : "w-full bg-lime-600 hover:bg-lime-700 text-white"}
           >
             Close
           </Button>
