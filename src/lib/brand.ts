@@ -1,5 +1,4 @@
 // src/lib/brand.ts
-"use client";
 
 import { useEffect, useState } from "react";
 
