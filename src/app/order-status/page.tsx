@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react"
 import { Loader2, Search, CheckCircle2, Clock, AlertCircle } from "lucide-react"
-import { useBrand } from "@/lib/brand"
+import { useBrand } from "@/lib/use-brand"
 
 interface OrderStatusResult {
   orderNumber: number
