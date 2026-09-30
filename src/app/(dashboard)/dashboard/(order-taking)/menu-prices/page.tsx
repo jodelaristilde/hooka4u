@@ -25,6 +25,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
+import { useBrand } from "@/lib/brand";
 
 interface MenuItem {
   id: string;
@@ -41,6 +42,8 @@ interface MenuItem {
 type SortField = "description" | "category";
 
 export default function MenuPrices() {
+  const brand = useBrand();
+  const isJaeky = brand.site === "jaeky";
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -177,7 +180,7 @@ export default function MenuPrices() {
           {/* MENU TABLE */}
           {loading ? (
             <div className="flex flex-col items-center py-12">
-              <Loader2 className="w-12 h-12 animate-spin text-lime-500" />
+              <Loader2 className={`w-12 h-12 animate-spin ${brand.accentText}`} />
               <p className="text-sm mt-4">Loading...</p>
             </div>
           ) : menuItems.length === 0 ? (
@@ -269,7 +272,13 @@ export default function MenuPrices() {
                           {/* CATEGORY */}
                           <td className="px-4 py-3">
                             {item.category ? (
-                              <span className="inline-flex items-center rounded-full bg-lime-50 px-2 py-0.5 text-xs font-medium text-lime-700 ring-1 ring-lime-200">
+                              <span
+                                className={
+                                  isJaeky
+                                    ? "inline-flex items-center rounded-full bg-purple-50 px-2 py-0.5 text-xs font-medium text-purple-700 ring-1 ring-purple-200"
+                                    : "inline-flex items-center rounded-full bg-lime-50 px-2 py-0.5 text-xs font-medium text-lime-700 ring-1 ring-lime-200"
+                                }
+                              >
                                 {item.category}
                               </span>
                             ) : (
@@ -288,7 +297,7 @@ export default function MenuPrices() {
                           </td>
 
                           {/* PRICE */}
-                          <td className="px-4 py-3 text-right font-semibold text-lime-600">
+                          <td className={`px-4 py-3 text-right font-semibold ${brand.accentText}`}>
                             ${item.price.toFixed(2)}
                           </td>
 
