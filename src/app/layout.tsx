@@ -4,6 +4,8 @@ import "./globals.css";
 // import "./homepagecss.css";
 import { Toaster } from "@/components/ui/sonner";
 import AuthProvider from "@/components/auth-provider";
+import { headers } from "next/headers";
+import { getBrandFromHost } from "@/lib/brand";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -15,16 +17,23 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-export const metadata: Metadata = {
-  title: "VIP Service 4U - Your Hookah, Your Way",
-  description: "Your Hookah, Your Way",
-  manifest: "/manifest.json",
-  appleWebApp: {
-    capable: true,
-    statusBarStyle: "black-translucent",
-    title: "VIP Service 4U",
-  },
-};
+// Dynamic (per-request) so the browser tab title/description switch to
+// Jaeky's branding on jaeky.us. Nested layouts (e.g. the dashboard's) can
+// still override this for their own section.
+export async function generateMetadata(): Promise<Metadata> {
+  const headersList = await headers();
+  const brand = getBrandFromHost(headersList.get("host"));
+  return {
+    title: `${brand.name} - Your Hookah, Your Way`,
+    description: "Your Hookah, Your Way",
+    manifest: "/manifest.json",
+    appleWebApp: {
+      capable: true,
+      statusBarStyle: "black-translucent",
+      title: brand.name,
+    },
+  };
+}
 
 export const viewport: Viewport = {
   width: "device-width",
