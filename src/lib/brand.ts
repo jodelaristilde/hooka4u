@@ -1,6 +1,13 @@
 // src/lib/brand.ts
-
-import { useEffect, useState } from "react";
+//
+// Server-safe brand data — plain types/constants/functions only, NO React
+// hooks and NO "use client" directive, so it can be imported from Server
+// Components (the root layout, the dashboard layout, the dashboard home
+// page) as well as from client code. The client-only useBrand() hook lives
+// in a separate file, src/lib/use-brand.ts, specifically so this file can
+// stay server-safe — mixing a hook export into a file that Server
+// Components also import causes a build error ("Attempted to call ... from
+// the server" / a Client Component SSR graph conflict).
 
 export type SiteId = "vipservice4u" | "jaeky";
 
@@ -20,7 +27,7 @@ export interface BrandTheme {
   bannerGradient: string;
 }
 
-const THEMES: Record<SiteId, BrandTheme> = {
+export const THEMES: Record<SiteId, BrandTheme> = {
   vipservice4u: {
     site: "vipservice4u",
     name: "VIP Service 4U",
@@ -53,26 +60,8 @@ const THEMES: Record<SiteId, BrandTheme> = {
   },
 };
 
-function siteFromHostname(hostname: string): SiteId {
+export function siteFromHostname(hostname: string): SiteId {
   return hostname.toLowerCase().includes("jaeky.us") ? "jaeky" : "vipservice4u";
-}
-
-/**
- * Client-side hook for which site's branding to show. Starts with the
- * vipservice4u theme on every render (server-safe default, avoids a
- * hydration mismatch — same technique already used by the dashboard
- * sidebar's QR-code widget, HomepageQR in nav-projects.tsx) and swaps to
- * the real theme right after mount, once window.location.hostname is
- * available.
- */
-export function useBrand(): BrandTheme {
-  const [theme, setTheme] = useState<BrandTheme>(THEMES.vipservice4u);
-
-  useEffect(() => {
-    setTheme(THEMES[siteFromHostname(window.location.hostname)]);
-  }, []);
-
-  return theme;
 }
 
 /** Server-side equivalent, for Server Components that already have a Host header (e.g. via next/headers()). */
