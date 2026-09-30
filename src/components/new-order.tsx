@@ -9,6 +9,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { ArrowLeft, Loader2, Minus, Plus, ShoppingCart, X } from "lucide-react"
 import { useEffect, useState } from "react"
 import { toast } from "sonner"
+import { useBrand } from "@/lib/brand"
 
 interface Product {
   id: string
@@ -38,6 +39,8 @@ const titleCase = (s: string) =>
   s.length === 0 ? s : s.charAt(0).toUpperCase() + s.slice(1).toLowerCase()
 
 export default function NewOrder({ onOrderComplete, onBack }: NewOrderProps) {
+  const brand = useBrand()
+  const isJaeky = brand.site === "jaeky"
   const [activeTab, setActiveTab] = useState<CategoryTab>("ALL")
   const [customerName, setCustomerName] = useState("")
   const [paymentType, setPaymentType] = useState<"CASH" | "CARD" | "">("")
@@ -313,7 +316,7 @@ export default function NewOrder({ onOrderComplete, onBack }: NewOrderProps) {
                 onClick={() => setActiveTab(tab)}
                 className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
                   activeTab === tab
-                    ? "bg-lime-500 text-black"
+                    ? isJaeky ? "bg-purple-500 text-white" : "bg-lime-500 text-black"
                     : "bg-zinc-800 text-zinc-300 hover:bg-zinc-700"
                 }`}
               >
@@ -355,8 +358,12 @@ export default function NewOrder({ onOrderComplete, onBack }: NewOrderProps) {
   key={product.id}
   className={`cursor-pointer transition-all active:scale-[0.97] border overflow-hidden rounded-lg relative ${
     isSelected
-      ? "bg-lime-100 dark:bg-lime-950 shadow-md border-lime-300 dark:border-lime-800"
-      : "border-zinc-700 bg-zinc-800 hover:border-lime-500 hover:shadow-sm"
+      ? isJaeky
+        ? "bg-purple-100 dark:bg-purple-950 shadow-md border-purple-300 dark:border-purple-800"
+        : "bg-lime-100 dark:bg-lime-950 shadow-md border-lime-300 dark:border-lime-800"
+      : isJaeky
+        ? "border-zinc-700 bg-zinc-800 hover:border-purple-500 hover:shadow-sm"
+        : "border-zinc-700 bg-zinc-800 hover:border-lime-500 hover:shadow-sm"
   }`}
   onClick={() => handleProductClick(product)}
 >
@@ -388,7 +395,7 @@ export default function NewOrder({ onOrderComplete, onBack }: NewOrderProps) {
     {/* Bottom Overlay */}
     <div className="absolute inset-x-0 bottom-0 p-2 sm:p-4 bg-gradient-to-t from-black/85 via-black/55 to-transparent space-y-1 sm:space-y-2 text-center sm:text-left">
     {/* Price Badge */}
-    <div className="mx-auto sm:mx-0 w-fit bg-lime-500 text-black text-xs sm:text-base font-bold px-2 py-0.5 sm:px-3 sm:py-1 rounded-full shadow-md">
+    <div className={isJaeky ? "mx-auto sm:mx-0 w-fit bg-purple-500 text-white text-xs sm:text-base font-bold px-2 py-0.5 sm:px-3 sm:py-1 rounded-full shadow-md" : "mx-auto sm:mx-0 w-fit bg-lime-500 text-black text-xs sm:text-base font-bold px-2 py-0.5 sm:px-3 sm:py-1 rounded-full shadow-md"}>
       ${product.price.toFixed(2)}
     </div>
       {/* Title */}
@@ -405,7 +412,7 @@ export default function NewOrder({ onOrderComplete, onBack }: NewOrderProps) {
 
       {/* Add to Cart Button */}
       <button
-        className="w-full mt-1 sm:mt-2 bg-lime-500 hover:bg-lime-400 text-black text-xs sm:text-base font-semibold py-2 sm:py-3.5 rounded-md transition active:scale-95"
+        className={isJaeky ? "w-full mt-1 sm:mt-2 bg-purple-500 hover:bg-purple-400 text-white text-xs sm:text-base font-semibold py-2 sm:py-3.5 rounded-md transition active:scale-95" : "w-full mt-1 sm:mt-2 bg-lime-500 hover:bg-lime-400 text-black text-xs sm:text-base font-semibold py-2 sm:py-3.5 rounded-md transition active:scale-95"}
       >
         <span className="sm:hidden">Add</span>
         <span className="hidden sm:inline">Add to Cart</span>
@@ -432,7 +439,7 @@ export default function NewOrder({ onOrderComplete, onBack }: NewOrderProps) {
               {/* Cart Header */}
               <div className="flex items-center justify-between p-4 border-b border-zinc-800 bg-zinc-900">
                 <h2 className="text-lg font-semibold flex items-center gap-2">
-                  <ShoppingCart className="w-5 h-5 text-lime-500" />
+                  <ShoppingCart className={isJaeky ? "w-5 h-5 text-purple-500" : "w-5 h-5 text-lime-500"} />
                   Current Order
                 </h2>
                 <Button
@@ -502,7 +509,7 @@ export default function NewOrder({ onOrderComplete, onBack }: NewOrderProps) {
                               <Plus className="w-4 h-4" />
                             </Button>
                           </div>
-                          <span className="font-semibold text-sm text-lime-500">
+                          <span className={isJaeky ? "font-semibold text-sm text-purple-500" : "font-semibold text-sm text-lime-500"}>
                             ${(item.price * item.quantity).toFixed(2)}
                           </span>
                         </div>
@@ -516,10 +523,10 @@ export default function NewOrder({ onOrderComplete, onBack }: NewOrderProps) {
               <div className="border-t border-zinc-800 bg-zinc-900 p-4 space-y-4">
                 <div className="flex justify-between items-center">
                   <span className="text-sm font-semibold text-white">Total</span>
-                  <span className="text-xl font-bold text-lime-500">${subtotal.toFixed(2)}</span>
+                  <span className={isJaeky ? "text-xl font-bold text-purple-500" : "text-xl font-bold text-lime-500"}>${subtotal.toFixed(2)}</span>
                 </div>
                 <Button
-                  className="w-full bg-lime-600 hover:bg-lime-700 text-white h-12 text-base font-medium transition-colors active:scale-95"
+                  className={isJaeky ? "w-full bg-purple-600 hover:bg-purple-700 text-white h-12 text-base font-medium transition-colors active:scale-95" : "w-full bg-lime-600 hover:bg-lime-700 text-white h-12 text-base font-medium transition-colors active:scale-95"}
                   disabled={cartItems.length === 0}
                   onClick={handlePlaceOrderClick}
                 >
@@ -542,7 +549,7 @@ export default function NewOrder({ onOrderComplete, onBack }: NewOrderProps) {
                   <ArrowLeft className="w-4 h-4" />
                 </Button>
                 <h2 className="text-lg font-semibold flex items-center gap-2">
-                  <ShoppingCart className="w-5 h-5 text-lime-500" />
+                  <ShoppingCart className={isJaeky ? "w-5 h-5 text-purple-500" : "w-5 h-5 text-lime-500"} />
                   Order Details
                 </h2>
               </div>
@@ -576,7 +583,7 @@ export default function NewOrder({ onOrderComplete, onBack }: NewOrderProps) {
                           : "bg-red-500/20 border-red-500/50"
                       }`}
                     >
-                      <RadioGroupItem value="CASH" id="cash" className="border-zinc-600 text-lime-500" />
+                      <RadioGroupItem value="CASH" id="cash" className={isJaeky ? "border-zinc-600 text-purple-500" : "border-zinc-600 text-lime-500"} />
                       <Label htmlFor="cash" className="text-sm font-normal cursor-pointer text-black">
                         Cash
                       </Label>
@@ -588,7 +595,7 @@ export default function NewOrder({ onOrderComplete, onBack }: NewOrderProps) {
                           : "bg-red-500/20 border-red-500/50"
                       }`}
                     >
-                      <RadioGroupItem value="CARD" id="card" className="border-zinc-600 text-lime-500" />
+                      <RadioGroupItem value="CARD" id="card" className={isJaeky ? "border-zinc-600 text-purple-500" : "border-zinc-600 text-lime-500"} />
                       <Label htmlFor="card" className="text-sm font-normal cursor-pointer text-black">
                         Card
                       </Label>
@@ -621,13 +628,13 @@ export default function NewOrder({ onOrderComplete, onBack }: NewOrderProps) {
                         <span className="text-zinc-400">
                           {item.quantity}x {item.name}
                         </span>
-                        <span className="text-lime-500 font-medium">${(item.price * item.quantity).toFixed(2)}</span>
+                        <span className={isJaeky ? "text-purple-500 font-medium" : "text-lime-500 font-medium"}>${(item.price * item.quantity).toFixed(2)}</span>
                       </div>
                     ))}
                   </div>
                   <div className="flex justify-between items-center mt-4 pt-4 border-t border-zinc-800">
                     <span className="font-semibold text-black">Total</span>
-                    <span className="text-xl font-bold text-lime-500">${subtotal.toFixed(2)}</span>
+                    <span className={isJaeky ? "text-xl font-bold text-purple-500" : "text-xl font-bold text-lime-500"}>${subtotal.toFixed(2)}</span>
                   </div>
                 </div>
               </div>
@@ -635,7 +642,7 @@ export default function NewOrder({ onOrderComplete, onBack }: NewOrderProps) {
               {/* Order Form Footer */}
               <div className="border-t border-zinc-800 bg-zinc-900 p-4">
                 <Button
-                  className="w-full bg-lime-600 hover:bg-lime-700 text-black h-12 text-base font-medium transition-colors active:scale-95"
+                  className={isJaeky ? "w-full bg-purple-600 hover:bg-purple-700 text-white h-12 text-base font-medium transition-colors active:scale-95" : "w-full bg-lime-600 hover:bg-lime-700 text-black h-12 text-base font-medium transition-colors active:scale-95"}
                   onClick={handleConfirmOrder}
                   disabled={submitting}
                 >
@@ -691,7 +698,7 @@ export default function NewOrder({ onOrderComplete, onBack }: NewOrderProps) {
                 <ArrowLeft className="w-4 h-4" />
               </Button>
             )}
-            <ShoppingCart className="w-5 h-5 text-lime-500" />
+            <ShoppingCart className={isJaeky ? "w-5 h-5 text-purple-500" : "w-5 h-5 text-lime-500"} />
             {mobileSheetView === "cart" ? "Current Order" : "Order Details"}
           </h2>
           <Button
@@ -764,7 +771,7 @@ export default function NewOrder({ onOrderComplete, onBack }: NewOrderProps) {
                             <Plus className="w-4 h-4" />
                           </Button>
                         </div>
-                        <span className="font-semibold text-sm text-lime-500">
+                        <span className={isJaeky ? "font-semibold text-sm text-purple-500" : "font-semibold text-sm text-lime-500"}>
                           ${(item.price * item.quantity).toFixed(2)}
                         </span>
                       </div>
@@ -778,10 +785,10 @@ export default function NewOrder({ onOrderComplete, onBack }: NewOrderProps) {
             <div className="border-t border-zinc-800 bg-zinc-900 p-4 space-y-4">
               <div className="flex justify-between items-center">
                 <span className="text-sm font-semibold text-white">Total</span>
-                <span className="text-xl font-bold text-lime-500">${subtotal.toFixed(2)}</span>
+                <span className={isJaeky ? "text-xl font-bold text-purple-500" : "text-xl font-bold text-lime-500"}>${subtotal.toFixed(2)}</span>
               </div>
               <Button
-                className="w-full bg-lime-600 hover:bg-lime-700 text-white h-12 text-base font-medium transition-colors active:scale-95"
+                className={isJaeky ? "w-full bg-purple-600 hover:bg-purple-700 text-white h-12 text-base font-medium transition-colors active:scale-95" : "w-full bg-lime-600 hover:bg-lime-700 text-white h-12 text-base font-medium transition-colors active:scale-95"}
                 disabled={cartItems.length === 0}
                 onClick={handleMobileSheetPlaceOrder}
               >
@@ -820,7 +827,7 @@ export default function NewOrder({ onOrderComplete, onBack }: NewOrderProps) {
                         : "bg-red-500/20 border-red-500/50"
                     }`}
                   >
-                    <RadioGroupItem value="CASH" id="cash-mobile" className="border-zinc-600 text-lime-500" />
+                    <RadioGroupItem value="CASH" id="cash-mobile" className={isJaeky ? "border-zinc-600 text-purple-500" : "border-zinc-600 text-lime-500"} />
                     <Label htmlFor="cash-mobile" className="text-sm font-normal cursor-pointer text-white">
                       Cash
                     </Label>
@@ -832,7 +839,7 @@ export default function NewOrder({ onOrderComplete, onBack }: NewOrderProps) {
                         : "bg-red-500/20 border-red-500/50"
                     }`}
                   >
-                    <RadioGroupItem value="CARD" id="card-mobile" className="border-zinc-600 text-lime-500" />
+                    <RadioGroupItem value="CARD" id="card-mobile" className={isJaeky ? "border-zinc-600 text-purple-500" : "border-zinc-600 text-lime-500"} />
                     <Label htmlFor="card-mobile" className="text-sm font-normal cursor-pointer text-white">
                       Card
                     </Label>
@@ -865,13 +872,13 @@ export default function NewOrder({ onOrderComplete, onBack }: NewOrderProps) {
                       <span className="text-zinc-400">
                         {item.quantity}x {item.name}
                       </span>
-                      <span className="text-lime-500 font-medium">${(item.price * item.quantity).toFixed(2)}</span>
+                      <span className={isJaeky ? "text-purple-500 font-medium" : "text-lime-500 font-medium"}>${(item.price * item.quantity).toFixed(2)}</span>
                     </div>
                   ))}
                 </div>
                 <div className="flex justify-between items-center mt-4 pt-4 border-t border-zinc-800">
                   <span className="font-semibold text-white">Total</span>
-                  <span className="text-xl font-bold text-lime-500">${subtotal.toFixed(2)}</span>
+                  <span className={isJaeky ? "text-xl font-bold text-purple-500" : "text-xl font-bold text-lime-500"}>${subtotal.toFixed(2)}</span>
                 </div>
               </div>
             </div>
@@ -879,7 +886,7 @@ export default function NewOrder({ onOrderComplete, onBack }: NewOrderProps) {
             {/* Order Form Footer */}
             <div className="border-t border-zinc-800 bg-zinc-900 p-4">
               <Button
-                className="w-full bg-lime-600 hover:bg-lime-700 text-white h-12 text-base font-medium transition-colors active:scale-95"
+                className={isJaeky ? "w-full bg-purple-600 hover:bg-purple-700 text-white h-12 text-base font-medium transition-colors active:scale-95" : "w-full bg-lime-600 hover:bg-lime-700 text-white h-12 text-base font-medium transition-colors active:scale-95"}
                 onClick={handleConfirmOrder}
                 disabled={submitting}
               >
@@ -900,7 +907,7 @@ export default function NewOrder({ onOrderComplete, onBack }: NewOrderProps) {
       {/* Floating Cart Button - Desktop */}
       <button
         onClick={() => setIsCartOpen(!isCartOpen)}
-        className="hidden md:flex fixed top-6 right-6 z-50 bg-lime-500 text-black p-4 rounded-full shadow-2xl hover:scale-110 transition-transform duration-300"
+        className={isJaeky ? "hidden md:flex fixed top-6 right-6 z-50 bg-purple-500 text-white p-4 rounded-full shadow-2xl hover:scale-110 transition-transform duration-300" : "hidden md:flex fixed top-6 right-6 z-50 bg-lime-500 text-black p-4 rounded-full shadow-2xl hover:scale-110 transition-transform duration-300"}
       >
         <ShoppingCart className="w-6 h-6" />
         {totalItems > 0 && (
@@ -917,7 +924,7 @@ export default function NewOrder({ onOrderComplete, onBack }: NewOrderProps) {
           className="sm:max-w-md bg-zinc-900 text-white border-zinc-800"
         >
           <DialogHeader>
-            <DialogTitle className="text-lime-500 text-xl">Order Placed Successfully!</DialogTitle>
+            <DialogTitle className={isJaeky ? "text-purple-500 text-xl" : "text-lime-500 text-xl"}>Order Placed Successfully!</DialogTitle>
             <DialogDescription className="text-zinc-400">
               Your order has been placed and is being prepared.
             </DialogDescription>
@@ -925,8 +932,8 @@ export default function NewOrder({ onOrderComplete, onBack }: NewOrderProps) {
           <div className="flex flex-col gap-6 py-4">
             <div className="flex flex-col items-center gap-2">
               <p className="text-sm uppercase tracking-widest text-zinc-400">Your Order Number</p>
-              <div className="flex items-center justify-center w-full rounded-2xl border-4 border-lime-500 bg-zinc-950 py-6">
-                <p className="text-7xl sm:text-8xl font-black text-lime-500 tabular-nums tracking-wider">
+              <div className={isJaeky ? "flex items-center justify-center w-full rounded-2xl border-4 border-purple-500 bg-zinc-950 py-6" : "flex items-center justify-center w-full rounded-2xl border-4 border-lime-500 bg-zinc-950 py-6"}>
+                <p className={isJaeky ? "text-7xl sm:text-8xl font-black text-purple-500 tabular-nums tracking-wider" : "text-7xl sm:text-8xl font-black text-lime-500 tabular-nums tracking-wider"}>
                   {lastOrderId}
                 </p>
               </div>
@@ -936,7 +943,7 @@ export default function NewOrder({ onOrderComplete, onBack }: NewOrderProps) {
                 setShowSuccessDialog(false)
                 onOrderComplete?.()
               }}
-              className="w-full bg-lime-600 hover:bg-lime-700 text-white"
+              className={isJaeky ? "w-full bg-purple-600 hover:bg-purple-700 text-white" : "w-full bg-lime-600 hover:bg-lime-700 text-white"}
             >
               Close
             </Button>
