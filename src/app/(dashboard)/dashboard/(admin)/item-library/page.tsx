@@ -44,7 +44,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
-import { useBrand } from "@/lib/brand";
+import { useBrand } from "@/lib/use-brand";
 
 // Images below this size get a "low resolution" warning on upload.
 const MIN_DIMENSION = 600;
