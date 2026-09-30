@@ -28,7 +28,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { useBrand } from "@/lib/brand";
+import { useBrand } from "@/lib/use-brand";
 interface Product {
   id: string;
   name: string;
