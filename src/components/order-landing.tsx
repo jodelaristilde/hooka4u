@@ -103,7 +103,7 @@ export default function OrderLanding({
             <img
               src={logoSrc}
               alt="Jaeky"
-              className="mx-auto w-full max-w-md sm:max-w-xl md:max-w-2xl h-auto"
+              className="mx-auto w-full max-w-lg sm:max-w-2xl md:max-w-3xl h-auto"
             />
             {subLine && (
               <p
