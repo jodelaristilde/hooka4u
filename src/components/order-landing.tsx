@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import NewOrder from "@/components/new-order";
 
@@ -93,13 +93,6 @@ export default function OrderLanding({
   const [screen, setScreen] = useState<Screen>("hero");
   const c = THEME_CLASSES[theme];
 
-  // Nudge mobile browsers to auto-hide their address bar on load, the same
-  // way it hides once someone scrolls by hand — most mobile browsers treat
-  // this tiny scroll the same as a real one.
-  useEffect(() => {
-    window.scrollTo(0, 1);
-  }, []);
-
   if (screen === "order") {
     return (
       <NewOrder
@@ -113,7 +106,7 @@ export default function OrderLanding({
   }
 
   return (
-    <main className={`min-h-screen ${c.mainBg} relative overflow-x-hidden flex items-center justify-center py-10`}>
+    <main className={`min-h-screen min-h-[100dvh] ${c.mainBg} relative overflow-x-hidden flex items-center justify-center py-10`}>
       {/* Next.js hoists this into <head> automatically since it's rendered
           from a component — loads the same serif face used in the logo. */}
       <link
