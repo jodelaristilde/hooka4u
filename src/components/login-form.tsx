@@ -9,7 +9,15 @@ import { Spinner } from "@/components/ui/spinner";
 import { cn } from "@/lib/utils";
 import { Eye, EyeOff } from "lucide-react";
 
-export function LoginForm({ className, ...props }: React.ComponentProps<"form">) {
+interface LoginFormProps extends React.ComponentProps<"form"> {
+  // Site-wide "primary" color is VIP's lime green, set globally in
+  // globals.css. Jaeky's login button overrides it to purple right here,
+  // rather than changing the shared color token (which would repaint
+  // VIP's whole app too).
+  isJaeky?: boolean;
+}
+
+export function LoginForm({ className, isJaeky, ...props }: LoginFormProps) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -92,7 +100,14 @@ export function LoginForm({ className, ...props }: React.ComponentProps<"form">)
         {error && <p className="text-red-500 text-sm text-center">{error}</p>}
 
         <Field>
-          <Button type="submit" className="w-full" disabled={loading}>
+          <Button
+            type="submit"
+            className={cn(
+              "w-full",
+              isJaeky && "bg-purple-600 hover:bg-purple-700 text-white"
+            )}
+            disabled={loading}
+          >
             {loading ? (
               <div className="flex items-center justify-center gap-2">
                 <Spinner className="h-4 w-4" />
