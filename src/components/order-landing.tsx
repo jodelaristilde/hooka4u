@@ -190,13 +190,15 @@ export default function OrderLanding({
 
           <Link
             href="/order-status"
-            className={`group relative px-12 sm:px-20 py-4 sm:py-6 text-lg sm:text-xl md:text-2xl font-semibold border-2 overflow-hidden transition-all duration-500 hover:scale-105 ${c.outlineBtn}`}
+            className={`group relative px-12 sm:px-20 py-4 sm:py-6 text-lg sm:text-xl md:text-2xl font-semibold text-white bg-gradient-to-r ${c.primaryBtn} overflow-hidden transition-all duration-500 hover:scale-105`}
             style={{
               fontFamily: "Georgia, serif",
               letterSpacing: "0.05em",
+              boxShadow: c.primaryShadow,
             }}
           >
             <span className="relative z-10 uppercase">Check Status</span>
+            <div className={`absolute inset-0 bg-gradient-to-r ${c.primaryBtnHoverBg} opacity-0 group-hover:opacity-100 transition-opacity duration-500`}></div>
           </Link>
         </div>
       </div>
