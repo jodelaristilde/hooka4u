@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import NewOrder from "@/components/new-order";
 
@@ -92,6 +92,13 @@ export default function OrderLanding({
 }: OrderLandingProps) {
   const [screen, setScreen] = useState<Screen>("hero");
   const c = THEME_CLASSES[theme];
+
+  // Nudge mobile browsers to auto-hide their address bar on load, the same
+  // way it hides once someone scrolls by hand — most mobile browsers treat
+  // this tiny scroll the same as a real one.
+  useEffect(() => {
+    window.scrollTo(0, 1);
+  }, []);
 
   if (screen === "order") {
     return (
