@@ -9,7 +9,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { ArrowLeft, Loader2, Minus, Plus, ShoppingCart, X } from "lucide-react"
 import { useEffect, useState } from "react"
 import { toast } from "sonner"
-import { useBrand } from "@/lib/brand"
+import { useBrand } from "@/lib/use-brand"
 
 interface Product {
   id: string
