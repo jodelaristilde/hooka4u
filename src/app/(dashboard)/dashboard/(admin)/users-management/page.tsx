@@ -29,7 +29,7 @@ import {
 } from "@/components/ui/dialog"
 import { toast } from "sonner"
 import { useSession } from "next-auth/react"
-import { useBrand } from "@/lib/brand"
+import { useBrand } from "@/lib/use-brand"
 
 interface User {
   id: string
