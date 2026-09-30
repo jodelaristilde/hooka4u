@@ -20,11 +20,15 @@ import {
 } from "lucide-react";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { headers } from "next/headers";
+import { getBrandFromHost } from "@/lib/brand";
 
 export default async function Dashboard() {
   const session = await getServerSession(authOptions);
   const userRole = session?.user?.role;
   const firstName = session?.user?.name?.split(" ")[0];
+  const headersList = await headers();
+  const brand = getBrandFromHost(headersList.get("host"));
 
   const buttons = [
     {
@@ -101,33 +105,35 @@ export default async function Dashboard() {
 
       <div className="flex flex-1 flex-col gap-8 p-4 pt-8 sm:p-8">
         {/* Hero */}
-        <div className="relative overflow-hidden rounded-2xl border border-lime-200 bg-gradient-to-br from-lime-100 via-white to-lime-50 p-8 shadow-sm">
+        <div className={`relative overflow-hidden rounded-2xl border ${brand.accentBorder} bg-gradient-to-br ${brand.bannerGradient} p-8 shadow-sm`}>
           <div
-            className="pointer-events-none absolute -top-24 -right-24 h-72 w-72 animate-pulse rounded-full bg-lime-300/40 blur-3xl"
+            className={`pointer-events-none absolute -top-24 -right-24 h-72 w-72 animate-pulse rounded-full ${brand.accentBg} blur-3xl`}
+            style={{ opacity: 0.4 }}
             aria-hidden="true"
           />
           <div
-            className="pointer-events-none absolute bottom-0 left-1/3 h-40 w-40 rounded-full bg-lime-200/50 blur-3xl"
+            className={`pointer-events-none absolute bottom-0 left-1/3 h-40 w-40 rounded-full ${brand.accentBgSoft} blur-3xl`}
+            style={{ opacity: 0.5 }}
             aria-hidden="true"
           />
-          <div className="relative flex items-center gap-2 text-lime-700">
+          <div className={`relative flex items-center gap-2 ${brand.accentTextStrong}`}>
             <Sparkles className="h-4 w-4" />
             <span className="text-xs font-semibold tracking-widest uppercase">
-              VIP Service 4U
+              {brand.name}
             </span>
           </div>
-          <h2 className="relative mt-2 bg-gradient-to-r from-zinc-900 to-lime-700 bg-clip-text text-3xl font-bold tracking-tight text-transparent sm:text-4xl">
+          <h2 className="relative mt-2 text-3xl font-bold tracking-tight text-zinc-900 sm:text-4xl">
             Welcome back{firstName ? `, ${firstName}` : ""}
           </h2>
           <p className="relative mt-2 max-w-md text-sm text-zinc-600">
-            Everything you need to run the floor tonight, all in one place.
+            {brand.tagline}
           </p>
         </div>
 
         {/* Everything in one box */}
         <div className="relative overflow-hidden rounded-2xl border border-zinc-200 bg-white p-5 shadow-lg shadow-zinc-200/50 sm:p-6">
           <div
-            className="pointer-events-none absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-lime-300 via-lime-500 to-lime-300"
+            className={`pointer-events-none absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${brand.accentGradient}`}
             aria-hidden="true"
           />
           <h3 className="mb-4 text-xs font-semibold tracking-widest text-zinc-400 uppercase">
@@ -146,21 +152,27 @@ export default async function Dashboard() {
                   className={
                     isDisabled
                       ? "pointer-events-none flex items-center gap-3 rounded-xl border border-zinc-200 bg-zinc-50 p-4 opacity-40"
-                      : "group relative flex items-center gap-3 overflow-hidden rounded-xl border border-zinc-200 bg-zinc-50 p-4 transition-all duration-200 hover:-translate-y-0.5 hover:border-lime-400 hover:bg-gradient-to-br hover:from-lime-50 hover:to-white hover:shadow-lg hover:shadow-lime-500/15"
+                      : brand.site === "jaeky"
+                        ? "group relative flex items-center gap-3 overflow-hidden rounded-xl border border-zinc-200 bg-zinc-50 p-4 transition-all duration-200 hover:-translate-y-0.5 hover:border-purple-400 hover:bg-gradient-to-br hover:from-purple-50 hover:to-white hover:shadow-lg hover:shadow-purple-500/15"
+                        : "group relative flex items-center gap-3 overflow-hidden rounded-xl border border-zinc-200 bg-zinc-50 p-4 transition-all duration-200 hover:-translate-y-0.5 hover:border-lime-400 hover:bg-gradient-to-br hover:from-lime-50 hover:to-white hover:shadow-lg hover:shadow-lime-500/15"
                   }
                 >
                   <span
                     className={
                       isDisabled
                         ? "flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-zinc-200 ring-1 ring-zinc-300"
-                        : "flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-lime-100 ring-1 ring-lime-300 transition-colors group-hover:bg-lime-500 group-hover:ring-lime-500"
+                        : brand.site === "jaeky"
+                          ? "flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-purple-100 ring-1 ring-purple-300 transition-colors group-hover:bg-purple-500 group-hover:ring-purple-500"
+                          : "flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-lime-100 ring-1 ring-lime-300 transition-colors group-hover:bg-lime-500 group-hover:ring-lime-500"
                     }
                   >
                     <Icon
                       className={
                         isDisabled
                           ? "h-5 w-5 text-zinc-400"
-                          : "h-5 w-5 text-lime-600 transition-colors group-hover:text-white"
+                          : brand.site === "jaeky"
+                            ? "h-5 w-5 text-purple-600 transition-colors group-hover:text-white"
+                            : "h-5 w-5 text-lime-600 transition-colors group-hover:text-white"
                       }
                     />
                   </span>
