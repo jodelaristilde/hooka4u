@@ -10,7 +10,7 @@ import { TeamSwitcher } from "@/components/sidebars/user-sidebar/team-switcher"
 import { MobileBottomNav } from "@/components/sidebars/user-sidebar/mobile-bottom-nav"
 import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarRail } from "@/components/ui/sidebar"
 import { useIsMobile } from "@/hooks/use-mobile"
-import { useBrand } from "@/lib/brand"
+import { useBrand } from "@/lib/use-brand"
 
 // Sidebar static data (nav items only — the team name is now injected from
 // the current site's brand at render time)
