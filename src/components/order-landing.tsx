@@ -174,10 +174,10 @@ export default function OrderLanding({
           </h1>
         )}
 
-        <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+        <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center items-center">
           <button
             onClick={() => setScreen("order")}
-            className={`group relative px-12 sm:px-20 py-4 sm:py-6 text-lg sm:text-xl md:text-2xl font-semibold text-black bg-gradient-to-r ${c.primaryBtn} overflow-hidden transition-all duration-500 hover:scale-105`}
+            className={`group relative w-full max-w-[260px] sm:w-auto px-8 sm:px-20 py-3.5 sm:py-6 text-lg sm:text-xl md:text-2xl font-semibold text-black bg-gradient-to-r ${c.primaryBtn} overflow-hidden transition-all duration-500 hover:scale-105`}
             style={{
               fontFamily: "Georgia, serif",
               letterSpacing: "0.05em",
@@ -190,7 +190,7 @@ export default function OrderLanding({
 
           <Link
             href="/order-status"
-            className={`group relative px-12 sm:px-20 py-4 sm:py-6 text-lg sm:text-xl md:text-2xl font-semibold text-white bg-gradient-to-r ${c.primaryBtn} overflow-hidden transition-all duration-500 hover:scale-105`}
+            className={`group relative w-full max-w-[260px] sm:w-auto px-8 sm:px-20 py-3.5 sm:py-6 text-lg sm:text-xl md:text-2xl font-semibold text-white bg-gradient-to-r ${c.primaryBtn} overflow-hidden transition-all duration-500 hover:scale-105 text-center`}
             style={{
               fontFamily: "Georgia, serif",
               letterSpacing: "0.05em",
