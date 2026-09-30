@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Maximize, X } from "lucide-react";
-import { useBrand } from "@/lib/brand";
+import { useBrand } from "@/lib/use-brand";
 
 // A single floating button, mounted once in the dashboard layout, so it
 // shows up automatically on every dashboard page (New Order, All Orders,
