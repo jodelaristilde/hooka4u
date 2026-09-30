@@ -50,7 +50,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import Link from "next/link";
-import { useBrand } from "@/lib/brand";
+import { useBrand } from "@/lib/use-brand";
 
 interface OrderItem {
   id: string;
