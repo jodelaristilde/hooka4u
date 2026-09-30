@@ -84,7 +84,7 @@ export default function OrderLanding({
   }
 
   return (
-    <main className="min-h-screen bg-gray-950 relative overflow-hidden flex items-center justify-center">
+    <main className="min-h-[100dvh] bg-gray-950 relative overflow-x-hidden flex items-center justify-center py-10">
       {/* Next.js hoists this into <head> automatically since it's rendered
           from a component — loads the same serif face used in the logo. */}
       <link
@@ -92,11 +92,11 @@ export default function OrderLanding({
         href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&display=swap"
       />
       <div className="absolute inset-0 bg-gradient-to-b from-gray-900 via-gray-950 to-black"></div>
-      <div className="absolute inset-0 opacity-30">
+      <div className="absolute inset-0 opacity-30 pointer-events-none">
         <div className={`absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent ${c.line} to-transparent`}></div>
         <div className={`absolute bottom-0 left-0 w-full h-px bg-gradient-to-r from-transparent ${c.line} to-transparent`}></div>
       </div>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center relative z-10">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center relative z-10 my-auto">
         {logoSrc ? (
           <div className="mb-10 sm:mb-16">
             {/* eslint-disable-next-line @next/next/no-img-element */}
