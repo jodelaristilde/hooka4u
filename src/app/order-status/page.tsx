@@ -74,12 +74,24 @@ export default function OrderStatusPage() {
   const isDelivered = result?.status === "DELIVERED"
 
   return (
-    <div className="min-h-screen bg-zinc-950 flex flex-col items-center justify-center p-4 sm:p-6">
+    <div
+      className={
+        isJaeky
+          ? "min-h-screen bg-gradient-to-b from-purple-50 via-white to-white flex flex-col items-center justify-center p-4 sm:p-6"
+          : "min-h-screen bg-zinc-950 flex flex-col items-center justify-center p-4 sm:p-6"
+      }
+    >
       <div className="w-full max-w-md">
-        <h1 className="text-3xl sm:text-4xl font-bold text-white text-center mb-2">
+        <h1
+          className={
+            isJaeky
+              ? "text-3xl sm:text-4xl font-bold text-zinc-900 text-center mb-2"
+              : "text-3xl sm:text-4xl font-bold text-white text-center mb-2"
+          }
+        >
           Check Your Order
         </h1>
-        <p className="text-zinc-400 text-center text-sm mb-8">
+        <p className={isJaeky ? "text-zinc-500 text-center text-sm mb-8" : "text-zinc-400 text-center text-sm mb-8"}>
           Enter your order number to see if it's ready.
         </p>
 
@@ -92,7 +104,7 @@ export default function OrderStatusPage() {
             onChange={(e) => setInput(e.target.value)}
             className={
               isJaeky
-                ? "flex-1 h-12 rounded-lg bg-zinc-900 border border-zinc-700 text-white placeholder:text-zinc-500 px-4 text-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                ? "flex-1 h-12 rounded-lg bg-white border border-purple-200 text-zinc-900 placeholder:text-zinc-400 px-4 text-lg focus:outline-none focus:ring-2 focus:ring-purple-500 shadow-sm"
                 : "flex-1 h-12 rounded-lg bg-zinc-900 border border-zinc-700 text-white placeholder:text-zinc-500 px-4 text-lg focus:outline-none focus:ring-2 focus:ring-lime-500"
             }
           />
@@ -101,7 +113,7 @@ export default function OrderStatusPage() {
             disabled={loading || !input.trim()}
             className={
               isJaeky
-                ? "h-12 px-5 rounded-lg bg-purple-500 hover:bg-purple-400 disabled:opacity-50 disabled:hover:bg-purple-500 text-white font-semibold flex items-center gap-2 transition-colors"
+                ? "h-12 px-5 rounded-lg bg-purple-600 hover:bg-purple-700 disabled:opacity-50 disabled:hover:bg-purple-600 text-white font-semibold flex items-center gap-2 transition-colors shadow-sm"
                 : "h-12 px-5 rounded-lg bg-lime-500 hover:bg-lime-400 disabled:opacity-50 disabled:hover:bg-lime-500 text-black font-semibold flex items-center gap-2 transition-colors"
             }
           >
@@ -111,29 +123,47 @@ export default function OrderStatusPage() {
         </form>
 
         {error && (
-          <div className="flex items-center gap-2 text-red-400 bg-red-500/10 border border-red-500/30 rounded-lg p-4 text-sm">
+          <div
+            className={
+              isJaeky
+                ? "flex items-center gap-2 text-red-600 bg-red-50 border border-red-200 rounded-lg p-4 text-sm"
+                : "flex items-center gap-2 text-red-400 bg-red-500/10 border border-red-500/30 rounded-lg p-4 text-sm"
+            }
+          >
             <AlertCircle className="w-5 h-5 shrink-0" />
             {error}
           </div>
         )}
 
         {result && !error && (
-          <div className={isJaeky ? "rounded-2xl border-4 border-purple-500 bg-zinc-900 p-6 flex flex-col items-center gap-4" : "rounded-2xl border-4 border-lime-500 bg-zinc-900 p-6 flex flex-col items-center gap-4"}>
-            <p className="text-sm uppercase tracking-widest text-zinc-400">Order Number</p>
-            <p className={isJaeky ? "text-6xl font-black text-purple-500 tabular-nums" : "text-6xl font-black text-lime-500 tabular-nums"}>{result.orderNumber}</p>
+          <div
+            className={
+              isJaeky
+                ? "rounded-2xl border-4 border-purple-400 bg-white shadow-md p-6 flex flex-col items-center gap-4"
+                : "rounded-2xl border-4 border-lime-500 bg-zinc-900 p-6 flex flex-col items-center gap-4"
+            }
+          >
+            <p className={isJaeky ? "text-sm uppercase tracking-widest text-zinc-500" : "text-sm uppercase tracking-widest text-zinc-400"}>
+              Order Number
+            </p>
+            <p className={isJaeky ? "text-6xl font-black text-purple-600 tabular-nums" : "text-6xl font-black text-lime-500 tabular-nums"}>{result.orderNumber}</p>
 
             <div
               className={`flex items-center gap-2 px-4 py-2 rounded-full font-semibold text-sm ${
                 isDelivered
-                  ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/40"
-                  : "bg-amber-500/20 text-amber-400 border border-amber-500/40"
+                  ? isJaeky
+                    ? "bg-emerald-500/20 text-emerald-600 border border-emerald-500/40"
+                    : "bg-emerald-500/20 text-emerald-400 border border-emerald-500/40"
+                  : isJaeky
+                    ? "bg-amber-500/20 text-amber-600 border border-amber-500/40"
+                    : "bg-amber-500/20 text-amber-400 border border-amber-500/40"
               }`}
             >
               {isDelivered ? <CheckCircle2 className="w-4 h-4" /> : <Clock className="w-4 h-4" />}
               {isDelivered ? "Ready" : "Pending"}
             </div>
 
-            <p className="text-zinc-500 text-xs">
+            <p className={isJaeky ? "text-zinc-400 text-xs" : "text-zinc-500 text-xs"}>
               This page updates automatically every few seconds.
             </p>
           </div>
