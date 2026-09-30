@@ -16,12 +16,19 @@ export default async function LoginPage() {
   return (
     <div className="grid min-h-svh lg:grid-cols-2">
       <div className="flex flex-col gap-4 p-6 md:p-10">
-        <Link href="/login" className="flex items-center gap-2 font-medium">
+        <Link
+          href="/login"
+          className={`flex items-center gap-2 font-medium ${
+            isJaeky ? "justify-center sm:justify-start w-full sm:w-auto" : ""
+          }`}
+        >
           {isJaeky ? (
             // Dark (black + purple) version of the logo here specifically —
             // this corner sits on a white background, so the white/purple
             // version used elsewhere (dark backgrounds) would be nearly
-            // invisible.
+            // invisible. Centered on mobile (where it's the only thing at
+            // the top of the screen); left-aligned in the corner once the
+            // two-column desktop layout kicks in.
             // eslint-disable-next-line @next/next/no-img-element
             <img src="/jaeky-logo-dark.png" alt="Jaeky" className="h-20 sm:h-24 w-auto" />
           ) : (
