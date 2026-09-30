@@ -98,7 +98,7 @@ export default function OrderLanding({
       </div>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center relative z-10">
         {logoSrc ? (
-          <div className="mb-12 sm:mb-20">
+          <div className="mb-10 sm:mb-16">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={logoSrc}
@@ -107,7 +107,7 @@ export default function OrderLanding({
             />
             {subLine && (
               <p
-                className={`mt-2 sm:mt-4 uppercase tracking-[0.2em] sm:tracking-[0.3em] text-3xl sm:text-5xl md:text-6xl font-black bg-gradient-to-r ${c.subLine} text-transparent bg-clip-text`}
+                className={`-mt-2 sm:-mt-4 uppercase tracking-[0.2em] sm:tracking-[0.3em] text-3xl sm:text-5xl md:text-6xl font-black bg-gradient-to-r ${c.subLine} text-transparent bg-clip-text`}
                 style={{ fontFamily: LOGO_FONT_STACK }}
               >
                 {subLine}
@@ -115,7 +115,7 @@ export default function OrderLanding({
             )}
             {slogan && (
               <p
-                className={`mt-4 sm:mt-6 ${c.slogan} text-base sm:text-xl md:text-2xl tracking-wide`}
+                className={`mt-1 sm:mt-2 ${c.slogan} text-base sm:text-xl md:text-2xl tracking-wide`}
                 style={{ fontFamily: LOGO_FONT_STACK }}
               >
                 {slogan}
