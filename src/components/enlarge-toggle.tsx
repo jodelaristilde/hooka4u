@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Maximize, X } from "lucide-react";
+import { useBrand } from "@/lib/brand";
 
 // A single floating button, mounted once in the dashboard layout, so it
 // shows up automatically on every dashboard page (New Order, All Orders,
@@ -16,6 +17,8 @@ import { Maximize, X } from "lucide-react";
 // you can close it any time you don't need it, and it also turns itself
 // off automatically if you leave fullscreen any other way (Esc key, etc).
 export function EnlargeToggle() {
+  const brand = useBrand();
+  const isJaeky = brand.site === "jaeky";
   const [isFullscreen, setIsFullscreen] = useState(false);
   // While enlarged, the exit button stays out of the way (invisible and
   // un-clickable) until the cursor moves up near the top of the screen —
@@ -88,7 +91,11 @@ export function EnlargeToggle() {
         <button
           onClick={enterFullscreen}
           title="Enlarge this page"
-          className="fixed bottom-4 right-4 z-50 flex h-11 w-11 items-center justify-center rounded-full bg-lime-500 text-zinc-950 shadow-lg transition-transform hover:scale-105 hover:bg-lime-400"
+          className={
+            isJaeky
+              ? "fixed bottom-4 right-4 z-50 flex h-11 w-11 items-center justify-center rounded-full bg-purple-500 text-white shadow-lg transition-transform hover:scale-105 hover:bg-purple-400"
+              : "fixed bottom-4 right-4 z-50 flex h-11 w-11 items-center justify-center rounded-full bg-lime-500 text-zinc-950 shadow-lg transition-transform hover:scale-105 hover:bg-lime-400"
+          }
         >
           <Maximize className="h-5 w-5" />
         </button>
