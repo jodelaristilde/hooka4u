@@ -10,14 +10,11 @@ import { TeamSwitcher } from "@/components/sidebars/user-sidebar/team-switcher"
 import { MobileBottomNav } from "@/components/sidebars/user-sidebar/mobile-bottom-nav"
 import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarRail } from "@/components/ui/sidebar"
 import { useIsMobile } from "@/hooks/use-mobile"
+import { useBrand } from "@/lib/brand"
 
-// Sidebar static data
+// Sidebar static data (nav items only — the team name is now injected from
+// the current site's brand at render time)
 const sidebarData = {
-  teams: {
-    name: "VIPService4U",
-    logo: GalleryVerticalEnd,
-    plan: "Enterprise",
-  },
   navMain: [
     {
       title: "Dashboard",
@@ -64,6 +61,8 @@ const sidebarData = {
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { data: session } = useSession()
   const isMobile = useIsMobile()
+  const brand = useBrand()
+  const team = { name: brand.name, logo: GalleryVerticalEnd, plan: "Enterprise" }
 
   // Map NextAuth user to NavUser props
   const user = session?.user
@@ -102,7 +101,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   return (
     <Sidebar collapsible="icon" {...props}>
       <SidebarHeader>
-        <TeamSwitcher team={sidebarData.teams} />
+        <TeamSwitcher team={team} />
       </SidebarHeader>
       <SidebarContent>
         <NavMain items={filteredNavMain} />
