@@ -39,7 +39,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { useBrand } from "@/lib/brand";
+import { useBrand } from "@/lib/use-brand";
 
 interface OrderItem {
   id: string;
