@@ -39,6 +39,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
+import { useBrand } from "@/lib/brand";
 
 interface OrderItem {
   id: string;
@@ -70,6 +71,15 @@ interface Order {
 // API for display on a TV around the venue, and it never shows a price
 // anywhere (subtotal, item prices) since anyone can walk by and see it.
 export default function AllOrdersEnlarged() {
+  const brand = useBrand();
+  const orderNumberBadgeClass =
+    brand.site === "jaeky"
+      ? "text-sm font-bold border-purple-500/50 bg-purple-500/10 text-purple-400 tabular-nums px-2 py-0.5 shrink-0"
+      : "text-sm font-bold border-lime-500/50 bg-lime-500/10 text-lime-400 tabular-nums px-2 py-0.5 shrink-0";
+  const orderNumberBadgeClassLg =
+    brand.site === "jaeky"
+      ? "text-base font-bold border-purple-500/50 bg-purple-500/10 text-purple-400 tabular-nums px-2.5 py-1"
+      : "text-base font-bold border-lime-500/50 bg-lime-500/10 text-lime-400 tabular-nums px-2.5 py-1";
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -485,7 +495,7 @@ export default function AllOrdersEnlarged() {
                 {order.orderNumber != null && (
                   <Badge
                     variant="outline"
-                    className="text-sm font-bold border-lime-500/50 bg-lime-500/10 text-lime-400 tabular-nums px-2 py-0.5 shrink-0"
+                    className={orderNumberBadgeClass}
                   >
                     #{order.orderNumber}
                   </Badge>
@@ -977,7 +987,7 @@ export default function AllOrdersEnlarged() {
               {expandedOrder?.orderNumber != null && (
                 <Badge
                   variant="outline"
-                  className="text-base font-bold border-lime-500/50 bg-lime-500/10 text-lime-400 tabular-nums px-2.5 py-1"
+                  className={orderNumberBadgeClassLg}
                 >
                   #{expandedOrder.orderNumber}
                 </Badge>
