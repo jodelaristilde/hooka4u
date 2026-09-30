@@ -18,8 +18,12 @@ export default async function LoginPage() {
       <div className="flex flex-col gap-4 p-6 md:p-10">
         <Link href="/login" className="flex items-center gap-2 font-medium">
           {isJaeky ? (
+            // Dark (black + purple) version of the logo here specifically —
+            // this corner sits on a white background, so the white/purple
+            // version used elsewhere (dark backgrounds) would be nearly
+            // invisible.
             // eslint-disable-next-line @next/next/no-img-element
-            <img src="/jaeky-logo.png" alt="Jaeky" className="h-10 sm:h-12 w-auto" />
+            <img src="/jaeky-logo-dark.png" alt="Jaeky" className="h-20 sm:h-24 w-auto" />
           ) : (
             <>
               <div className="bg-primary text-primary-foreground flex size-6 items-center justify-center rounded-md flex-col">
@@ -33,7 +37,7 @@ export default async function LoginPage() {
         {/* Login form */}
         <div className="flex flex-col flex-1 items-center justify-center">
           <div className="w-full max-w-xs">
-            <LoginForm />
+            <LoginForm isJaeky={isJaeky} />
             <div className="mt-4 text-center text-sm text-zinc-500">
               Having trouble logging in?{" "}
               <Link
