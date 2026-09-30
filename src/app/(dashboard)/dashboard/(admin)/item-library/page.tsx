@@ -44,6 +44,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
+import { useBrand } from "@/lib/brand";
 
 // Images below this size get a "low resolution" warning on upload.
 const MIN_DIMENSION = 600;
@@ -235,6 +236,11 @@ const deriveNameFromFilename = (filename: string) => {
 };
 
 export default function ItemLibraryPage() {
+  const brand = useBrand();
+  const isJaeky = brand.site === "jaeky";
+  const primaryBtnClass = isJaeky
+    ? "bg-purple-500 hover:bg-purple-400 text-white"
+    : "bg-lime-500 hover:bg-lime-400 text-zinc-950";
   const [templates, setTemplates] = useState<MenuItemTemplate[]>([]);
   const [dbCategories, setDbCategories] = useState<DbCategory[]>([]);
   const [loading, setLoading] = useState(true);
@@ -612,7 +618,7 @@ export default function ItemLibraryPage() {
           <div className="flex items-start justify-between gap-4 mb-6 flex-wrap">
             <div>
               <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
-                <Library className="h-6 w-6 text-lime-600" />
+                <Library className={`h-6 w-6 ${brand.accentText}`} />
                 Item Library
               </h1>
               <p className="text-sm text-muted-foreground mt-1">
@@ -636,7 +642,7 @@ export default function ItemLibraryPage() {
                   )}
                 </Button>
               )}
-              <Button onClick={openAddDialog} className="bg-lime-500 hover:bg-lime-400 text-zinc-950">
+              <Button onClick={openAddDialog} className={primaryBtnClass}>
                 <Plus className="h-4 w-4 mr-1" />
                 Save New Item
               </Button>
@@ -663,7 +669,7 @@ export default function ItemLibraryPage() {
                   <Card
                     key={template.id}
                     className={`overflow-hidden group ${selectMode ? "cursor-pointer" : ""} ${
-                      isSelected ? "ring-2 ring-lime-500" : ""
+                      isSelected ? (isJaeky ? "ring-2 ring-purple-500" : "ring-2 ring-lime-500") : ""
                     }`}
                     onClick={() => selectMode && toggleItemSelected(template.id)}
                   >
@@ -683,7 +689,9 @@ export default function ItemLibraryPage() {
                         <div
                           className={`absolute top-2 left-2 flex h-6 w-6 items-center justify-center rounded-full border-2 transition-colors ${
                             isSelected
-                              ? "bg-lime-500 border-lime-500 text-zinc-950"
+                              ? isJaeky
+                                ? "bg-purple-500 border-purple-500 text-white"
+                                : "bg-lime-500 border-lime-500 text-zinc-950"
                               : "bg-white/80 border-white text-transparent"
                           }`}
                         >
@@ -706,7 +714,14 @@ export default function ItemLibraryPage() {
                       <div>
                         <p className="font-medium text-sm truncate">{template.name}</p>
                         {template.category && (
-                          <Badge variant="outline" className="mt-1 text-[10px] bg-lime-50 text-lime-700 border-lime-200">
+                          <Badge
+                            variant="outline"
+                            className={
+                              isJaeky
+                                ? "mt-1 text-[10px] bg-purple-50 text-purple-700 border-purple-200"
+                                : "mt-1 text-[10px] bg-lime-50 text-lime-700 border-lime-200"
+                            }
+                          >
                             {template.category}
                           </Badge>
                         )}
@@ -717,7 +732,7 @@ export default function ItemLibraryPage() {
                       {!selectMode && (
                         <Button
                           size="sm"
-                          className="w-full bg-lime-500 hover:bg-lime-400 text-zinc-950"
+                          className={`w-full ${primaryBtnClass}`}
                           onClick={(e) => {
                             e.stopPropagation();
                             openAddToMenuDialog(template);
@@ -745,7 +760,7 @@ export default function ItemLibraryPage() {
             <Button variant="outline" size="sm" onClick={() => setSelectedIds(new Set())}>
               Clear
             </Button>
-            <Button size="sm" className="bg-lime-500 hover:bg-lime-400 text-zinc-950" onClick={openBulkAddDialog}>
+            <Button size="sm" className={`${primaryBtnClass}`} onClick={openBulkAddDialog}>
               <ShoppingCart className="h-3.5 w-3.5 mr-1" />
               Add to Menu
             </Button>
@@ -787,7 +802,11 @@ export default function ItemLibraryPage() {
               <button
                 type="button"
                 onClick={() => filesInputRef.current?.click()}
-                className="flex items-center justify-center gap-2 w-full h-20 rounded-lg border-2 border-dashed border-border text-muted-foreground hover:border-lime-400 hover:text-lime-600 transition-colors"
+                className={
+                  isJaeky
+                    ? "flex items-center justify-center gap-2 w-full h-20 rounded-lg border-2 border-dashed border-border text-muted-foreground hover:border-purple-400 hover:text-purple-600 transition-colors"
+                    : "flex items-center justify-center gap-2 w-full h-20 rounded-lg border-2 border-dashed border-border text-muted-foreground hover:border-lime-400 hover:text-lime-600 transition-colors"
+                }
               >
                 <Upload className="h-5 w-5" />
                 <span className="text-sm">Select one or more photos</span>
@@ -847,7 +866,7 @@ export default function ItemLibraryPage() {
             <Button variant="outline" onClick={closeAddDialog}>
               Cancel
             </Button>
-            <Button onClick={handleSaveBatch} disabled={submitting} className="bg-lime-500 hover:bg-lime-400 text-zinc-950">
+            <Button onClick={handleSaveBatch} disabled={submitting} className={`${primaryBtnClass}`}>
               {submitting ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
               Save {batchItems.length > 0 ? `${batchItems.length} Item${batchItems.length === 1 ? "" : "s"}` : "Items"} to Library
             </Button>
@@ -904,7 +923,7 @@ export default function ItemLibraryPage() {
             <Button
               onClick={handleAddToMenuConfirm}
               disabled={addingToMenu}
-              className="bg-lime-500 hover:bg-lime-400 text-zinc-950"
+              className={`${primaryBtnClass}`}
             >
               {addingToMenu ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
               Add to Menu
@@ -964,7 +983,7 @@ export default function ItemLibraryPage() {
             <Button
               onClick={handleBulkAddConfirm}
               disabled={bulkAdding}
-              className="bg-lime-500 hover:bg-lime-400 text-zinc-950"
+              className={`${primaryBtnClass}`}
             >
               {bulkAdding ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
               Add {selectedIds.size} Item{selectedIds.size === 1 ? "" : "s"}
