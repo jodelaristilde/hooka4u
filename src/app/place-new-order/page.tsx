@@ -5,22 +5,27 @@ import OrderLanding from "@/components/order-landing";
 // look depending on which domain the guest arrived through. Add more
 // entries here as more branded domains point at this same site.
 //
-// Jaeky's logo image already has "GOT YOU" and the "Just About Everything,
-// Kindly Yours" tagline baked into the graphic itself, so no separate
-// subLine/slogan text is needed here — just the logo.
+// Jaeky's logo is split into two image pieces (the "JaeKy" wordmark, and
+// the "Just About Everything, Kindly Yours" tagline) so "GOT YOU" can be
+// rendered as live text in between them, in the matching font/color.
+// White background, light-purple theme.
 type Brand = {
   match: string;
   topLine?: string;
   bottomLine?: string;
   logoSrc?: string;
-  theme: "dark-lime" | "dark-purple";
+  subLine?: string;
+  taglineSrc?: string;
+  theme: "dark-lime" | "dark-purple" | "light-purple";
 };
 
 const BRANDS: Brand[] = [
   {
     match: "jaeky.us",
-    logoSrc: "/jaeky-logo.png",
-    theme: "dark-purple",
+    logoSrc: "/jaeky-wordmark-only.png",
+    subLine: "Got You",
+    taglineSrc: "/jaeky-tagline-only.png",
+    theme: "light-purple",
   },
 ];
 
@@ -42,6 +47,8 @@ export default async function Home() {
       topLine={brand.topLine}
       bottomLine={brand.bottomLine}
       logoSrc={brand.logoSrc}
+      subLine={brand.subLine}
+      taglineSrc={brand.taglineSrc}
       theme={brand.theme}
     />
   );
