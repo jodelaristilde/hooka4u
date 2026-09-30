@@ -5,7 +5,7 @@ import Link from "next/link";
 import NewOrder from "@/components/new-order";
 
 type Screen = "hero" | "order";
-type Theme = "dark-lime" | "dark-purple";
+type Theme = "dark-lime" | "dark-purple" | "light-purple";
 
 interface OrderLandingProps {
   // Either pass topLine/bottomLine for a plain text hero (VIP Service 4U's
@@ -20,12 +20,18 @@ interface OrderLandingProps {
   // the same bold serif face as the wordmark itself.
   subLine?: string;
   slogan?: string;
+  // Image version of the tagline (e.g. cropped straight from the logo
+  // graphic), shown instead of the plain-text `slogan` when provided —
+  // used so the tagline matches the wordmark's exact lettering.
+  taglineSrc?: string;
   theme: Theme;
 }
 
 const THEME_CLASSES: Record<
   Theme,
   {
+    mainBg: string;
+    bgGradient: string;
     line: string;
     slogan: string;
     subLine: string;
@@ -36,6 +42,8 @@ const THEME_CLASSES: Record<
   }
 > = {
   "dark-lime": {
+    mainBg: "bg-gray-950",
+    bgGradient: "from-gray-900 via-gray-950 to-black",
     line: "via-lime-500",
     slogan: "text-white/80",
     subLine: "from-lime-400 via-lime-500 to-lime-600",
@@ -45,6 +53,8 @@ const THEME_CLASSES: Record<
     outlineBtn: "text-lime-400 border-lime-500/60 hover:bg-lime-500/10",
   },
   "dark-purple": {
+    mainBg: "bg-gray-950",
+    bgGradient: "from-gray-900 via-gray-950 to-black",
     line: "via-purple-500",
     slogan: "text-white/80",
     subLine: "from-purple-400 via-purple-500 to-purple-700",
@@ -52,6 +62,17 @@ const THEME_CLASSES: Record<
     primaryBtnHoverBg: "from-purple-500 to-purple-700",
     primaryShadow: "0 10px 40px rgba(168, 85, 247, 0.5)",
     outlineBtn: "text-purple-300 border-purple-500/60 hover:bg-purple-500/10",
+  },
+  "light-purple": {
+    mainBg: "bg-white",
+    bgGradient: "from-purple-50 via-white to-white",
+    line: "via-purple-400",
+    slogan: "text-zinc-600",
+    subLine: "from-purple-500 via-purple-600 to-purple-800",
+    primaryBtn: "from-purple-500 to-purple-700",
+    primaryBtnHoverBg: "from-purple-600 to-purple-800",
+    primaryShadow: "0 10px 40px rgba(168, 85, 247, 0.35)",
+    outlineBtn: "text-purple-700 border-purple-400 hover:bg-purple-50",
   },
 };
 
@@ -66,6 +87,7 @@ export default function OrderLanding({
   logoSrc,
   subLine,
   slogan,
+  taglineSrc,
   theme,
 }: OrderLandingProps) {
   const [screen, setScreen] = useState<Screen>("hero");
@@ -91,14 +113,14 @@ export default function OrderLanding({
   }
 
   return (
-    <main className="min-h-screen bg-gray-950 relative overflow-x-hidden flex items-center justify-center py-10">
+    <main className={`min-h-screen ${c.mainBg} relative overflow-x-hidden flex items-center justify-center py-10`}>
       {/* Next.js hoists this into <head> automatically since it's rendered
           from a component — loads the same serif face used in the logo. */}
       <link
         rel="stylesheet"
         href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&display=swap"
       />
-      <div className="absolute inset-0 bg-gradient-to-b from-gray-900 via-gray-950 to-black"></div>
+      <div className={`absolute inset-0 bg-gradient-to-b ${c.bgGradient}`}></div>
       <div className="absolute inset-0 opacity-30 pointer-events-none">
         <div className={`absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent ${c.line} to-transparent`}></div>
         <div className={`absolute bottom-0 left-0 w-full h-px bg-gradient-to-r from-transparent ${c.line} to-transparent`}></div>
@@ -120,13 +142,22 @@ export default function OrderLanding({
                 {subLine}
               </p>
             )}
-            {slogan && (
-              <p
-                className={`mt-1 sm:mt-2 ${c.slogan} text-base sm:text-xl md:text-2xl tracking-wide`}
-                style={{ fontFamily: LOGO_FONT_STACK }}
-              >
-                {slogan}
-              </p>
+            {taglineSrc ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={taglineSrc}
+                alt=""
+                className="mx-auto mt-4 sm:mt-6 w-full max-w-[220px] sm:max-w-xs md:max-w-sm h-auto"
+              />
+            ) : (
+              slogan && (
+                <p
+                  className={`mt-1 sm:mt-2 ${c.slogan} text-base sm:text-xl md:text-2xl tracking-wide`}
+                  style={{ fontFamily: LOGO_FONT_STACK }}
+                >
+                  {slogan}
+                </p>
+              )
             )}
           </div>
         ) : (
