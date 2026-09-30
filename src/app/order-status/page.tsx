@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react"
 import { Loader2, Search, CheckCircle2, Clock, AlertCircle } from "lucide-react"
+import { useBrand } from "@/lib/brand"
 
 interface OrderStatusResult {
   orderNumber: number
@@ -11,6 +12,8 @@ interface OrderStatusResult {
 }
 
 export default function OrderStatusPage() {
+  const brand = useBrand()
+  const isJaeky = brand.site === "jaeky"
   const [input, setInput] = useState("")
   const [activeOrderNumber, setActiveOrderNumber] = useState<string | null>(null)
   const [result, setResult] = useState<OrderStatusResult | null>(null)
@@ -87,12 +90,20 @@ export default function OrderStatusPage() {
             placeholder="e.g., 104"
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            className="flex-1 h-12 rounded-lg bg-zinc-900 border border-zinc-700 text-white placeholder:text-zinc-500 px-4 text-lg focus:outline-none focus:ring-2 focus:ring-lime-500"
+            className={
+              isJaeky
+                ? "flex-1 h-12 rounded-lg bg-zinc-900 border border-zinc-700 text-white placeholder:text-zinc-500 px-4 text-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                : "flex-1 h-12 rounded-lg bg-zinc-900 border border-zinc-700 text-white placeholder:text-zinc-500 px-4 text-lg focus:outline-none focus:ring-2 focus:ring-lime-500"
+            }
           />
           <button
             type="submit"
             disabled={loading || !input.trim()}
-            className="h-12 px-5 rounded-lg bg-lime-500 hover:bg-lime-400 disabled:opacity-50 disabled:hover:bg-lime-500 text-black font-semibold flex items-center gap-2 transition-colors"
+            className={
+              isJaeky
+                ? "h-12 px-5 rounded-lg bg-purple-500 hover:bg-purple-400 disabled:opacity-50 disabled:hover:bg-purple-500 text-white font-semibold flex items-center gap-2 transition-colors"
+                : "h-12 px-5 rounded-lg bg-lime-500 hover:bg-lime-400 disabled:opacity-50 disabled:hover:bg-lime-500 text-black font-semibold flex items-center gap-2 transition-colors"
+            }
           >
             {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Search className="w-5 h-5" />}
             <span className="hidden sm:inline">Check</span>
@@ -107,9 +118,9 @@ export default function OrderStatusPage() {
         )}
 
         {result && !error && (
-          <div className="rounded-2xl border-4 border-lime-500 bg-zinc-900 p-6 flex flex-col items-center gap-4">
+          <div className={isJaeky ? "rounded-2xl border-4 border-purple-500 bg-zinc-900 p-6 flex flex-col items-center gap-4" : "rounded-2xl border-4 border-lime-500 bg-zinc-900 p-6 flex flex-col items-center gap-4"}>
             <p className="text-sm uppercase tracking-widest text-zinc-400">Order Number</p>
-            <p className="text-6xl font-black text-lime-500 tabular-nums">{result.orderNumber}</p>
+            <p className={isJaeky ? "text-6xl font-black text-purple-500 tabular-nums" : "text-6xl font-black text-lime-500 tabular-nums"}>{result.orderNumber}</p>
 
             <div
               className={`flex items-center gap-2 px-4 py-2 rounded-full font-semibold text-sm ${
