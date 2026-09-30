@@ -5,7 +5,7 @@ import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
 import AuthProvider from "@/components/auth-provider";
 import { headers } from "next/headers";
-import { getBrandFromHost } from "@/lib/brand";
+import { getBrandFromHost, siteFromHostname } from "@/lib/brand";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -22,11 +22,15 @@ const geistMono = Geist_Mono({
 // still override this for their own section.
 export async function generateMetadata(): Promise<Metadata> {
   const headersList = await headers();
-  const brand = getBrandFromHost(headersList.get("host"));
+  const host = headersList.get("host");
+  const brand = getBrandFromHost(host);
+  const isJaeky = siteFromHostname(host || "") === "jaeky";
+  const tagline = isJaeky ? "Got You" : "Your Hookah, Your Way";
+
   return {
-    title: `${brand.name} - Your Hookah, Your Way`,
-    description: "Your Hookah, Your Way",
-    manifest: "/manifest.json",
+    title: `${brand.name} - ${tagline}`,
+    description: tagline,
+    manifest: isJaeky ? "/manifest-jaeky.json" : "/manifest.json",
     appleWebApp: {
       capable: true,
       statusBarStyle: "black-translucent",
