@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getSiteFromRequest, siteWhere } from "@/lib/site";
 
@@ -37,6 +39,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const site = getSiteFromRequest(request);
+    const session = await getServerSession(authOptions);
     const body = await request.json();
     const { name, description, price, image, category, available } = body;
 
@@ -49,6 +52,9 @@ export async function POST(request: Request) {
         category: category || null,
         available: available ?? false,
         site,
+        // Tag the item with whoever is logged in and creating it, so it
+        // can later be viewed/filtered by user without needing their login.
+        createdByUsername: session?.user?.username || null,
       },
     });
 
