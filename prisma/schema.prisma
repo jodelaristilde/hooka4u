@@ -65,6 +65,11 @@ model MenuItems {
   category    String?     // Free-text category name, e.g. "FOOD", "DRINKS", or any custom category
   available   Boolean     @default(false)
   site        String      @default("vipservice4u")
+  // Username of whoever added this item (e.g. "jo", "karen"), so an admin
+  // can view/filter one user's menu without logging into their account.
+  // Nullable because items created before this field existed have no
+  // creator on record — the admin UI lets those be assigned afterward.
+  createdByUsername String?
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
   OrderItem   OrderItem[]
