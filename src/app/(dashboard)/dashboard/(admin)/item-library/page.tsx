@@ -235,6 +235,18 @@ const deriveNameFromFilename = (filename: string) => {
   return spaced.length === 0 ? "" : spaced.charAt(0).toUpperCase() + spaced.slice(1);
 };
 
+// Catches the case where a photo's filename was itself a random ID (common
+// from messaging apps, cloud downloads, or AI-generated images) — the
+// auto-suggested name above would just turn its dashes into spaces,
+// producing something like "68C5F670 A8DC 4318 AB96 1C0A93F9B..." instead
+// of a real item name. Flags any name that, once spaces are removed, is a
+// long run of nothing but hex characters — virtually never true of an
+// actual food/drink name, but exactly what a raw ID looks like.
+const looksLikeFilenameId = (name: string) => {
+  const compact = name.replace(/\s+/g, "");
+  return compact.length >= 20 && /^[0-9a-fA-F]+$/.test(compact);
+};
+
 export default function ItemLibraryPage() {
   const brand = useBrand();
   const isJaeky = brand.site === "jaeky";
@@ -388,6 +400,13 @@ export default function ItemLibraryPage() {
     }
     if (batchItems.some((it) => !it.name.trim())) {
       toast.error("Every item needs a name");
+      return;
+    }
+    const idLikeItem = batchItems.find((it) => looksLikeFilenameId(it.name.trim()));
+    if (idLikeItem) {
+      toast.error("That name looks like a photo ID, not an item name", {
+        description: `"${idLikeItem.name.trim().slice(0, 40)}${idLikeItem.name.trim().length > 40 ? "…" : ""}" — please type a real name for this item before saving.`,
+      });
       return;
     }
 
