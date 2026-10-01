@@ -60,6 +60,15 @@ const categoryIcon = (name: string) => {
 
 const NEW_CATEGORY_VALUE = "__new__";
 
+// Catches a name that's actually a raw photo/file ID (e.g. pasted in by
+// mistake, or carried over un-edited from an auto-suggested name on the
+// Item Library page) — flags a long run of nothing but hex characters,
+// which is virtually never true of a real food/drink name.
+const looksLikeFilenameId = (name: string) => {
+  const compact = name.replace(/\s+/g, "");
+  return compact.length >= 20 && /^[0-9a-fA-F]+$/.test(compact);
+};
+
 // Images below this size get a "low resolution" warning on upload.
 const MIN_DIMENSION = 600;
 // Every photo is center-cropped to a square and scaled to this size, so all
@@ -617,6 +626,12 @@ export default function MenuItemsPage() {
     if (!formData.name.trim()) {
       toast.error("Name is required", {
         description: "Please enter a name for the menu item.",
+      });
+      return;
+    }
+    if (looksLikeFilenameId(formData.name.trim())) {
+      toast.error("That name looks like a photo ID, not an item name", {
+        description: "Please type a real name for this item before saving.",
       });
       return;
     }
