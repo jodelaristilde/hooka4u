@@ -230,6 +230,9 @@ interface MenuItem {
   available: boolean;
   createdAt: string;
   updatedAt: string;
+  // Username of whoever added this item. Missing/null on items created
+  // before per-user tracking existed.
+  createdByUsername?: string | null;
 }
 
 interface DbCategory {
@@ -238,6 +241,16 @@ interface DbCategory {
   hidden: boolean;
   order: number;
 }
+
+interface AdminUser {
+  id: string;
+  username: string;
+  name?: string | null;
+}
+
+// Special userFilter values alongside an actual username.
+const USER_FILTER_ALL = "__all__";
+const USER_FILTER_UNASSIGNED = "__unassigned__";
 
 export default function MenuItemsPage() {
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
@@ -259,6 +272,13 @@ export default function MenuItemsPage() {
   const [categorySubmitting, setCategorySubmitting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // "View by user" — lets an admin see just one user's items without
+  // logging into their account. Defaults to showing everyone's items,
+  // same as before this existed.
+  const [adminUsers, setAdminUsers] = useState<AdminUser[]>([]);
+  const [userFilter, setUserFilter] = useState<string>(USER_FILTER_ALL);
+  const [assigningUnowned, setAssigningUnowned] = useState(false);
+
   // Form state
   const [formData, setFormData] = useState({
     name: "",
@@ -274,8 +294,20 @@ export default function MenuItemsPage() {
   // category dropdown on THIS admin page — hidden categories still show
   // here so items in them stay manageable; only the customer/staff
   // ordering screens filter hidden ones out.
+  // The "View by user" filter applied on top of the full item list —
+  // everything below (tabs, categories, counts, the grid) reads from this
+  // instead of menuItems directly, so picking a user shows just their menu.
+  const visibleItems =
+    userFilter === USER_FILTER_ALL
+      ? menuItems
+      : userFilter === USER_FILTER_UNASSIGNED
+        ? menuItems.filter((item) => !item.createdByUsername)
+        : menuItems.filter((item) => item.createdByUsername === userFilter);
+
+  const unassignedCount = menuItems.filter((item) => !item.createdByUsername).length;
+
   const itemOnlyCategoryNames = Array.from(
-    new Set(menuItems.map((item) => item.category).filter((c): c is string => !!c))
+    new Set(visibleItems.map((item) => item.category).filter((c): c is string => !!c))
   ).filter((name) => !dbCategories.some((c) => c.name === name));
 
   const categories = [
@@ -302,7 +334,42 @@ export default function MenuItemsPage() {
   useEffect(() => {
     fetchMenuItems();
     fetchCategories();
+    fetchAdminUsers();
   }, []);
+
+  const fetchAdminUsers = async () => {
+    try {
+      const response = await fetch("/api/users");
+      if (!response.ok) throw new Error("Failed to fetch users");
+      const data = await response.json();
+      setAdminUsers(Array.isArray(data) ? data : []);
+    } catch (error) {
+      console.error("Error fetching users for menu filter:", error);
+    }
+  };
+
+  const handleAssignUnownedItems = async (username: string) => {
+    setAssigningUnowned(true);
+    try {
+      const response = await fetch("/api/menu-items/assign-owner", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username }),
+      });
+      if (!response.ok) throw new Error("Failed to assign items");
+      const data = await response.json();
+      toast.success(`Assigned ${data.updatedCount} item(s) to ${username}`);
+      setUserFilter(username);
+      await fetchMenuItems();
+    } catch (error) {
+      console.error("Error assigning unowned items:", error);
+      toast.error("Failed to assign items", {
+        description: "Please try again.",
+      });
+    } finally {
+      setAssigningUnowned(false);
+    }
+  };
 
   const fetchCategories = async () => {
     try {
@@ -747,7 +814,7 @@ export default function MenuItemsPage() {
     }
   };
 
-  const itemsForTab = menuItems.filter((item) => item.category === activeTab);
+  const itemsForTab = visibleItems.filter((item) => item.category === activeTab);
 
   const renderGrid = () => (
     loading ? (
@@ -910,6 +977,58 @@ export default function MenuItemsPage() {
               </Button>
             </div>
           </div>
+
+          {/* View by user — see one person's items without logging into
+              their account. Items added before this existed show up under
+              "Unassigned" until assigned to someone. */}
+          {adminUsers.length > 0 && (
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+              <div className="flex items-center gap-2">
+                <Label htmlFor="user-filter" className="text-sm text-muted-foreground whitespace-nowrap">
+                  View menu added by
+                </Label>
+                <Select value={userFilter} onValueChange={setUserFilter}>
+                  <SelectTrigger id="user-filter" className="w-[200px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={USER_FILTER_ALL}>Everyone</SelectItem>
+                    {adminUsers.map((u) => (
+                      <SelectItem key={u.id} value={u.username}>
+                        {u.name ? `${u.name} (${u.username})` : u.username}
+                      </SelectItem>
+                    ))}
+                    {unassignedCount > 0 && (
+                      <SelectItem value={USER_FILTER_UNASSIGNED}>
+                        Unassigned ({unassignedCount})
+                      </SelectItem>
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {userFilter === USER_FILTER_UNASSIGNED && unassignedCount > 0 && (
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-sm text-muted-foreground">Assign these {unassignedCount} item(s) to:</span>
+                  <Select
+                    onValueChange={(username) => handleAssignUnownedItems(username)}
+                    disabled={assigningUnowned}
+                  >
+                    <SelectTrigger className="w-[180px]">
+                      <SelectValue placeholder={assigningUnowned ? "Assigning..." : "Choose a user"} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {adminUsers.map((u) => (
+                        <SelectItem key={u.id} value={u.username}>
+                          {u.name ? `${u.name} (${u.username})` : u.username}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+            </div>
+          )}
 
           {categories.length === 0 ? (
             <Card>
