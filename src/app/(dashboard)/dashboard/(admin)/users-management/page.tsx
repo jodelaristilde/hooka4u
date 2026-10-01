@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Plus, Trash2, Loader2, Eye, EyeOff, X, UserPlus, RotateCcw, CheckCircle2 } from "lucide-react"
+import { Plus, Trash2, Loader2, Eye, EyeOff, X, UserPlus, RotateCcw, CheckCircle2, History } from "lucide-react"
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -78,12 +78,41 @@ export default function UserManagement() {
   const [showWashupPassword, setShowWashupPassword] = useState(false)
   const [isWashupRunning, setIsWashupRunning] = useState(false)
   const [washupProgress, setWashupProgress] = useState(0)
+  // Menu items/categories are intentionally NOT part of Washup — wiping the
+  // menu is now only ever done through the separate "Delete Menu" button
+  // below, so it's never an accidental side effect of a Washup reset.
   const [washupSteps, setWashupSteps] = useState<WashupStep[]>([
     { id: "order-items", description: "Deleting all order items", status: "pending" },
-    { id: "menu-items", description: "Deleting all menu items", status: "pending" },
-    { id: "menu-categories", description: "Deleting all menu categories", status: "pending" },
     { id: "orders", description: "Deleting all orders", status: "pending" },
     { id: "users", description: "Deleting all users", status: "pending" },
+  ])
+
+  // Clear Orders Only state — a lighter reset than Washup: wipes order
+  // history so the next person gets a clean slate, but never touches menu
+  // items/categories or user accounts, so the menu someone already built
+  // stays exactly as it was.
+  const [isClearOrdersDialogOpen, setIsClearOrdersDialogOpen] = useState(false)
+  const [clearOrdersPassword, setClearOrdersPassword] = useState("")
+  const [showClearOrdersPassword, setShowClearOrdersPassword] = useState(false)
+  const [isClearOrdersRunning, setIsClearOrdersRunning] = useState(false)
+  const [clearOrdersProgress, setClearOrdersProgress] = useState(0)
+  const [clearOrdersSteps, setClearOrdersSteps] = useState<WashupStep[]>([
+    { id: "order-items", description: "Deleting all order items", status: "pending" },
+    { id: "orders", description: "Deleting all orders", status: "pending" },
+  ])
+
+  // Delete Menu state — the ONLY action in the app that deletes menu items
+  // and categories. Deliberately kept separate from both Washup and Clear
+  // Orders Only, so the menu is never wiped as a side effect of something
+  // else (including deleting a user account, which does not touch the menu).
+  const [isDeleteMenuDialogOpen, setIsDeleteMenuDialogOpen] = useState(false)
+  const [deleteMenuPassword, setDeleteMenuPassword] = useState("")
+  const [showDeleteMenuPassword, setShowDeleteMenuPassword] = useState(false)
+  const [isDeleteMenuRunning, setIsDeleteMenuRunning] = useState(false)
+  const [deleteMenuProgress, setDeleteMenuProgress] = useState(0)
+  const [deleteMenuSteps, setDeleteMenuSteps] = useState<WashupStep[]>([
+    { id: "menu-items", description: "Deleting all menu items", status: "pending" },
+    { id: "menu-categories", description: "Deleting all menu categories", status: "pending" },
   ])
 
   // Fetch users from database
@@ -226,8 +255,6 @@ export default function UserManagement() {
     setWashupProgress(0)
     setWashupSteps([
       { id: "order-items", description: "Deleting all order items", status: "pending" },
-      { id: "menu-items", description: "Deleting all menu items", status: "pending" },
-      { id: "menu-categories", description: "Deleting all menu categories", status: "pending" },
       { id: "orders", description: "Deleting all orders", status: "pending" },
       { id: "users", description: "Deleting all users", status: "pending" },
     ])
@@ -268,10 +295,12 @@ export default function UserManagement() {
         throw new Error(error.message || "Invalid password")
       }
 
-      // Step 1: Delete all order items (has to happen before menu items or
-      // orders can be deleted, since both are required relations of it)
+      // Step 1: Delete all order items (has to happen before orders can be
+      // deleted, since order items are a required relation of it). Menu
+      // items/categories are never touched by Washup — see the separate
+      // "Delete Menu" button for that.
       updateStepStatus("order-items", "in-progress")
-      setWashupProgress(15)
+      setWashupProgress(20)
       const orderItemsResponse = await fetch("/api/washup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -279,35 +308,11 @@ export default function UserManagement() {
       })
       if (!orderItemsResponse.ok) throw new Error("Failed to delete order items")
       updateStepStatus("order-items", "completed")
-      setWashupProgress(30)
+      setWashupProgress(45)
 
-      // Step 2: Delete all menu items
-      updateStepStatus("menu-items", "in-progress")
-      setWashupProgress(40)
-      const menuItemsResponse = await fetch("/api/washup", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ step: "menu-items" }),
-      })
-      if (!menuItemsResponse.ok) throw new Error("Failed to delete menu items")
-      updateStepStatus("menu-items", "completed")
-      setWashupProgress(55)
-
-      // Step 3: Delete all menu categories
-      updateStepStatus("menu-categories", "in-progress")
-      setWashupProgress(65)
-      const menuCategoriesResponse = await fetch("/api/washup", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ step: "menu-categories" }),
-      })
-      if (!menuCategoriesResponse.ok) throw new Error("Failed to delete menu categories")
-      updateStepStatus("menu-categories", "completed")
-      setWashupProgress(75)
-
-      // Step 4: Delete all orders
+      // Step 2: Delete all orders
       updateStepStatus("orders", "in-progress")
-      setWashupProgress(85)
+      setWashupProgress(65)
       const ordersResponse = await fetch("/api/washup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -317,7 +322,7 @@ export default function UserManagement() {
       updateStepStatus("orders", "completed")
       setWashupProgress(90)
 
-      // Step 5: Delete all users
+      // Step 3: Delete all users
       updateStepStatus("users", "in-progress")
       setWashupProgress(95)
       const usersResponse = await fetch("/api/washup", {
@@ -347,6 +352,184 @@ export default function UserManagement() {
         description: err instanceof Error ? err.message : "Please try again later",
       })
       setIsWashupRunning(false)
+    }
+  }
+
+  const resetClearOrdersState = () => {
+    setClearOrdersPassword("")
+    setShowClearOrdersPassword(false)
+    setIsClearOrdersRunning(false)
+    setClearOrdersProgress(0)
+    setClearOrdersSteps([
+      { id: "order-items", description: "Deleting all order items", status: "pending" },
+      { id: "orders", description: "Deleting all orders", status: "pending" },
+    ])
+  }
+
+  const handleClearOrdersClose = () => {
+    if (!isClearOrdersRunning) {
+      setIsClearOrdersDialogOpen(false)
+      resetClearOrdersState()
+    }
+  }
+
+  const updateClearOrdersStepStatus = (stepId: string, status: WashupStep["status"]) => {
+    setClearOrdersSteps((prev) => prev.map((step) => (step.id === stepId ? { ...step, status } : step)))
+  }
+
+  const handleClearOrdersConfirm = async () => {
+    if (!clearOrdersPassword.trim()) {
+      toast.error("Password required", {
+        description: "Please enter your password to confirm.",
+      })
+      return
+    }
+
+    setIsClearOrdersRunning(true)
+    setClearOrdersProgress(0)
+
+    try {
+      // Verify password
+      const verifyResponse = await fetch("/api/auth/verify-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password: clearOrdersPassword }),
+      })
+
+      if (!verifyResponse.ok) {
+        const error = await verifyResponse.json()
+        throw new Error(error.message || "Invalid password")
+      }
+
+      // Step 1: Delete all order items (has to happen before orders can be
+      // deleted, since order items have a required relation to orders)
+      updateClearOrdersStepStatus("order-items", "in-progress")
+      setClearOrdersProgress(30)
+      const orderItemsResponse = await fetch("/api/washup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ step: "order-items" }),
+      })
+      if (!orderItemsResponse.ok) throw new Error("Failed to delete order items")
+      updateClearOrdersStepStatus("order-items", "completed")
+      setClearOrdersProgress(60)
+
+      // Step 2: Delete all orders — menu items, categories, and user
+      // accounts are intentionally left untouched.
+      updateClearOrdersStepStatus("orders", "in-progress")
+      setClearOrdersProgress(80)
+      const ordersResponse = await fetch("/api/washup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ step: "orders" }),
+      })
+      if (!ordersResponse.ok) throw new Error("Failed to delete orders")
+      updateClearOrdersStepStatus("orders", "completed")
+      setClearOrdersProgress(100)
+
+      toast.success("Orders cleared successfully!", {
+        description: "Order history has been reset. Your menu and prices were not affected.",
+      })
+
+      // Close dialog after a short delay
+      setTimeout(() => {
+        setIsClearOrdersDialogOpen(false)
+        resetClearOrdersState()
+      }, 1500)
+    } catch (err) {
+      console.error("Clear orders error:", err)
+      toast.error("Clearing orders failed", {
+        description: err instanceof Error ? err.message : "Please try again later",
+      })
+      setIsClearOrdersRunning(false)
+    }
+  }
+
+  const resetDeleteMenuState = () => {
+    setDeleteMenuPassword("")
+    setShowDeleteMenuPassword(false)
+    setIsDeleteMenuRunning(false)
+    setDeleteMenuProgress(0)
+    setDeleteMenuSteps([
+      { id: "menu-items", description: "Deleting all menu items", status: "pending" },
+      { id: "menu-categories", description: "Deleting all menu categories", status: "pending" },
+    ])
+  }
+
+  const handleDeleteMenuClose = () => {
+    if (!isDeleteMenuRunning) {
+      setIsDeleteMenuDialogOpen(false)
+      resetDeleteMenuState()
+    }
+  }
+
+  const updateDeleteMenuStepStatus = (stepId: string, status: WashupStep["status"]) => {
+    setDeleteMenuSteps((prev) => prev.map((step) => (step.id === stepId ? { ...step, status } : step)))
+  }
+
+  const handleDeleteMenuConfirm = async () => {
+    if (!deleteMenuPassword.trim()) {
+      toast.error("Password required", {
+        description: "Please enter your password to confirm.",
+      })
+      return
+    }
+
+    setIsDeleteMenuRunning(true)
+    setDeleteMenuProgress(0)
+
+    try {
+      // Verify password
+      const verifyResponse = await fetch("/api/auth/verify-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password: deleteMenuPassword }),
+      })
+
+      if (!verifyResponse.ok) {
+        const error = await verifyResponse.json()
+        throw new Error(error.message || "Invalid password")
+      }
+
+      // Step 1: Delete all menu items
+      updateDeleteMenuStepStatus("menu-items", "in-progress")
+      setDeleteMenuProgress(40)
+      const menuItemsResponse = await fetch("/api/washup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ step: "menu-items" }),
+      })
+      if (!menuItemsResponse.ok) throw new Error("Failed to delete menu items")
+      updateDeleteMenuStepStatus("menu-items", "completed")
+      setDeleteMenuProgress(70)
+
+      // Step 2: Delete all menu categories
+      updateDeleteMenuStepStatus("menu-categories", "in-progress")
+      setDeleteMenuProgress(85)
+      const menuCategoriesResponse = await fetch("/api/washup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ step: "menu-categories" }),
+      })
+      if (!menuCategoriesResponse.ok) throw new Error("Failed to delete menu categories")
+      updateDeleteMenuStepStatus("menu-categories", "completed")
+      setDeleteMenuProgress(100)
+
+      toast.success("Menu deleted successfully!", {
+        description: "All menu items and categories have been removed.",
+      })
+
+      // Close dialog after a short delay
+      setTimeout(() => {
+        setIsDeleteMenuDialogOpen(false)
+        resetDeleteMenuState()
+      }, 1500)
+    } catch (err) {
+      console.error("Delete menu error:", err)
+      toast.error("Deleting menu failed", {
+        description: err instanceof Error ? err.message : "Please try again later",
+      })
+      setIsDeleteMenuRunning(false)
     }
   }
 
@@ -384,9 +567,25 @@ export default function UserManagement() {
                   <p className="text-sm text-muted-foreground mt-1">Manage system users and their roles</p>
                 </div>
                 <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => setIsClearOrdersDialogOpen(true)}
+                    className="gap-2 border-amber-300 text-amber-700 hover:bg-amber-50 hover:text-amber-800"
+                  >
+                    <History className="w-4 h-4" />
+                    Clear Orders Only
+                  </Button>
                   <Button variant="destructive" onClick={() => setIsWashupDialogOpen(true)} className="gap-2">
                     <RotateCcw className="w-4 h-4" />
                     Washup
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => setIsDeleteMenuDialogOpen(true)}
+                    className="gap-2 border-red-300 text-red-700 hover:bg-red-50 hover:text-red-800"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    Delete Menu
                   </Button>
                   <Button onClick={() => setIsFormOpen(true)} className="hidden gap-2">
                     <Plus className="w-4 h-4" />
@@ -720,8 +919,9 @@ export default function UserManagement() {
               Confirm Washup
             </DialogTitle>
             <DialogDescription>
-              This will permanently delete all menu items and categories, all orders and order items, and all
-              non-admin user accounts. This action cannot be undone.
+              This will permanently delete all orders and order items, and all non-admin user accounts. Your menu
+              items and categories are NOT affected — use the separate "Delete Menu" button for that. This action
+              cannot be undone.
             </DialogDescription>
           </DialogHeader>
 
@@ -769,6 +969,199 @@ export default function UserManagement() {
               <Progress value={washupProgress} className="h-2" />
               <div className="space-y-3">
                 {washupSteps.map((step) => (
+                  <div
+                    key={step.id}
+                    className={`flex items-center gap-3 p-3 rounded-lg transition-colors ${
+                      step.status === "in-progress"
+                        ? "bg-primary/10 border border-primary/20"
+                        : step.status === "completed"
+                          ? "bg-green-50 border border-green-200"
+                          : "bg-muted/50"
+                    }`}
+                  >
+                    {step.status === "in-progress" ? (
+                      <Loader2 className="w-4 h-4 animate-spin text-primary shrink-0" />
+                    ) : step.status === "completed" ? (
+                      <CheckCircle2 className="w-4 h-4 text-green-600 shrink-0" />
+                    ) : (
+                      <div className="w-4 h-4 rounded-full border-2 border-muted-foreground/30 shrink-0" />
+                    )}
+                    <span
+                      className={`text-sm ${
+                        step.status === "in-progress"
+                          ? "text-primary font-medium"
+                          : step.status === "completed"
+                            ? "text-green-700"
+                            : "text-muted-foreground"
+                      }`}
+                    >
+                      {step.description}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Clear Orders Only Confirmation Dialog */}
+      <Dialog open={isClearOrdersDialogOpen} onOpenChange={handleClearOrdersClose}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <History className="w-5 h-5 text-amber-600" />
+              Confirm Clear Orders
+            </DialogTitle>
+            <DialogDescription>
+              This will permanently delete all orders and order history for this site. Your menu items and prices
+              will NOT be affected — only orders are cleared. This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+
+          {!isClearOrdersRunning ? (
+            <>
+              <div className="space-y-4 py-4">
+                <div className="space-y-2">
+                  <Label htmlFor="clear-orders-password">Enter your password to confirm</Label>
+                  <div className="relative">
+                    <Input
+                      id="clear-orders-password"
+                      type={showClearOrdersPassword ? "text" : "password"}
+                      placeholder="Enter your password"
+                      value={clearOrdersPassword}
+                      onChange={(e) => setClearOrdersPassword(e.target.value)}
+                      onKeyDown={(e) => e.key === "Enter" && handleClearOrdersConfirm()}
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
+                      onClick={() => setShowClearOrdersPassword(!showClearOrdersPassword)}
+                    >
+                      {showClearOrdersPassword ? (
+                        <EyeOff className="w-4 h-4 text-muted-foreground" />
+                      ) : (
+                        <Eye className="w-4 h-4 text-muted-foreground" />
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+              <DialogFooter className="gap-2 sm:gap-0">
+                <Button variant="outline" onClick={handleClearOrdersClose}>
+                  Cancel
+                </Button>
+                <Button
+                  className="bg-amber-600 hover:bg-amber-700 text-white"
+                  onClick={handleClearOrdersConfirm}
+                >
+                  Confirm Clear Orders
+                </Button>
+              </DialogFooter>
+            </>
+          ) : (
+            <div className="space-y-6 py-4">
+              <Progress value={clearOrdersProgress} className="h-2" />
+              <div className="space-y-3">
+                {clearOrdersSteps.map((step) => (
+                  <div
+                    key={step.id}
+                    className={`flex items-center gap-3 p-3 rounded-lg transition-colors ${
+                      step.status === "in-progress"
+                        ? "bg-primary/10 border border-primary/20"
+                        : step.status === "completed"
+                          ? "bg-green-50 border border-green-200"
+                          : "bg-muted/50"
+                    }`}
+                  >
+                    {step.status === "in-progress" ? (
+                      <Loader2 className="w-4 h-4 animate-spin text-primary shrink-0" />
+                    ) : step.status === "completed" ? (
+                      <CheckCircle2 className="w-4 h-4 text-green-600 shrink-0" />
+                    ) : (
+                      <div className="w-4 h-4 rounded-full border-2 border-muted-foreground/30 shrink-0" />
+                    )}
+                    <span
+                      className={`text-sm ${
+                        step.status === "in-progress"
+                          ? "text-primary font-medium"
+                          : step.status === "completed"
+                            ? "text-green-700"
+                            : "text-muted-foreground"
+                      }`}
+                    >
+                      {step.description}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Menu Confirmation Dialog — the only place in the app that
+          deletes menu items/categories, kept deliberately separate from
+          Washup, Clear Orders Only, and from deleting a user account. */}
+      <Dialog open={isDeleteMenuDialogOpen} onOpenChange={handleDeleteMenuClose}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Trash2 className="w-5 h-5 text-red-600" />
+              Confirm Delete Menu
+            </DialogTitle>
+            <DialogDescription>
+              This will permanently delete all menu items and categories for this site. Orders, order history, and
+              user accounts will NOT be affected. This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+
+          {!isDeleteMenuRunning ? (
+            <>
+              <div className="space-y-4 py-4">
+                <div className="space-y-2">
+                  <Label htmlFor="delete-menu-password">Enter your password to confirm</Label>
+                  <div className="relative">
+                    <Input
+                      id="delete-menu-password"
+                      type={showDeleteMenuPassword ? "text" : "password"}
+                      placeholder="Enter your password"
+                      value={deleteMenuPassword}
+                      onChange={(e) => setDeleteMenuPassword(e.target.value)}
+                      onKeyDown={(e) => e.key === "Enter" && handleDeleteMenuConfirm()}
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
+                      onClick={() => setShowDeleteMenuPassword(!showDeleteMenuPassword)}
+                    >
+                      {showDeleteMenuPassword ? (
+                        <EyeOff className="w-4 h-4 text-muted-foreground" />
+                      ) : (
+                        <Eye className="w-4 h-4 text-muted-foreground" />
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+              <DialogFooter className="gap-2 sm:gap-0">
+                <Button variant="outline" onClick={handleDeleteMenuClose}>
+                  Cancel
+                </Button>
+                <Button variant="destructive" onClick={handleDeleteMenuConfirm}>
+                  Confirm Delete Menu
+                </Button>
+              </DialogFooter>
+            </>
+          ) : (
+            <div className="space-y-6 py-4">
+              <Progress value={deleteMenuProgress} className="h-2" />
+              <div className="space-y-3">
+                {deleteMenuSteps.map((step) => (
                   <div
                     key={step.id}
                     className={`flex items-center gap-3 p-3 rounded-lg transition-colors ${
