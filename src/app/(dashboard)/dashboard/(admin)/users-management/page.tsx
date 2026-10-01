@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Plus, Trash2, Loader2, Eye, EyeOff, X, UserPlus, RotateCcw, CheckCircle2, History } from "lucide-react"
+import { Plus, Trash2, Loader2, Eye, EyeOff, X, UserPlus, RotateCcw, CheckCircle2, History, Download } from "lucide-react"
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -114,6 +114,11 @@ export default function UserManagement() {
     { id: "menu-items", description: "Deleting all menu items", status: "pending" },
     { id: "menu-categories", description: "Deleting all menu categories", status: "pending" },
   ])
+
+  // Backup/export — downloads everything currently in the menu and the
+  // full order history as two CSV files, so there's a copy saved outside
+  // the app before Washup, Clear Orders Only, or Delete Menu is ever run.
+  const [isBackupDownloading, setIsBackupDownloading] = useState(false)
 
   // Fetch users from database
   useEffect(() => {
@@ -533,6 +538,111 @@ export default function UserManagement() {
     }
   }
 
+  // Wraps a CSV cell value so commas, quotes, and line breaks inside it
+  // (e.g. an item description) don't break the file's column alignment.
+  const csvCell = (value: unknown): string => {
+    const str = value === null || value === undefined ? "" : String(value)
+    if (/[",\n]/.test(str)) {
+      return `"${str.replace(/"/g, '""')}"`
+    }
+    return str
+  }
+
+  const downloadCsv = (filename: string, rows: string[][]) => {
+    const csv = rows.map((row) => row.map(csvCell).join(",")).join("\n")
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement("a")
+    link.href = url
+    link.download = filename
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
+  }
+
+  const handleDownloadBackup = async () => {
+    setIsBackupDownloading(true)
+    try {
+      const response = await fetch("/api/export/backup")
+      if (!response.ok) throw new Error("Failed to fetch backup data")
+      const data = await response.json()
+
+      const dateStamp = new Date().toISOString().slice(0, 10)
+
+      type BackupMenuItem = {
+        id: string
+        name: string
+        category?: string | null
+        price: number
+        available: boolean
+        createdByUsername?: string | null
+        description?: string | null
+        createdAt: string
+      }
+      type BackupOrderItem = {
+        quantity: number
+        product?: { name?: string } | null
+      }
+      type BackupOrder = {
+        orderNumber?: number | null
+        customerName: string
+        paymentType?: string | null
+        Seating: string
+        subtotal: number
+        status: string
+        createdAt: string
+        items: BackupOrderItem[]
+      }
+
+      const menuItems: BackupMenuItem[] = data.menuItems || []
+      const orders: BackupOrder[] = data.orders || []
+
+      const menuRows: string[][] = [
+        ["Name", "Category", "Price", "Available", "Added By", "Description", "Created At"],
+        ...menuItems.map((item) => [
+          item.name,
+          item.category || "",
+          item.price.toFixed(2),
+          item.available ? "Yes" : "No",
+          item.createdByUsername || "Unassigned",
+          item.description || "",
+          new Date(item.createdAt).toLocaleString(),
+        ]),
+      ]
+
+      const orderRows: string[][] = [
+        ["Order #", "Customer", "Payment Type", "Seating", "Subtotal", "Status", "Items", "Created At"],
+        ...orders.map((order) => [
+          order.orderNumber != null ? String(order.orderNumber) : "",
+          order.customerName,
+          order.paymentType || "CASH",
+          order.Seating,
+          order.subtotal.toFixed(2),
+          order.status,
+          order.items
+            .map((oi) => `${oi.product?.name || "Unknown item"} x${oi.quantity}`)
+            .join("; "),
+          new Date(order.createdAt).toLocaleString(),
+        ]),
+      ]
+
+      downloadCsv(`menu-backup-${dateStamp}.csv`, menuRows)
+      downloadCsv(`orders-backup-${dateStamp}.csv`, orderRows)
+
+      toast.success("Backup downloaded", {
+        description: `Saved ${menuItems.length} menu item(s) and ${orders.length} order(s) as two CSV files.`,
+      })
+    } catch (err) {
+      console.error("Error downloading backup:", err)
+      toast.error("Failed to download backup", {
+        description: "Please try again later.",
+      })
+    } finally {
+      setIsBackupDownloading(false)
+    }
+  }
+
   return (
     <div className="flex flex-col h-screen bg-background">
       <header className="flex h-14 shrink-0 items-center gap-3 bg-card border-b border-border">
@@ -566,7 +676,20 @@ export default function UserManagement() {
                   <h1 className="text-2xl font-bold text-foreground">Users</h1>
                   <p className="text-sm text-muted-foreground mt-1">Manage system users and their roles</p>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <Button
+                    variant="outline"
+                    onClick={handleDownloadBackup}
+                    disabled={isBackupDownloading}
+                    className="gap-2 border-blue-300 text-blue-700 hover:bg-blue-50 hover:text-blue-800"
+                  >
+                    {isBackupDownloading ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Download className="w-4 h-4" />
+                    )}
+                    Download Backup
+                  </Button>
                   <Button
                     variant="outline"
                     onClick={() => setIsClearOrdersDialogOpen(true)}
