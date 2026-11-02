@@ -794,15 +794,17 @@ export default function QuickAddPage() {
           )}
           {step === "done" && (
             <>
-              <button type="button" className={primaryBtn} onClick={startOver}>
-                Add more
-              </button>
+              {/* Done takes you back to the dashboard. Log out is still in
+                  the More menu at the top. */}
+              <a href="/dashboard" className={primaryBtn}>
+                Done
+              </a>
               <button
                 type="button"
-                onClick={() => signOut({ callbackUrl: "/login" })}
+                onClick={startOver}
                 className={`flex h-12 w-full items-center justify-center rounded-2xl border border-zinc-300 bg-white text-base font-semibold text-zinc-700 hover:bg-zinc-50 focus-visible:outline-none focus-visible:ring-4 ${c.focus}`}
               >
-                Log out
+                Add more
               </button>
             </>
           )}
