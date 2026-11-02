@@ -281,7 +281,7 @@ export default function QuickAddPage() {
   const priceProblem = (item: DraftItem) => {
     if (!item.name.trim()) return "Add a name";
     if (looksLikeFilenameId(item.name.trim())) return "Type a real name";
-    if (item.price === "" || Number.isNaN(Number(item.price))) return "Add a price";
+    if (item.price === "" || Number.isNaN(Number(item.price)) || Number(item.price) <= 0) return "Add a price";
     return null;
   };
   const allPricesOk = readyItems.length > 0 && readyItems.every((i) => !priceProblem(i));

@@ -489,8 +489,8 @@ export default function ItemLibraryPage() {
     if (!addToMenuTemplate) return;
 
     const priceValue = parseFloat(addToMenuPrice);
-    if (isNaN(priceValue) || priceValue < 0) {
-      toast.error("Invalid price", { description: "Enter a valid price ≥ 0." });
+    if (isNaN(priceValue) || priceValue <= 0) {
+      toast.error("Price is required", { description: "Enter a price above $0.00." });
       return;
     }
 
@@ -557,8 +557,8 @@ export default function ItemLibraryPage() {
 
   const handleBulkAddConfirm = async () => {
     const priceValue = parseFloat(bulkPrice);
-    if (isNaN(priceValue) || priceValue < 0) {
-      toast.error("Invalid price", { description: "Enter a valid price ≥ 0." });
+    if (isNaN(priceValue) || priceValue <= 0) {
+      toast.error("Price is required", { description: "Enter a price above $0.00." });
       return;
     }
 

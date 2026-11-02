@@ -45,6 +45,38 @@ export default function MenuPrices() {
   const brand = useBrand();
   const isJaeky = brand.site === "jaeky";
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
+  // Big photo preview: shows next to the thumbnail on hover (computer), or
+  // full-screen on tap (phone). Tap anywhere to close the full-screen one.
+  const [preview, setPreview] = useState<{
+    src: string;
+    name: string;
+    top: number;
+    left: number;
+    pinned: boolean;
+  } | null>(null);
+
+  // Esc closes the full-screen photo.
+  useEffect(() => {
+    if (!preview?.pinned) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setPreview(null);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [preview?.pinned]);
+
+  const PREVIEW_SIZE = 320;
+  const showPreview = (el: HTMLElement, item: MenuItem, pinned: boolean) => {
+    if (!item.image) return;
+    const rect = el.getBoundingClientRect();
+    let left = rect.right + 12;
+    if (left + PREVIEW_SIZE > window.innerWidth - 8) left = Math.max(8, rect.left - PREVIEW_SIZE - 12);
+    const top = Math.min(
+      Math.max(8, rect.top + rect.height / 2 - PREVIEW_SIZE / 2),
+      window.innerHeight - PREVIEW_SIZE - 8
+    );
+    setPreview({ src: item.image, name: item.name, top, left, pinned });
+  };
   const [loading, setLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState<MenuItem | null>(null);
@@ -107,9 +139,9 @@ export default function MenuPrices() {
     if (!selectedItem) return;
 
     const priceValue = parseFloat(price);
-    if (isNaN(priceValue) || priceValue < 0) {
-      toast.error("Invalid price", {
-        description: "Enter a valid price ≥ 0.",
+    if (isNaN(priceValue) || priceValue <= 0) {
+      toast.error("Price is required", {
+        description: "Enter a price above $0.00.",
       });
       return;
     }
@@ -254,11 +286,23 @@ export default function MenuPrices() {
                           {/* IMAGE */}
                           <td className="px-4 py-3">
                             {item.image ? (
-                              <img
-                                src={item.image}
-                                alt={item.name}
-                                className="w-10 h-10 rounded object-cover border"
-                              />
+                              <button
+                                type="button"
+                                aria-label={`Show bigger photo of ${item.name}`}
+                                className="block cursor-zoom-in rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400"
+                                onMouseEnter={(e) => showPreview(e.currentTarget, item, false)}
+                                onMouseLeave={() => setPreview((p) => (p?.pinned ? p : null))}
+                                onFocus={(e) => showPreview(e.currentTarget, item, false)}
+                                onBlur={() => setPreview((p) => (p?.pinned ? p : null))}
+                                onClick={(e) => showPreview(e.currentTarget, item, true)}
+                              >
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img
+                                  src={item.image}
+                                  alt={item.name}
+                                  className="w-10 h-10 rounded object-cover border"
+                                />
+                              </button>
                             ) : (
                               <span className="text-zinc-400">—</span>
                             )}
@@ -386,6 +430,37 @@ export default function MenuPrices() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Big photo on hover */}
+      {preview && !preview.pinned && (
+        <div
+          className="pointer-events-none fixed z-50 overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-2xl"
+          style={{ top: preview.top, left: preview.left, width: PREVIEW_SIZE }}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={preview.src} alt="" className="aspect-square w-full object-cover" />
+          <div className="px-3 py-2 text-sm font-semibold text-zinc-900">{preview.name}</div>
+        </div>
+      )}
+
+      {/* Big photo on tap (phones): full screen, tap anywhere to close */}
+      {preview?.pinned && (
+        <button
+          type="button"
+          aria-label="Close photo"
+          onClick={() => setPreview(null)}
+          className="fixed inset-0 z-50 flex cursor-zoom-out flex-col items-center justify-center gap-3 bg-black/75 p-6"
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={preview.src}
+            alt={preview.name}
+            className="max-h-[75vh] w-full max-w-md rounded-2xl object-contain"
+          />
+          <span className="text-base font-semibold text-white">{preview.name}</span>
+          <span className="text-sm text-white/75">Tap anywhere to close</span>
+        </button>
+      )}
     </div>
   );
 }

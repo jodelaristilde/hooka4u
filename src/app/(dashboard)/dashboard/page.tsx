@@ -18,7 +18,6 @@ import {
   Frame,
   Sparkles,
   ImagePlus,
-  ChevronDown,
 } from "lucide-react";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
@@ -32,7 +31,24 @@ export default async function Dashboard() {
   const headersList = await headers();
   const brand = getBrandFromHost(headersList.get("host"));
 
-  const buttons = [
+  const isJaeky = brand.site === "jaeky";
+
+  const buttons: {
+    title: string;
+    url: string;
+    icon: typeof BookA;
+    description: string;
+    requiresAdmin?: boolean;
+    featured?: boolean;
+  }[] = [
+    {
+      title: "Add Items",
+      url: "/dashboard/quick-add",
+      icon: ImagePlus,
+      description: "Photo, category, price. Done.",
+      requiresAdmin: true,
+      featured: true,
+    },
     {
       title: "New Order",
       url: "/dashboard/new-order",
@@ -105,7 +121,7 @@ export default async function Dashboard() {
         </div>
       </header>
 
-      <div className="flex flex-1 flex-col gap-8 p-4 pt-8 sm:p-8">
+      <div className="flex flex-1 flex-col gap-8 p-4 pt-8 pb-28 sm:p-8 sm:pb-28 md:pb-8">
         {/* Hero */}
         <div className={`relative overflow-hidden rounded-2xl border ${brand.accentBorder} bg-gradient-to-br ${brand.bannerGradient} p-6 shadow-sm sm:p-8`}>
           <div
@@ -119,130 +135,76 @@ export default async function Dashboard() {
             aria-hidden="true"
           />
           <div className={`relative flex items-center gap-2 ${brand.accentTextStrong}`}>
-            <Sparkles className="h-4 w-4" />
-            <span className="text-xs font-semibold tracking-widest uppercase">
+            <Sparkles className="h-5 w-5" />
+            <span className="text-sm font-semibold tracking-widest uppercase">
               {brand.name}
             </span>
           </div>
-          <h2 className="relative mt-2 text-3xl font-bold tracking-tight text-zinc-900 sm:text-4xl">
-            Welcome back{firstName ? `, ${firstName}` : ""}
-          </h2>
-          <p className="relative mt-2 max-w-md text-sm text-zinc-600">
+          <p className="relative mt-3 max-w-3xl text-3xl leading-tight font-extrabold tracking-tight text-zinc-900 sm:text-5xl">
             {brand.tagline}
           </p>
+          <h2 className={`relative mt-3 text-lg font-semibold sm:text-xl ${brand.accentTextStrong}`}>
+            Welcome back{firstName ? `, ${firstName}` : ""}
+          </h2>
         </div>
 
-        {/* One big thing to do first. Admins add items step by step;
-            everyone else jumps straight into taking an order. */}
-        {(() => {
-          const isAdmin = userRole === "ADMIN";
-          const main = isAdmin
-            ? {
-                title: "Add items",
-                url: "/dashboard/quick-add",
-                icon: ImagePlus,
-                description: "Photo, category, price. Done.",
-              }
-            : {
-                title: "New Order",
-                url: "/dashboard/new-order",
-                icon: BookA,
-                description: "Create and submit a new order",
-              };
-          const MainIcon = main.icon;
-          return (
-            <a
-              href={main.url}
-              className={
-                brand.site === "jaeky"
-                  ? "group flex items-center gap-4 rounded-2xl bg-purple-700 p-5 text-white shadow-lg shadow-purple-500/25 transition-all hover:-translate-y-0.5 hover:bg-purple-800 sm:p-6"
-                  : "group flex items-center gap-4 rounded-2xl bg-lime-700 p-5 text-white shadow-lg shadow-lime-500/25 transition-all hover:-translate-y-0.5 hover:bg-lime-800 sm:p-6"
-              }
-            >
-              <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-white/15">
-                <MainIcon className="h-7 w-7" />
-              </span>
-              <span className="flex min-w-0 flex-col">
-                <span className="text-xl font-bold">{main.title}</span>
-                <span className="text-sm text-white/85">{main.description}</span>
-              </span>
-            </a>
-          );
-        })()}
+        {/* Every page, on one screen, as big tiles. Add Items is first and
+            filled in so it stands out. Admin-only tiles stay greyed out for
+            everyone else, same as before. */}
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4">
+          {buttons.map((item) => {
+            const Icon = item.icon;
+            const isDisabled = item.requiresAdmin && userRole !== "ADMIN";
 
-        {/* Everything in one box — kept as-is, just folded under "More" */}
-        <details className="group/more">
-          <summary className="flex cursor-pointer list-none items-center justify-between rounded-2xl border border-zinc-200 bg-white px-5 py-4 text-sm font-semibold text-zinc-700 shadow-sm hover:bg-zinc-50 [&::-webkit-details-marker]:hidden">
-            More
-            <ChevronDown className="h-4 w-4 text-zinc-500 transition-transform group-open/more:rotate-180" />
-          </summary>
-          <div className="mt-3">
+            const tileClass = isDisabled
+              ? "pointer-events-none flex min-h-40 flex-col justify-between gap-4 rounded-2xl border border-zinc-200 bg-zinc-100 p-4 opacity-50 sm:min-h-44 sm:p-5"
+              : item.featured
+                ? isJaeky
+                  ? "group flex min-h-40 flex-col justify-between gap-4 rounded-2xl bg-purple-700 p-4 text-white shadow-lg shadow-purple-500/25 transition-all hover:-translate-y-0.5 hover:bg-purple-800 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-purple-300 sm:min-h-44 sm:p-5"
+                  : "group flex min-h-40 flex-col justify-between gap-4 rounded-2xl bg-lime-700 p-4 text-white shadow-lg shadow-lime-500/25 transition-all hover:-translate-y-0.5 hover:bg-lime-800 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-lime-300 sm:min-h-44 sm:p-5"
+                : isJaeky
+                  ? "group flex min-h-40 flex-col justify-between gap-4 rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:border-purple-400 hover:shadow-lg hover:shadow-purple-500/15 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-purple-300 sm:min-h-44 sm:p-5"
+                  : "group flex min-h-40 flex-col justify-between gap-4 rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:border-lime-400 hover:shadow-lg hover:shadow-lime-500/15 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-lime-300 sm:min-h-44 sm:p-5";
 
-        <div className="relative overflow-hidden rounded-2xl border border-zinc-200 bg-white p-5 shadow-lg shadow-zinc-200/50 sm:p-6">
-          <div
-            className={`pointer-events-none absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${brand.accentGradient}`}
-            aria-hidden="true"
-          />
-          <h3 className="mb-4 text-xs font-semibold tracking-widest text-zinc-400 uppercase">
-            Quick Access
-          </h3>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {buttons.map((item) => {
-              const Icon = item.icon;
-              const isDisabled = item.requiresAdmin && userRole !== "ADMIN";
+            const iconClass = isDisabled
+              ? "flex h-12 w-12 items-center justify-center rounded-xl bg-zinc-200 text-zinc-500"
+              : item.featured
+                ? "flex h-12 w-12 items-center justify-center rounded-xl bg-white/15 text-white"
+                : isJaeky
+                  ? "flex h-12 w-12 items-center justify-center rounded-xl bg-purple-100 text-purple-700 transition-colors group-hover:bg-purple-700 group-hover:text-white"
+                  : "flex h-12 w-12 items-center justify-center rounded-xl bg-lime-100 text-lime-800 transition-colors group-hover:bg-lime-700 group-hover:text-white";
 
-              return (
-                <a
-                  key={item.title}
-                  href={isDisabled ? "#" : item.url}
-                  aria-disabled={isDisabled}
-                  className={
-                    isDisabled
-                      ? "pointer-events-none flex items-center gap-3 rounded-xl border border-zinc-200 bg-zinc-50 p-4 opacity-40"
-                      : brand.site === "jaeky"
-                        ? "group relative flex items-center gap-3 overflow-hidden rounded-xl border border-zinc-200 bg-zinc-50 p-4 transition-all duration-200 hover:-translate-y-0.5 hover:border-purple-400 hover:bg-gradient-to-br hover:from-purple-50 hover:to-white hover:shadow-lg hover:shadow-purple-500/15"
-                        : "group relative flex items-center gap-3 overflow-hidden rounded-xl border border-zinc-200 bg-zinc-50 p-4 transition-all duration-200 hover:-translate-y-0.5 hover:border-lime-400 hover:bg-gradient-to-br hover:from-lime-50 hover:to-white hover:shadow-lg hover:shadow-lime-500/15"
-                  }
-                >
+            return (
+              <a
+                key={item.title}
+                href={isDisabled ? undefined : item.url}
+                aria-disabled={isDisabled || undefined}
+                className={tileClass}
+              >
+                <span className="flex items-start justify-between gap-2">
+                  <span className={iconClass}>
+                    <Icon className="h-6 w-6" aria-hidden="true" />
+                  </span>
+                  {item.requiresAdmin && !item.featured && (
+                    <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-800 ring-1 ring-amber-300">
+                      Admin
+                    </span>
+                  )}
+                </span>
+                <span className="flex flex-col gap-1">
+                  <span className="text-base leading-tight font-bold sm:text-lg">{item.title}</span>
                   <span
-                    className={
-                      isDisabled
-                        ? "flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-zinc-200 ring-1 ring-zinc-300"
-                        : brand.site === "jaeky"
-                          ? "flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-purple-100 ring-1 ring-purple-300 transition-colors group-hover:bg-purple-500 group-hover:ring-purple-500"
-                          : "flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-lime-100 ring-1 ring-lime-300 transition-colors group-hover:bg-lime-500 group-hover:ring-lime-500"
-                    }
+                    className={`line-clamp-2 text-xs sm:text-sm ${
+                      item.featured && !isDisabled ? "text-white/85" : "text-zinc-600"
+                    }`}
                   >
-                    <Icon
-                      className={
-                        isDisabled
-                          ? "h-5 w-5 text-zinc-400"
-                          : brand.site === "jaeky"
-                            ? "h-5 w-5 text-purple-600 transition-colors group-hover:text-white"
-                            : "h-5 w-5 text-lime-600 transition-colors group-hover:text-white"
-                      }
-                    />
+                    {item.description}
                   </span>
-                  <span className="flex min-w-0 flex-col">
-                    <span className="flex items-center gap-2 text-sm font-semibold text-zinc-900">
-                      {item.title}
-                      {item.requiresAdmin && (
-                        <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-medium text-amber-700 ring-1 ring-amber-300">
-                          Admin
-                        </span>
-                      )}
-                    </span>
-                    <span className="truncate text-xs text-zinc-500">
-                      {item.description}
-                    </span>
-                  </span>
-                </a>
-              );
-            })}
-          </div>
+                </span>
+              </a>
+            );
+          })}
         </div>
-          </div>
-        </details>
       </div>
     </div>
   );
