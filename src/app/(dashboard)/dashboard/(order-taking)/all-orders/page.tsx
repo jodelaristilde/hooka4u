@@ -518,20 +518,9 @@ export default function AllOrders() {
       large
     );
 
-  const vipChip = (large = false) => (
-    <span
-      className={`rounded-full bg-gradient-to-r from-amber-300 to-amber-400 font-bold text-amber-950 ${
-        large ? "px-3 py-1 text-sm" : "px-2.5 py-0.5 text-xs"
-      }`}
-    >
-      VIP
-    </span>
-  );
-
   // No prices anywhere on this page: staff don't need to see them.
   const renderOrderCard = (order: Order) => {
     const isDelivered = order.status === "DELIVERED";
-    const isVIP = order.Seating?.toUpperCase().includes("VIP");
     const isNew = unacknowledgedOrderIds.has(order.id);
     const itemCount = getTotalItems(order.items);
     const thumbs = order.items
@@ -602,7 +591,6 @@ export default function AllOrders() {
           {statusChip(isDelivered)}
           {paymentChip(order)}
           {order.Seating && infoChip(<MapPin className="h-3.5 w-3.5" aria-hidden="true" />, order.Seating)}
-          {isVIP && vipChip()}
         </div>
 
         {/* What they ordered (no prices) */}
@@ -656,7 +644,6 @@ export default function AllOrders() {
   // Full detail view for whichever order was tapped (no prices).
   const renderExpandedOrderDetails = (order: Order) => {
     const isDelivered = order.status === "DELIVERED";
-    const isVIP = order.Seating?.toUpperCase().includes("VIP");
     const itemCount = getTotalItems(order.items);
 
     return (
@@ -665,7 +652,6 @@ export default function AllOrders() {
           {statusChip(isDelivered, true)}
           {paymentChip(order, true)}
           {order.Seating && infoChip(<MapPin className="h-4 w-4" aria-hidden="true" />, order.Seating, true)}
-          {isVIP && vipChip(true)}
         </div>
 
         <div className="divide-y divide-zinc-100 overflow-hidden rounded-2xl border border-zinc-200 bg-white">
@@ -951,7 +937,6 @@ export default function AllOrders() {
                   {alertOrder.Seating &&
                     infoChip(<MapPin className="h-4 w-4" aria-hidden="true" />, alertOrder.Seating, true)}
                   {paymentChip(alertOrder, true)}
-                  {alertOrder.Seating?.toUpperCase().includes("VIP") && vipChip(true)}
                 </div>
                 <ul className="mt-4 space-y-2 rounded-2xl bg-zinc-50 p-3 ring-1 ring-zinc-100">
                   {alertOrder.items.slice(0, 4).map((item) => {
