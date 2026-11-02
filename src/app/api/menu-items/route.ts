@@ -3,6 +3,8 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getSiteFromRequest, siteWhere } from "@/lib/site";
+import { requireUser } from "@/lib/api-auth";
+import { storeImage } from "@/lib/image-storage";
 
 export async function GET(request: Request) {
   try {
@@ -10,6 +12,13 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const category = searchParams.get("category");
     const admin = searchParams.get("admin");
+
+    // Hidden items are only listed for logged-in staff/admins; guests
+    // always get just the items that are showing on the menu.
+    if (admin === "true") {
+      const auth = await requireUser();
+      if (auth instanceof NextResponse) return auth;
+    }
 
     const allItems = await prisma.menuItems.findMany({
       where: siteWhere(site),
@@ -37,6 +46,8 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  const auth = await requireUser();
+  if (auth instanceof NextResponse) return auth;
   try {
     const site = getSiteFromRequest(request);
     const session = await getServerSession(authOptions);
@@ -56,7 +67,7 @@ export async function POST(request: Request) {
       data: {
         name,
         description,
-        image: image || null,
+        image: (await storeImage(image, site)) || null,
         price: Math.round(priceValue * 100) / 100,
         category: category || null,
         available: available ?? false,

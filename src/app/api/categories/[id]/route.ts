@@ -1,10 +1,13 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { requireUser } from "@/lib/api-auth";
 
 export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const auth = await requireUser();
+  if (auth instanceof NextResponse) return auth;
   try {
     const { id } = await params;
     const body = await request.json();
@@ -34,6 +37,8 @@ export async function DELETE(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const auth = await requireUser();
+  if (auth instanceof NextResponse) return auth;
   try {
     const { id } = await params;
     await prisma.menuCategory.delete({ where: { id } });

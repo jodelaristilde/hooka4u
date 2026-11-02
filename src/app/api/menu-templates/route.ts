@@ -12,6 +12,8 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSiteFromRequest, siteWhere } from "@/lib/site";
+import { requireUser } from "@/lib/api-auth";
+import { storeImage } from "@/lib/image-storage";
 
 // Always fetch fresh — same reasoning as the menu-prices route fix: a GET
 // handler with no request-specific data gets statically cached by Next.js
@@ -19,6 +21,8 @@ import { getSiteFromRequest, siteWhere } from "@/lib/site";
 export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
+  const auth = await requireUser();
+  if (auth instanceof NextResponse) return auth;
   try {
     const site = getSiteFromRequest(request);
     const templates = await prisma.menuItemTemplate.findMany({
@@ -36,6 +40,8 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  const auth = await requireUser();
+  if (auth instanceof NextResponse) return auth;
   try {
     const site = getSiteFromRequest(request);
     const body = await request.json();
@@ -52,7 +58,7 @@ export async function POST(request: Request) {
       data: {
         name: String(name).trim(),
         description: description || null,
-        image: image || null,
+        image: (await storeImage(image, site)) || null,
         category: category || null,
         site,
       },

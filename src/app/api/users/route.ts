@@ -1,17 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
-import { PrismaClient } from "@prisma/client";
+import { prisma } from "@/lib/prisma";
+import { requireAdmin } from "@/lib/api-auth";
+import { hashPassword } from "@/lib/passwords";
 
-const prisma = new PrismaClient();
-
-// GET - Fetch all users
+// GET - Fetch all users (admins only; passwords are never sent)
 export async function GET() {
+  const auth = await requireAdmin();
+  if (auth instanceof NextResponse) return auth;
   try {
     const users = await prisma.user.findMany({
       select: {
         id: true,
         username: true,
         name: true,
-        password: true,
         role: true,
         createdAt: true,
       },
@@ -30,8 +31,10 @@ export async function GET() {
   }
 }
 
-// POST - Create new user
+// POST - Create new user (admins only)
 export async function POST(request: NextRequest) {
+  const auth = await requireAdmin();
+  if (auth instanceof NextResponse) return auth;
   try {
     const body = await request.json();
     const { username, password, name, role } = body;
@@ -70,8 +73,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Hash password
-    const hashedPassword = await password;
+    // Store a bcrypt hash, never the password itself
+    const hashedPassword = await hashPassword(password);
 
     // Create user
     const newUser = await prisma.user.create({

@@ -1,6 +1,7 @@
 // app/api/menu-prices/[id]/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
+import { requireUser } from "@/lib/api-auth";
 
 const prisma = new PrismaClient();
 
@@ -9,6 +10,8 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const auth = await requireUser();
+  if (auth instanceof NextResponse) return auth;
   try {
     const { id } = await params;
     
@@ -40,6 +43,8 @@ export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const auth = await requireUser();
+  if (auth instanceof NextResponse) return auth;
   try {
     const { id } = await params;
     const body = await request.json();

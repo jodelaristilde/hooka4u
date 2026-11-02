@@ -1,10 +1,15 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { requireUser } from "@/lib/api-auth";
+import { storeImage } from "@/lib/image-storage";
+import { getSiteFromHost } from "@/lib/site";
 
 export async function PUT(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const auth = await requireUser();
+  if (auth instanceof NextResponse) return auth;
   try {
     const { id } = await params;
     const body = await request.json();
@@ -14,7 +19,7 @@ export async function PUT(
     if (name !== undefined) data.name = name;
     if (description !== undefined) data.description = description;
     if (price !== undefined) data.price = price;
-    if (image !== undefined) data.image = image;
+    if (image !== undefined) data.image = await storeImage(image, getSiteFromHost(request.headers.get("host")));
     if (category !== undefined) data.category = category;
     if (available !== undefined) data.available = available;
 
@@ -37,6 +42,8 @@ export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const auth = await requireUser();
+  if (auth instanceof NextResponse) return auth;
   try {
     const { id } = await params;
     const body = await request.json();
@@ -46,7 +53,7 @@ export async function PATCH(
     if (name !== undefined) data.name = name;
     if (description !== undefined) data.description = description;
     if (price !== undefined) data.price = price;
-    if (image !== undefined) data.image = image;
+    if (image !== undefined) data.image = await storeImage(image, getSiteFromHost(request.headers.get("host")));
     if (category !== undefined) data.category = category;
     if (available !== undefined) data.available = available;
 
@@ -69,6 +76,8 @@ export async function DELETE(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const auth = await requireUser();
+  if (auth instanceof NextResponse) return auth;
   try {
     const { id } = await params;
     const { searchParams } = new URL(request.url);

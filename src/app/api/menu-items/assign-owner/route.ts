@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSiteFromRequest, siteWhere } from "@/lib/site";
+import { requireAdmin } from "@/lib/api-auth";
 
 // One-time cleanup helper: bulk-assigns every menu item on this site that
 // has no recorded creator yet (items added before per-user tracking
@@ -8,6 +9,8 @@ import { getSiteFromRequest, siteWhere } from "@/lib/site";
 // "Unassigned" filter, so old items like Karen's original 4 can be tagged
 // as hers without anyone needing to re-create them.
 export async function POST(request: Request) {
+  const auth = await requireAdmin();
+  if (auth instanceof NextResponse) return auth;
   try {
     const site = getSiteFromRequest(request);
     const body = await request.json();

@@ -1,9 +1,8 @@
 import { NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
-import { PrismaClient } from "@prisma/client"
-
-const prisma = new PrismaClient()
+import { prisma } from "@/lib/prisma"
+import { verifyPassword } from "@/lib/passwords"
 
 export async function POST(request: Request) {
   try {
@@ -28,8 +27,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ message: "User not found" }, { status: 404 })
     }
 
-    // Simple plain-text password comparison (as requested - no bcrypt)
-    if (user.password !== password) {
+    const check = await verifyPassword(password, user.password)
+    if (!check.ok) {
       return NextResponse.json({ message: "Invalid password" }, { status: 401 })
     }
 

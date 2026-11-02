@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSiteFromRequest, siteWhere } from "@/lib/site";
+import { requireAdmin } from "@/lib/api-auth";
 
 // Dedicated export/backup endpoint — separate from /api/menu-items/get-all-items
 // and /api/orders/get on purpose:
@@ -11,6 +12,8 @@ import { getSiteFromRequest, siteWhere } from "@/lib/site";
 //   "Download Backup" button on the Users Management page only needs one
 //   request instead of two.
 export async function GET(request: Request) {
+  const auth = await requireAdmin();
+  if (auth instanceof NextResponse) return auth;
   try {
     const site = getSiteFromRequest(request);
 

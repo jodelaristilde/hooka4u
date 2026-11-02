@@ -1,6 +1,7 @@
 import prisma from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
 import { getSiteFromRequest, siteWhere } from "@/lib/site";
+import { isAdminSession, requireUser } from "@/lib/api-auth";
 
 // The dashboard polls this every 5 seconds expecting fresh data every
 // time (to catch brand-new orders and trigger the alert sound). Force
@@ -10,6 +11,8 @@ export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 export async function GET(request: NextRequest) {
+  const auth = await requireUser();
+  if (auth instanceof NextResponse) return auth;
   try {
     const site = getSiteFromRequest(request);
 
@@ -44,11 +47,23 @@ export async function GET(request: NextRequest) {
       take: 150,
     });
 
-    // Map orders and set default paymentType to CASH if null
-    const ordersWithDefaults = orders.map((order) => ({
-      ...order,
-      paymentType: order.paymentType || "CASH",
-    }));
+    // Staff never see prices: for anyone who isn't an admin, the order
+    // total and item prices are left out of what's sent to their device
+    // (the All Orders screen doesn't show them either). Admins still get
+    // them, for the Today's Sales panel.
+    const showPrices = isAdminSession(auth);
+    const ordersWithDefaults = orders.map((order) => {
+      const base = { ...order, paymentType: order.paymentType || "CASH" };
+      if (showPrices) return base;
+      return {
+        ...base,
+        subtotal: 0,
+        items: order.items.map((item) => ({
+          ...item,
+          product: item.product ? { id: item.product.id, name: item.product.name, price: 0 } : null,
+        })),
+      };
+    });
 
     return NextResponse.json(ordersWithDefaults);
   } catch (error) {

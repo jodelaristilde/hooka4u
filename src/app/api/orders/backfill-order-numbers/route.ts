@@ -1,6 +1,7 @@
 import prisma from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
 import { getSiteFromRequest, siteWhere } from "@/lib/site";
+import { requireAdmin } from "@/lib/api-auth";
 
 // One-time maintenance endpoint: assigns an order number to any existing
 // order that doesn't have one yet (orders placed before the order-number
@@ -14,6 +15,8 @@ import { getSiteFromRequest, siteWhere } from "@/lib/site";
 // vipservice4u.us must never touch or renumber Jaeky's orders, and vice
 // versa.
 export async function GET(request: NextRequest) {
+  const auth = await requireAdmin();
+  if (auth instanceof NextResponse) return auth;
   try {
     const site = getSiteFromRequest(request);
 

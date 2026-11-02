@@ -1,15 +1,16 @@
 // app/api/users/[id]/route.ts
 
-import { PrismaClient } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
-
-const prisma = new PrismaClient();
+import { prisma } from "@/lib/prisma";
+import { requireAdmin } from "@/lib/api-auth";
 
 // DELETE - Delete a user
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const auth = await requireAdmin();
+  if (auth instanceof NextResponse) return auth;
   try {
     // Await the params object
     const { id } = await params;
