@@ -4,10 +4,7 @@ import {
   Loader2,
   ShoppingBag,
   Clock,
-  User,
   Package,
-  DollarSign,
-  Calendar,
   CreditCard,
   Banknote,
   MapPin,
@@ -15,8 +12,6 @@ import {
   Bell,
   CheckCircle2,
   AlertCircle,
-  ChevronLeft,
-  ChevronRight,
 } from "lucide-react";
 import {
   Breadcrumb,
@@ -28,8 +23,6 @@ import {
 } from "@/components/ui/breadcrumb";
 import { Separator } from "@/components/ui/separator";
 import { SidebarTrigger } from "@/components/ui/sidebar";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -78,14 +71,6 @@ interface Order {
 
 export default function AllOrders() {
   const brand = useBrand();
-  const orderNumberBadgeClass =
-    brand.site === "jaeky"
-      ? "text-sm font-bold border-purple-500/50 bg-purple-500/10 text-purple-400 tabular-nums px-2 py-0.5 shrink-0"
-      : "text-sm font-bold border-lime-500/50 bg-lime-500/10 text-lime-400 tabular-nums px-2 py-0.5 shrink-0";
-  const orderNumberBadgeClassLg =
-    brand.site === "jaeky"
-      ? "text-base font-bold border-purple-500/50 bg-purple-500/10 text-purple-400 tabular-nums px-2.5 py-1"
-      : "text-base font-bold border-lime-500/50 bg-lime-500/10 text-lime-400 tabular-nums px-2.5 py-1";
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -95,7 +80,6 @@ export default function AllOrders() {
   const [lastFetchTime, setLastFetchTime] = useState<Date | null>(null);
   const [updatingStatus, setUpdatingStatus] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("pending");
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [hasUnacknowledgedOrder, setHasUnacknowledgedOrder] = useState(false);
   const [unacknowledgedOrderIds, setUnacknowledgedOrderIds] = useState<
     Set<string>
@@ -424,13 +408,68 @@ export default function AllOrders() {
   const deliveredOrders = orders.filter((o) => o.status === "DELIVERED");
   const expandedOrder = orders.find((o) => o.id === expandedOrderId) ?? null;
 
-  // Bigger, easy-to-read tile for the grid. Marking an order ready only
-  // happens from the full detail popup now — this card's button just
-  // opens that popup ("View Order"), so staff can't accidentally toggle
-  // status with a stray tap on the grid.
+  const isJaeky = brand.site === "jaeky";
+  const accent = isJaeky
+    ? {
+        chip: "bg-purple-100 text-purple-800 ring-1 ring-purple-200",
+        button: "bg-purple-700 text-white hover:bg-purple-800",
+        outline: "border-purple-300 text-purple-800 hover:bg-purple-50",
+        tabActive: "data-[state=active]:bg-purple-700 data-[state=active]:text-white",
+        ring: "focus-visible:ring-purple-500",
+      }
+    : {
+        chip: "bg-lime-100 text-lime-900 ring-1 ring-lime-300",
+        button: "bg-lime-700 text-white hover:bg-lime-800",
+        outline: "border-lime-300 text-lime-900 hover:bg-lime-50",
+        tabActive: "data-[state=active]:bg-lime-700 data-[state=active]:text-white",
+        ring: "focus-visible:ring-lime-500",
+      };
+
+  const statusChip = (isDelivered: boolean, large = false) => (
+    <span
+      className={`inline-flex items-center gap-1.5 rounded-full font-semibold ${
+        large ? "px-3 py-1 text-sm" : "px-2.5 py-0.5 text-xs"
+      } ${
+        isDelivered
+          ? "bg-emerald-100 text-emerald-800 ring-1 ring-emerald-200"
+          : "bg-amber-100 text-amber-900 ring-1 ring-amber-200"
+      }`}
+    >
+      <span
+        className={`h-1.5 w-1.5 rounded-full ${isDelivered ? "bg-emerald-600" : "bg-amber-500"}`}
+        aria-hidden="true"
+      />
+      {isDelivered ? "Ready" : "Pending"}
+    </span>
+  );
+
+  const infoChip = (icon: React.ReactNode, label: string, large = false) => (
+    <span
+      className={`inline-flex items-center gap-1.5 rounded-full bg-zinc-100 font-medium text-zinc-700 ring-1 ring-zinc-200 ${
+        large ? "px-3 py-1 text-sm" : "px-2.5 py-0.5 text-xs"
+      }`}
+    >
+      {icon}
+      {label}
+    </span>
+  );
+
+  // Light, easy-to-scan tile for the grid: who, when, status, what they
+  // ordered (thumbnails + count + total). Marking an order ready still only
+  // happens from the full detail popup, so a stray tap on the grid can't
+  // change an order's status.
   const renderOrderCard = (order: Order) => {
     const isDelivered = order.status === "DELIVERED";
     const isVIP = order.Seating?.toUpperCase().includes("VIP");
+    const isNew = unacknowledgedOrderIds.has(order.id);
+    const itemCount = getTotalItems(order.items);
+    const thumbs = order.items
+      .map((item) => (item.product?.id ? productImages[item.product.id] : undefined))
+      .filter((src): src is string => Boolean(src))
+      .slice(0, 4);
+    const itemNames = order.items
+      .map((item) => `${item.quantity}× ${item.product?.name ?? "Item"}`)
+      .join(", ");
 
     const openOrder = () => {
       acknowledgeNewOrders();
@@ -438,287 +477,268 @@ export default function AllOrders() {
     };
 
     return (
-      <Card
+      <div
         key={order.id}
+        role="button"
+        tabIndex={0}
         onClick={openOrder}
-        className={`group bg-black border hover:border-primary/50 transition-all duration-200 cursor-pointer gap-2 py-4 ${
-          unacknowledgedOrderIds.has(order.id)
-            ? "animate-pulse border-red-500 ring-2 ring-red-500/50"
-            : "border-border"
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            openOrder();
+          }
+        }}
+        className={`group relative flex cursor-pointer flex-col gap-3 rounded-2xl border bg-white p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 ${accent.ring} ${
+          isNew ? "border-red-400 ring-2 ring-red-400/60" : "border-zinc-200"
         }`}
       >
-        <CardHeader className="px-4">
-          <div className="flex items-start justify-between gap-2">
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2 flex-wrap">
-                {order.orderNumber != null && (
-                  <Badge
-                    variant="outline"
-                    className={orderNumberBadgeClass}
-                  >
-                    #{order.orderNumber}
-                  </Badge>
-                )}
-                <h3 className="font-bold text-lg text-white truncate">
-                  {order.customerName || "Guest"}
-                </h3>
-                <span className="text-sm text-muted-foreground shrink-0">
-                  {formatDate(order.createdAt)}
-                </span>
-                {isVIP && (
-                  <Badge className="bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-400 text-xs px-1.5 py-0 border-amber-300 dark:border-amber-800 shrink-0">
-                    VIP
-                  </Badge>
-                )}
-              </div>
-            </div>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 shrink-0"
-              onClick={(e) => {
-                e.stopPropagation();
-                handleDeleteClick(order);
-              }}
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
+        {isNew && (
+          <span className="absolute -top-2.5 left-4 flex items-center gap-1 rounded-full bg-red-600 px-2 py-0.5 text-[11px] font-bold tracking-wide text-white shadow">
+            <span className="h-1.5 w-1.5 animate-ping rounded-full bg-white" aria-hidden="true" />
+            NEW
+          </span>
+        )}
+
+        {/* Who and when */}
+        <div className="flex items-start gap-3">
+          {order.orderNumber != null && (
+            <span className={`shrink-0 rounded-lg px-2 py-1 text-sm font-bold tabular-nums ${accent.chip}`}>
+              #{order.orderNumber}
+            </span>
+          )}
+          <div className="min-w-0 flex-1">
+            <h3 className="truncate text-lg leading-tight font-bold text-zinc-900">
+              {order.customerName || "Guest"}
+            </h3>
+            <p className="mt-0.5 text-xs text-zinc-500">{formatDate(order.createdAt)}</p>
           </div>
-
-          <Badge
-            variant="outline"
-            className={`self-center text-sm font-bold px-3 py-1 ${
-              isDelivered
-                ? "bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400 border-emerald-300 dark:border-emerald-800"
-                : "bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-400 border-amber-300 dark:border-amber-800"
-            }`}
-          >
-            {isDelivered ? "READY" : "PENDING"}
-          </Badge>
-
-          <div className="flex items-center gap-2 flex-wrap">
-            <Badge
-              variant="outline"
-              className={`text-sm font-bold px-2.5 py-1 ${
-                order.paymentType === "CARD"
-                  ? "bg-muted text-foreground"
-                  : "bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400 border-emerald-300 dark:border-emerald-800"
-              }`}
-            >
-              {order.paymentType === "CARD" ? (
-                <CreditCard className="w-3.5 h-3.5 mr-1" />
-              ) : (
-                <Banknote className="w-3.5 h-3.5 mr-1" />
-              )}
-              {order.paymentType === "CARD" ? "Card" : "Cash"}
-            </Badge>
-            {order.Seating && (
-              <Badge
-                variant="outline"
-                className="text-sm border-border bg-muted text-muted-foreground px-2.5 py-1"
-              >
-                <MapPin className="w-3.5 h-3.5 mr-1" />
-                {order.Seating}
-              </Badge>
-            )}
-          </div>
-        </CardHeader>
-
-        <CardContent className="px-4 flex items-center justify-center gap-3">
-          <Button
+          <button
+            type="button"
+            aria-label={`Delete order for ${order.customerName || "Guest"}`}
             onClick={(e) => {
               e.stopPropagation();
-              openOrder();
+              handleDeleteClick(order);
             }}
-            size="sm"
-            variant="outline"
-            className="border-primary/50 text-foreground hover:bg-primary/10"
+            className="-mt-1 -mr-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-zinc-400 transition-colors hover:bg-red-50 hover:text-red-600"
           >
-            View Order
-          </Button>
-        </CardContent>
-      </Card>
+            <Trash2 className="h-4 w-4" />
+          </button>
+        </div>
+
+        {/* Status, payment, seat */}
+        <div className="flex flex-wrap items-center gap-1.5">
+          {statusChip(isDelivered)}
+          {infoChip(
+            order.paymentType === "CARD" ? (
+              <CreditCard className="h-3.5 w-3.5" aria-hidden="true" />
+            ) : (
+              <Banknote className="h-3.5 w-3.5" aria-hidden="true" />
+            ),
+            order.paymentType === "CARD" ? "Card" : "Cash"
+          )}
+          {order.Seating && infoChip(<MapPin className="h-3.5 w-3.5" aria-hidden="true" />, order.Seating)}
+          {isVIP && (
+            <span className="rounded-full bg-amber-400 px-2.5 py-0.5 text-xs font-bold text-amber-950">VIP</span>
+          )}
+        </div>
+
+        {/* What they ordered */}
+        <div className="flex items-center gap-3 rounded-xl bg-zinc-50 p-2.5 ring-1 ring-zinc-100">
+          {thumbs.length > 0 ? (
+            <div className="flex shrink-0 -space-x-2">
+              {thumbs.map((src, i) => (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  key={i}
+                  src={src}
+                  alt=""
+                  className="h-10 w-10 rounded-lg object-cover ring-2 ring-white"
+                />
+              ))}
+            </div>
+          ) : (
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-zinc-200 text-zinc-500">
+              <Package className="h-5 w-5" aria-hidden="true" />
+            </span>
+          )}
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-medium text-zinc-800">{itemNames || "No items"}</p>
+            <p className="text-xs text-zinc-500">
+              {itemCount} item{itemCount === 1 ? "" : "s"}
+            </p>
+          </div>
+          <span className="shrink-0 text-base font-bold text-zinc-900 tabular-nums">
+            ${order.subtotal.toFixed(2)}
+          </span>
+        </div>
+
+        <span
+          className={`mt-auto flex h-10 items-center justify-center rounded-xl border text-sm font-semibold transition-colors ${accent.outline}`}
+        >
+          View order
+        </span>
+      </div>
     );
   };
 
-  // Full detail view for whichever order was tapped in the grid — the
-  // in-depth layout (item images, prices, big total) the compact cards
-  // above no longer show all the time.
+  // Full detail view for whichever order was tapped in the grid.
   const renderExpandedOrderDetails = (order: Order) => {
     const isDelivered = order.status === "DELIVERED";
     const isVIP = order.Seating?.toUpperCase().includes("VIP");
 
     return (
       <div className="flex flex-col gap-5">
-        {isVIP && (
-          <div className="flex items-center gap-2.5 flex-wrap">
-            <Badge className="bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-400 text-sm px-2.5 py-1 border-amber-300 dark:border-amber-800">
-              VIP
-            </Badge>
-          </div>
-        )}
-
-        <div className="flex items-center gap-2.5 flex-wrap">
-          <Badge
-            variant="outline"
-            className={`text-sm uppercase font-bold border-border px-3 py-1.5 ${
-              order.paymentType === "CARD"
-                ? "bg-muted text-foreground"
-                : "bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400 border-emerald-300 dark:border-emerald-800"
-            }`}
-          >
-            {order.paymentType === "CARD" ? (
-              <CreditCard className="w-4 h-4 mr-1.5" />
+        <div className="flex flex-wrap items-center gap-2">
+          {statusChip(isDelivered, true)}
+          {infoChip(
+            order.paymentType === "CARD" ? (
+              <CreditCard className="h-4 w-4" aria-hidden="true" />
             ) : (
-              <Banknote className="w-4 h-4 mr-1.5" />
-            )}
-            {order.paymentType === "CARD" ? "Card" : "Cash"}
-          </Badge>
-          {order.Seating && (
-            <Badge
-              variant="outline"
-              className="text-sm border-border bg-muted text-muted-foreground px-3 py-1.5"
-            >
-              <MapPin className="w-4 h-4 mr-1.5" />
-              {order.Seating}
-            </Badge>
+              <Banknote className="h-4 w-4" aria-hidden="true" />
+            ),
+            order.paymentType === "CARD" ? "Card" : "Cash",
+            true
           )}
-          <Badge
-            variant="outline"
-            className={`text-sm font-bold px-2.5 py-1 ${
-              isDelivered
-                ? "bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400 border-emerald-300 dark:border-emerald-800"
-                : "bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-400 border-amber-300 dark:border-amber-800"
-            }`}
-          >
-            {isDelivered ? "READY" : "PENDING"}
-          </Badge>
+          {order.Seating && infoChip(<MapPin className="h-4 w-4" aria-hidden="true" />, order.Seating, true)}
+          {isVIP && (
+            <span className="rounded-full bg-amber-400 px-3 py-1 text-sm font-bold text-amber-950">VIP</span>
+          )}
         </div>
 
-        <div className="space-y-2.5">
+        <div className="divide-y divide-zinc-100 overflow-hidden rounded-xl border border-zinc-200 bg-white">
           {order.items.map((item) => {
             // A product can be deleted from the menu after an order was
-            // placed for it. When that happens, `item.product` comes back
-            // as null even though the TypeScript type claims it's always
-            // present. Guard every access so one deleted menu item can't
-            // crash this view.
+            // placed for it, so `item.product` can be null. Guard every access.
             const productId = item.product?.id;
             const productName = item.product?.name ?? "Item no longer available";
+            const price = item.product?.price;
 
             return (
-              <div
-                key={item.id}
-                className="flex items-center gap-3 p-3 bg-muted border border-border rounded-lg"
-              >
+              <div key={item.id} className="flex items-center gap-3 p-3">
                 {productId && productImages[productId] ? (
+                  // eslint-disable-next-line @next/next/no-img-element
                   <img
                     src={productImages[productId]}
                     alt={productName}
-                    className="w-14 h-14 rounded-md object-cover shrink-0"
+                    className="h-16 w-16 shrink-0 rounded-lg object-cover"
                   />
                 ) : (
-                  <div className="w-14 h-14 rounded-md bg-border shrink-0" />
+                  <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-lg bg-zinc-100 text-zinc-400">
+                    <Package className="h-6 w-6" aria-hidden="true" />
+                  </div>
                 )}
-                <div className="flex-1 min-w-0">
-                  <p className="text-base text-foreground truncate">
-                    {productName}
-                  </p>
-                  <p className="text-sm text-muted-foreground mt-0.5">
-                    × {item.quantity}
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-base font-semibold text-zinc-900">{productName}</p>
+                  <p className="mt-0.5 text-sm text-zinc-500">
+                    {item.quantity} × {price != null ? `$${price.toFixed(2)}` : "—"}
                   </p>
                 </div>
+                {price != null && (
+                  <span className="shrink-0 text-base font-semibold text-zinc-900 tabular-nums">
+                    ${(price * item.quantity).toFixed(2)}
+                  </span>
+                )}
               </div>
             );
           })}
-        </div>
-
-        <div className="pt-3 border-t border-border">
-          <div className="flex gap-2">
-            <Button
-              onClick={async () => {
-                // Update the status, then close this popup so staff land
-                // back on the All Orders board with the fresh list.
-                await handleStatusToggle(order);
-                setExpandedOrderId(null);
-              }}
-              disabled={updatingStatus === order.id}
-              size="lg"
-              className={`flex-1 text-base font-medium transition-all ${
-                isDelivered
-                  ? "bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-600 dark:hover:bg-emerald-700 text-white"
-                  : "bg-amber-600 hover:bg-amber-700 dark:bg-amber-600 dark:hover:bg-amber-700 text-white"
-              }`}
-            >
-              {updatingStatus === order.id ? (
-                <>
-                  <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                  Updating
-                </>
-              ) : isDelivered ? (
-                <>
-                  <CheckCircle2 className="w-5 h-5 mr-2" />
-                  Ready
-                </>
-              ) : (
-                "Mark Ready"
-              )}
-            </Button>
+          <div className="flex items-center justify-between bg-zinc-50 p-3">
+            <span className="text-sm font-medium text-zinc-600">
+              Total · {getTotalItems(order.items)} item{getTotalItems(order.items) === 1 ? "" : "s"}
+            </span>
+            <span className="text-xl font-bold text-zinc-900 tabular-nums">${order.subtotal.toFixed(2)}</span>
           </div>
         </div>
+
+        <button
+          type="button"
+          onClick={async () => {
+            // Update the status, then close this popup so staff land back
+            // on the All Orders board with the fresh list.
+            await handleStatusToggle(order);
+            setExpandedOrderId(null);
+          }}
+          disabled={updatingStatus === order.id}
+          className={`flex h-14 w-full items-center justify-center gap-2 rounded-2xl text-lg font-semibold transition-colors disabled:opacity-60 ${
+            isDelivered
+              ? "border border-zinc-300 bg-white text-zinc-800 hover:bg-zinc-50"
+              : "bg-emerald-600 text-white hover:bg-emerald-700"
+          }`}
+        >
+          {updatingStatus === order.id ? (
+            <>
+              <Loader2 className="h-5 w-5 animate-spin" />
+              Updating
+            </>
+          ) : isDelivered ? (
+            "Move back to Pending"
+          ) : (
+            <>
+              <CheckCircle2 className="h-5 w-5" />
+              Mark Ready
+            </>
+          )}
+        </button>
       </div>
     );
   };
 
+  const salesTotal = deliveredOrders.reduce((sum, order) => sum + order.subtotal, 0);
+
+  const emptyState = (icon: React.ReactNode, title: string, subtitle: string) => (
+    <div className="flex flex-col items-center justify-center py-20 text-center">
+      <span className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-white text-zinc-400 shadow-sm ring-1 ring-zinc-200">
+        {icon}
+      </span>
+      <p className="text-base font-semibold text-zinc-800">{title}</p>
+      <p className="mt-1 text-sm text-zinc-500">{subtitle}</p>
+    </div>
+  );
+
   if (!mounted) {
     return (
-      <div className="flex flex-col h-screen items-center justify-center bg-neutral-100">
-        <Loader2 className="w-10 h-10 animate-spin text-primary" />
+      <div className="flex h-screen flex-col items-center justify-center bg-zinc-50">
+        <Loader2 className="h-10 w-10 animate-spin text-zinc-400" />
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col h-screen bg-neutral-100">
+    <div className="flex h-screen flex-col bg-zinc-50">
       {/* Header */}
-      <header className="flex h-14 shrink-0 items-center gap-3 bg-card border-b border-border">
-        <div className="flex items-center gap-2 md:gap-3 px-3 md:px-5 w-full justify-between">
-          <div className="flex items-center gap-2 md:gap-3 min-w-0">
-            <SidebarTrigger className="hidden sm:flex -ml-1 text-muted-foreground hover:text-foreground" />
-            <Separator
-              orientation="vertical"
-              className="h-4 bg-border hidden sm:block"
-            />
+      <header className="flex h-14 shrink-0 items-center gap-3 border-b border-zinc-200 bg-white">
+        <div className="flex w-full items-center justify-between gap-2 px-3 md:gap-3 md:px-5">
+          <div className="flex min-w-0 items-center gap-2 md:gap-3">
+            <SidebarTrigger className="-ml-1 hidden text-zinc-500 hover:text-zinc-900 sm:flex" />
+            <Separator orientation="vertical" className="hidden h-4 bg-zinc-200 sm:block" />
             <Breadcrumb className="min-w-0">
               <BreadcrumbList>
                 <BreadcrumbItem className="hidden md:block">
-                  <BreadcrumbLink
-                    href="/dashboard"
-                    className="text-muted-foreground hover:text-foreground text-sm"
-                  >
+                  <BreadcrumbLink href="/dashboard" className="text-sm text-zinc-500 hover:text-zinc-900">
                     Order Tracking
                   </BreadcrumbLink>
                 </BreadcrumbItem>
-                <BreadcrumbSeparator className="hidden md:block text-muted-foreground" />
+                <BreadcrumbSeparator className="hidden text-zinc-300 md:block" />
                 <BreadcrumbItem>
-                  <BreadcrumbPage className="text-foreground text-sm font-medium truncate">
-                    All Orders
-                  </BreadcrumbPage>
+                  <BreadcrumbPage className="truncate text-sm font-medium text-zinc-900">All Orders</BreadcrumbPage>
                 </BreadcrumbItem>
               </BreadcrumbList>
             </Breadcrumb>
           </div>
 
           <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-              <Clock className="w-3.5 h-3.5 hidden sm:block" />
-              <span className="hidden sm:inline">
-                Updated {getTimeSinceLastFetch()}
+            <div className="flex items-center gap-2 text-xs text-zinc-500">
+              <span className="relative flex h-2 w-2" aria-hidden="true">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+                <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
               </span>
+              <span className="hidden sm:inline">Live · updated {getTimeSinceLastFetch()}</span>
               <span className="sm:hidden">{getTimeSinceLastFetch()}</span>
             </div>
-            <Link href="/all-orders-enlarged">
-              <Button>Enlarge</Button>
+            <Link
+              href="/all-orders-enlarged"
+              className={`inline-flex h-9 items-center rounded-lg px-3 text-sm font-semibold transition-colors ${accent.button}`}
+            >
+              Enlarge
             </Link>
           </div>
         </div>
@@ -727,139 +747,67 @@ export default function AllOrders() {
       {hasUnacknowledgedOrder && (
         <button
           onClick={acknowledgeNewOrders}
-          className="flex w-full items-center justify-center gap-2 bg-red-600 hover:bg-red-700 text-white text-sm md:text-base font-semibold py-3 px-4 animate-pulse transition-colors shrink-0"
+          className="flex w-full shrink-0 animate-pulse items-center justify-center gap-2 bg-red-600 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-red-700 md:text-base"
         >
-          <Bell className="w-5 h-5" />
+          <Bell className="h-5 w-5" />
           New order received — tap to acknowledge
         </button>
       )}
 
       <div className="flex-1 overflow-hidden">
         {loading ? (
-          <div className="flex flex-col items-center justify-center h-full">
-            <Loader2 className="w-10 h-10 animate-spin text-primary mb-3" />
-            <p className="text-muted-foreground text-sm">Loading orders</p>
+          <div className="flex h-full flex-col items-center justify-center">
+            <Loader2 className="mb-3 h-10 w-10 animate-spin text-zinc-400" />
+            <p className="text-sm text-zinc-500">Loading orders</p>
           </div>
         ) : error ? (
-          <div className="flex flex-col items-center justify-center h-full px-4">
-            <AlertCircle className="w-10 h-10 text-destructive mb-3" />
-            <div className="text-destructive text-sm font-medium mb-1">
-              Error loading orders
-            </div>
-            <p className="text-muted-foreground text-xs mb-4">{error}</p>
-            <Button
-              onClick={fetchOrders}
-              variant="outline"
-              className="bg-card border-border hover:bg-accent text-foreground"
-            >
+          <div className="flex h-full flex-col items-center justify-center px-4">
+            <AlertCircle className="mb-3 h-10 w-10 text-red-600" />
+            <div className="mb-1 text-sm font-medium text-red-700">Error loading orders</div>
+            <p className="mb-4 text-xs text-zinc-500">{error}</p>
+            <Button onClick={fetchOrders} variant="outline" className="border-zinc-300 bg-white text-zinc-800 hover:bg-zinc-50">
               Retry
             </Button>
           </div>
         ) : orders.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full">
-            <ShoppingBag className="w-16 h-16 text-muted-foreground/50 mb-4" />
-            <p className="text-gray-700 text-sm font-medium">No orders</p>
-            <p className="text-muted-foreground text-xs mt-1">
-              Waiting for new orders...
-            </p>
-          </div>
+          emptyState(<ShoppingBag className="h-8 w-8" />, "No orders yet", "New orders show up here automatically.")
         ) : (
-          <Tabs
-            value={activeTab}
-            onValueChange={setActiveTab}
-            className="h-full flex flex-row"
-          >
-            {/* Compact side column: stats stacked vertically + tabs.
-                Slides away to w-0 when collapsed, leaving just the thin
-                toggle strip so it can be reopened. */}
-            <div
-              className={`shrink-0 border-r border-border bg-card overflow-hidden transition-all duration-300 ${
-                sidebarCollapsed ? "w-0" : "w-28 sm:w-32 md:w-36"
-              }`}
-            >
-              <div className="w-28 sm:w-32 md:w-36 h-full overflow-y-auto p-2 flex flex-col gap-1.5">
-                <div className="bg-muted border border-border rounded-md px-2 py-1.5">
-                  <div className="text-[9px] text-muted-foreground uppercase tracking-wider">
-                    Total
-                  </div>
-                  <div className="text-base font-bold text-foreground">
-                    {orders.length}
-                  </div>
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="flex h-full flex-col gap-0">
+            {/* Stats + Pending / Ready switch, across the top */}
+            <div className="shrink-0 border-b border-zinc-200 bg-white px-3 py-3 md:px-6">
+              <div className="mx-auto flex max-w-7xl flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3 lg:flex">
+                  {[
+                    { label: "Total", value: String(orders.length), tone: "text-zinc-900" },
+                    { label: "Pending", value: String(pendingOrders.length), tone: "text-amber-700" },
+                    { label: "Ready", value: String(deliveredOrders.length), tone: "text-emerald-700" },
+                    { label: "Sales", value: `$${salesTotal.toFixed(2)}`, tone: "text-zinc-900" },
+                  ].map((stat) => (
+                    <div key={stat.label} className="flex min-w-0 items-baseline justify-between gap-2 rounded-xl bg-zinc-50 px-3 py-1.5 ring-1 ring-zinc-200 sm:block sm:py-2 lg:min-w-28">
+                      <div className="text-[11px] font-medium tracking-wide text-zinc-500 uppercase">{stat.label}</div>
+                      <div className={`truncate text-lg font-bold tabular-nums ${stat.tone}`}>{stat.value}</div>
+                    </div>
+                  ))}
                 </div>
-                <div className="bg-muted border border-border rounded-md px-2 py-1.5">
-                  <div className="text-[9px] text-muted-foreground uppercase tracking-wider">
-                    Pending
-                  </div>
-                  <div className="text-base font-bold text-amber-500 dark:text-amber-400">
-                    {pendingOrders.length}
-                  </div>
-                </div>
-                <div className="bg-muted border border-border rounded-md px-2 py-1.5">
-                  <div className="text-[9px] text-muted-foreground uppercase tracking-wider">
-                    Ready
-                  </div>
-                  <div className="text-base font-bold text-emerald-500 dark:text-emerald-400">
-                    {deliveredOrders.length}
-                  </div>
-                </div>
-                <div className="bg-muted border border-border rounded-md px-2 py-1.5">
-                  <div className="text-[9px] text-muted-foreground uppercase tracking-wider">
-                    Sales
-                  </div>
-                  <div className="text-sm font-bold text-blue-500 dark:text-blue-400">
-                    $
-                    {deliveredOrders
-                      .reduce((sum, order) => sum + order.subtotal, 0)
-                      .toFixed(2)}
-                  </div>
-                </div>
-
-                <TabsList className="flex flex-col h-auto w-full bg-muted border border-border gap-1 p-1 mt-1">
-                  <TabsTrigger
-                    value="pending"
-                    className="w-full justify-start text-xs data-[state=active]:bg-amber-600 data-[state=active]:text-white"
-                  >
+                <TabsList className="grid h-11 w-full grid-cols-2 rounded-xl bg-zinc-100 p-1 lg:w-80">
+                  <TabsTrigger value="pending" className={`h-9 rounded-lg text-sm font-semibold ${accent.tabActive}`}>
                     Pending ({pendingOrders.length})
                   </TabsTrigger>
-                  <TabsTrigger
-                    value="delivered"
-                    className="w-full justify-start text-xs data-[state=active]:bg-emerald-600 data-[state=active]:text-white"
-                  >
+                  <TabsTrigger value="delivered" className={`h-9 rounded-lg text-sm font-semibold ${accent.tabActive}`}>
                     Ready ({deliveredOrders.length})
                   </TabsTrigger>
                 </TabsList>
               </div>
             </div>
 
-            {/* Thin always-visible strip to slide the side column open/closed */}
-            <button
-              onClick={() => setSidebarCollapsed((v) => !v)}
-              title={sidebarCollapsed ? "Show stats" : "Hide stats"}
-              className="shrink-0 w-4 sm:w-5 h-full flex items-center justify-center bg-card border-r border-border text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-            >
-              {sidebarCollapsed ? (
-                <ChevronRight className="w-3.5 h-3.5" />
-              ) : (
-                <ChevronLeft className="w-3.5 h-3.5" />
-              )}
-            </button>
-
-            <div className="flex-1 overflow-hidden">
-              <TabsContent value="pending" className="h-full m-0">
+            <div className="min-h-0 flex-1 overflow-hidden">
+              <TabsContent value="pending" className="m-0 h-full">
                 <ScrollArea className="h-full">
-                  <div className="px-3 md:px-6 py-3 md:py-6">
+                  <div className="mx-auto max-w-7xl px-3 py-4 pb-24 md:px-6 md:py-6 md:pb-6">
                     {pendingOrders.length === 0 ? (
-                      <div className="flex flex-col items-center justify-center py-16">
-                        <Clock className="w-16 h-16 text-muted-foreground/50 mb-4" />
-                        <p className="text-gray-700 text-sm font-medium">
-                          No pending orders
-                        </p>
-                        <p className="text-muted-foreground text-xs mt-1">
-                          All orders are ready
-                        </p>
-                      </div>
+                      emptyState(<Clock className="h-8 w-8" />, "No pending orders", "Everything is ready.")
                     ) : (
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 md:gap-4">
+                      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                         {pendingOrders.map((order) => renderOrderCard(order))}
                       </div>
                     )}
@@ -867,21 +815,13 @@ export default function AllOrders() {
                 </ScrollArea>
               </TabsContent>
 
-              <TabsContent value="delivered" className="h-full m-0">
+              <TabsContent value="delivered" className="m-0 h-full">
                 <ScrollArea className="h-full">
-                  <div className="px-3 md:px-6 py-3 md:py-6">
+                  <div className="mx-auto max-w-7xl px-3 py-4 pb-24 md:px-6 md:py-6 md:pb-6">
                     {deliveredOrders.length === 0 ? (
-                      <div className="flex flex-col items-center justify-center py-16">
-                        <CheckCircle2 className="w-16 h-16 text-muted-foreground/50 mb-4" />
-                        <p className="text-gray-700 text-sm font-medium">
-                          No ready orders
-                        </p>
-                        <p className="text-muted-foreground text-xs mt-1">
-                          Orders will appear here once ready
-                        </p>
-                      </div>
+                      emptyState(<CheckCircle2 className="h-8 w-8" />, "No ready orders", "Orders show up here once they're marked ready.")
                     ) : (
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 md:gap-4">
+                      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                         {deliveredOrders.map((order) => renderOrderCard(order))}
                       </div>
                     )}
@@ -895,34 +835,27 @@ export default function AllOrders() {
 
       {/* Delete Dialog */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <AlertDialogContent className="bg-card border-border w-[calc(100%-2rem)] max-w-lg">
+        <AlertDialogContent className="w-[calc(100%-2rem)] max-w-lg border-zinc-200 bg-white">
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-foreground">
-              Delete Order
-            </AlertDialogTitle>
-            <AlertDialogDescription className="text-muted-foreground">
+            <AlertDialogTitle className="text-zinc-900">Delete order</AlertDialogTitle>
+            <AlertDialogDescription className="text-zinc-600">
               Are you sure you want to delete the order for{" "}
-              <span className="font-semibold text-foreground">
-                {orderToDelete?.customerName}
-              </span>
-              ? This action cannot be undone.
+              <span className="font-semibold text-zinc-900">{orderToDelete?.customerName}</span>? This can&apos;t be
+              undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter className="flex-col sm:flex-row gap-2">
-            <AlertDialogCancel
-              disabled={deleting}
-              className="bg-muted border-border hover:bg-accent text-foreground mt-0"
-            >
+          <AlertDialogFooter className="flex-col gap-2 sm:flex-row">
+            <AlertDialogCancel disabled={deleting} className="mt-0 border-zinc-300 bg-white text-zinc-800 hover:bg-zinc-50">
               Cancel
             </AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDeleteConfirm}
               disabled={deleting}
-              className="bg-destructive hover:bg-destructive/90 text-destructive-foreground mt-0"
+              className="mt-0 bg-red-600 text-white hover:bg-red-700"
             >
               {deleting ? (
                 <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Deleting
                 </>
               ) : (
@@ -933,29 +866,24 @@ export default function AllOrders() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Order details, opened by tapping a compact card in the grid */}
+      {/* Order details, opened by tapping a card in the grid */}
       <Dialog
         open={expandedOrderId !== null}
         onOpenChange={(open) => {
           if (!open) setExpandedOrderId(null);
         }}
       >
-        <DialogContent className="bg-card border-border w-[calc(100%-2rem)] max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-h-[90vh] w-[calc(100%-2rem)] max-w-2xl overflow-y-auto border-zinc-200 bg-zinc-50">
           <DialogHeader>
-            <DialogTitle className="text-foreground text-xl flex items-baseline gap-2 flex-wrap">
+            <DialogTitle className="flex flex-wrap items-center gap-2 text-xl text-zinc-900">
               {expandedOrder?.orderNumber != null && (
-                <Badge
-                  variant="outline"
-                  className={orderNumberBadgeClassLg}
-                >
+                <span className={`rounded-lg px-2.5 py-1 text-base font-bold tabular-nums ${accent.chip}`}>
                   #{expandedOrder.orderNumber}
-                </Badge>
+                </span>
               )}
               <span>{expandedOrder?.customerName || "Guest"}</span>
               {expandedOrder && (
-                <span className="text-sm font-normal text-muted-foreground">
-                  {formatDate(expandedOrder.createdAt)}
-                </span>
+                <span className="text-sm font-normal text-zinc-500">{formatDate(expandedOrder.createdAt)}</span>
               )}
             </DialogTitle>
           </DialogHeader>

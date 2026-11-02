@@ -74,12 +74,12 @@ export default function AllOrdersEnlarged() {
   const brand = useBrand();
   const orderNumberBadgeClass =
     brand.site === "jaeky"
-      ? "text-sm font-bold border-purple-500/50 bg-purple-500/10 text-purple-400 tabular-nums px-2 py-0.5 shrink-0"
-      : "text-sm font-bold border-lime-500/50 bg-lime-500/10 text-lime-400 tabular-nums px-2 py-0.5 shrink-0";
+      ? "text-sm font-bold border-purple-500/50 bg-purple-100 text-purple-800 tabular-nums px-2 py-0.5 shrink-0"
+      : "text-sm font-bold border-lime-500/50 bg-lime-100 text-lime-900 tabular-nums px-2 py-0.5 shrink-0";
   const orderNumberBadgeClassLg =
     brand.site === "jaeky"
-      ? "text-base font-bold border-purple-500/50 bg-purple-500/10 text-purple-400 tabular-nums px-2.5 py-1"
-      : "text-base font-bold border-lime-500/50 bg-lime-500/10 text-lime-400 tabular-nums px-2.5 py-1";
+      ? "text-base font-bold border-purple-500/50 bg-purple-100 text-purple-800 tabular-nums px-2.5 py-1"
+      : "text-base font-bold border-lime-500/50 bg-lime-100 text-lime-900 tabular-nums px-2.5 py-1";
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -482,10 +482,10 @@ export default function AllOrdersEnlarged() {
       <Card
         key={order.id}
         onClick={openOrder}
-        className={`group bg-black border hover:border-primary/50 transition-all duration-200 cursor-pointer gap-2 py-4 w-full sm:w-80 ${
+        className={`group bg-white shadow-sm hover:shadow-md border hover:border-zinc-300 transition-all duration-200 cursor-pointer gap-2 py-4 w-full sm:w-80 ${
           unacknowledgedOrderIds.has(order.id)
             ? "animate-pulse border-red-500 ring-2 ring-red-500/50"
-            : "border-border"
+            : "border-zinc-200"
         }`}
       >
         <CardHeader className="px-4">
@@ -500,7 +500,7 @@ export default function AllOrdersEnlarged() {
                     #{order.orderNumber}
                   </Badge>
                 )}
-                <h3 className="font-bold text-lg text-white truncate">
+                <h3 className="font-bold text-lg text-zinc-900 truncate">
                   {order.customerName || "Guest"}
                 </h3>
                 <span className="text-sm text-muted-foreground shrink-0">
