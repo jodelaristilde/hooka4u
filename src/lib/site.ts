@@ -77,7 +77,14 @@ export function siteWhere(site: SiteId): Record<string, unknown> {
   if (site === "jaeky") {
     return { site: "jaeky" };
   }
-  return { OR: [{ site: "vipservice4u" }, { site: null }] };
+  // Legacy vipservice4u documents may have the field set to null OR not set
+  // at all. On MongoDB, Prisma's `null` filter only matches explicit nulls,
+  // so `isSet: false` is needed for the missing ones. Both require `site`
+  // to be optional (String?) in schema.prisma — with a required field,
+  // Prisma rejects the query outright ("Argument `site` is missing").
+  return {
+    OR: [{ site: "vipservice4u" }, { site: null }, { site: { isSet: false } }],
+  };
 }
 
 /**

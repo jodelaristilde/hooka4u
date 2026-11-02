@@ -31,6 +31,12 @@ model VerificationToken {
   @@unique([identifier, token])
 }
 
+// NOTE on `site`: it is OPTIONAL (String?) on purpose. Documents created
+// before this field existed don't have it at all, and Prisma refuses to
+// filter a required field by null ("Argument `site` is missing"), which
+// broke every VIP Service 4U menu/category/order query. See siteWhere() in
+// src/lib/site.ts.
+//
 // NOTE on `site`: this app serves two domains (vipservice4u.us and
 // jaeky.us) from one shared database, partitioned by this field. Because
 // this is MongoDB via Prisma, `@default("vipservice4u")` only applies to
@@ -42,7 +48,7 @@ model VerificationToken {
 model MenuCategory {
   id        String   @id @default(uuid()) @map("_id")
   name      String
-  site      String   @default("vipservice4u")
+  site      String?  @default("vipservice4u")
   hidden    Boolean  @default(false)
   order     Int      @default(0)
   createdAt DateTime @default(now())
@@ -64,7 +70,7 @@ model MenuItems {
   price       Float
   category    String?     // Free-text category name, e.g. "FOOD", "DRINKS", or any custom category
   available   Boolean     @default(false)
-  site        String      @default("vipservice4u")
+  site        String?     @default("vipservice4u")
   // Username of whoever added this item (e.g. "jo", "karen"), so an admin
   // can view/filter one user's menu without logging into their account.
   // Nullable because items created before this field existed have no
@@ -86,7 +92,7 @@ model MenuItemTemplate {
   description String?
   image       String?
   category    String?
-  site        String   @default("vipservice4u")
+  site        String?  @default("vipservice4u")
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }
@@ -99,7 +105,7 @@ model Order {
   Seating      String
   subtotal     Float
   status       String      @default("PENDING")
-  site         String      @default("vipservice4u")
+  site         String?     @default("vipservice4u")
   createdAt    DateTime    @default(now())
   updatedAt    DateTime    @updatedAt
   items        OrderItem[]
