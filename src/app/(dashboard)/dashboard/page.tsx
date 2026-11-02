@@ -27,7 +27,7 @@ import { getBrandFromHost } from "@/lib/brand";
 export default async function Dashboard() {
   const session = await getServerSession(authOptions);
   const userRole = session?.user?.role;
-  const firstName = session?.user?.name?.split(" ")[0];
+  const loginName = session?.user?.username || session?.user?.name || "";
   const headersList = await headers();
   const brand = getBrandFromHost(headersList.get("host"));
 
@@ -154,7 +154,7 @@ export default async function Dashboard() {
             {brand.tagline}
           </p>
           <h2 className={`relative mt-3 text-lg font-semibold sm:text-xl ${brand.accentTextStrong}`}>
-            Welcome back{firstName ? `, ${firstName}` : ""}
+            {loginName ? `Logged in as: ${loginName}` : "Logged in"}
           </h2>
         </div>
 
