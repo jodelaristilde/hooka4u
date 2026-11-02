@@ -3,10 +3,13 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { PrismaClient } from "@prisma/client";
 import { getSiteFromRequest, siteWhere } from "@/lib/site";
+import { requireAdmin } from "@/lib/api-auth";
 
 const prisma = new PrismaClient();
 
 export async function POST(request: Request) {
+  const auth = await requireAdmin();
+  if (auth instanceof NextResponse) return auth;
   try {
     const session = await getServerSession(authOptions);
 

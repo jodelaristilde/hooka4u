@@ -1,11 +1,16 @@
 // app/api/menu-templates/[id]/route.ts
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { requireUser } from "@/lib/api-auth";
+import { storeImage } from "@/lib/image-storage";
+import { getSiteFromHost } from "@/lib/site";
 
 export async function PUT(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const auth = await requireUser();
+  if (auth instanceof NextResponse) return auth;
   try {
     const { id } = await params;
     const body = await request.json();
@@ -23,7 +28,7 @@ export async function PUT(
       data: {
         name: String(name).trim(),
         description: description || null,
-        image: image || null,
+        image: (await storeImage(image, getSiteFromHost(request.headers.get("host")))) || null,
         category: category || null,
       },
     });
@@ -42,6 +47,8 @@ export async function DELETE(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const auth = await requireUser();
+  if (auth instanceof NextResponse) return auth;
   try {
     const { id } = await params;
     await prisma.menuItemTemplate.delete({ where: { id } });

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
 import { getSiteFromRequest, siteWhere } from "@/lib/site";
+import { requireUser } from "@/lib/api-auth";
 
 const prisma = new PrismaClient();
 
@@ -101,6 +102,8 @@ export async function POST(request: NextRequest) {
 }
 
 export async function DELETE(request: NextRequest) {
+  const auth = await requireUser();
+  if (auth instanceof NextResponse) return auth;
   try {
     const { searchParams } = new URL(request.url);
     const orderId = searchParams.get("id");

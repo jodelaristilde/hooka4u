@@ -1,8 +1,7 @@
-import { PrismaClient } from "@prisma/client"
 import type { NextAuthOptions } from "next-auth"
 import CredentialsProvider from "next-auth/providers/credentials"
-
-const prisma = new PrismaClient()
+import { prisma } from "@/lib/prisma"
+import { hashPassword, verifyPassword } from "@/lib/passwords"
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -22,9 +21,22 @@ export const authOptions: NextAuthOptions = {
           where: { username: credentials.username },
         })
 
-        // Check plain-text password
-        if (!user || user.password !== credentials.password) {
+        // Passwords are stored as bcrypt hashes. Older accounts may still
+        // have a plain-text password; it's accepted once and immediately
+        // replaced with a hash.
+        const check = await verifyPassword(credentials.password, user?.password)
+        if (!user || !check.ok) {
           throw new Error("Invalid credentials")
+        }
+        if (check.needsUpgrade) {
+          try {
+            await prisma.user.update({
+              where: { id: user.id },
+              data: { password: await hashPassword(credentials.password) },
+            })
+          } catch (err) {
+            console.error("Couldn't upgrade password hash:", err)
+          }
         }
 
         // Return user info, including role

@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
 import { getSiteFromRequest, siteWhere } from "@/lib/site";
+import { requireUser } from "@/lib/api-auth";
 
 const prisma = new PrismaClient();
 
@@ -13,6 +14,8 @@ export const dynamic = "force-dynamic";
 
 // GET all menu items for the current site (determined by the Host header)
 export async function GET(request: NextRequest) {
+  const auth = await requireUser();
+  if (auth instanceof NextResponse) return auth;
   try {
     const site = getSiteFromRequest(request);
 

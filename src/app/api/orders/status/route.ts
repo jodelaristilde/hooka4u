@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
 import { getSiteFromRequest, siteWhere } from "@/lib/site";
+import { requireUser } from "@/lib/api-auth";
 
 const prisma = new PrismaClient();
 
@@ -57,6 +58,8 @@ export async function GET(request: NextRequest) {
 }
 
 export async function PATCH(request: NextRequest) {
+  const auth = await requireUser();
+  if (auth instanceof NextResponse) return auth;
   try {
     const body = await request.json();
     const { orderId, status } = body;

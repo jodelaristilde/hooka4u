@@ -41,7 +41,8 @@ if (role === "USER") {
   // If NOT logged in
   const isPublic = PUBLIC_ROUTES.some((route) => pathname.startsWith(route));
 
-  if (!isPublic && pathname.startsWith("/dashboard")) {
+  // The TV "Enlarge" board shows customer orders, so it needs a login too.
+  if (!isPublic && (pathname.startsWith("/dashboard") || pathname.startsWith("/all-orders-enlarged"))) {
     return NextResponse.redirect(new URL("/login", req.url));
   }
 
@@ -53,5 +54,6 @@ export const config = {
     "/login",
     "/register",
     "/dashboard/:path*",
+    "/all-orders-enlarged",
   ],
 };
