@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 import { Maximize, X } from "lucide-react";
 import { useBrand } from "@/lib/use-brand";
 
@@ -26,6 +27,7 @@ export function EnlargeToggle() {
   // sits on top of a page's own buttons (like All Orders' own "Enlarge"
   // button in that same corner) while you're not reaching for it.
   const [showExitButton, setShowExitButton] = useState(false);
+  const pathname = usePathname();
 
   useEffect(() => {
     const handleFullscreenChange = () => {
@@ -68,6 +70,12 @@ export function EnlargeToggle() {
       console.error("Error exiting fullscreen:", err);
     }
   };
+
+  // Not needed on the step-by-step Add Items screen, where it would sit on
+  // top of the big Next/Save button.
+  if (pathname?.startsWith("/dashboard/quick-add")) {
+    return null;
+  }
 
   return (
     <>
