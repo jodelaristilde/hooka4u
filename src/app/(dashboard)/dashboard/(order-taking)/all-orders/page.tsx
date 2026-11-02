@@ -45,6 +45,8 @@ import {
 import Link from "next/link";
 import { useBrand } from "@/lib/use-brand";
 import { useSession } from "next-auth/react";
+import { useShiftMode } from "@/lib/use-shift-mode";
+import { buildNightReport, downloadNightReport, todaysOrders as ordersSinceMidnight } from "@/lib/night-report";
 
 interface OrderItem {
   id: string;
@@ -111,6 +113,27 @@ export default function AllOrders() {
   const alertLoopRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const audioUnlockedRef = useRef(false);
   const audioCtxRef = useRef<AudioContext | null>(null);
+  // One tap turns on the sound and keeps the screen awake for the shift.
+  const { shiftOn, screenAwake, startShift } = useShiftMode();
+  const unlockSound = async () => {
+    try {
+      if (!audioCtxRef.current) {
+        const Ctx =
+          window.AudioContext ||
+          (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+        if (Ctx) audioCtxRef.current = new Ctx();
+      }
+      await audioCtxRef.current?.resume();
+    } catch {
+      // Web Audio not available; the plain beep is the fallback.
+    }
+    const a = audioRef.current;
+    if (a) {
+      await a.play().catch(() => {});
+      a.pause();
+      a.currentTime = 0;
+    }
+  };
 
   // This page is only ever meaningful once it's running in the browser (it
   // fetches its own data on mount). Rendering it for real on the server
@@ -475,13 +498,13 @@ export default function AllOrders() {
       }
     : {
         chip: "bg-lime-100 text-lime-900 ring-1 ring-lime-300",
-        ticket: "bg-gradient-to-br from-lime-600 to-emerald-600 text-white shadow-md shadow-lime-500/30",
+        ticket: "bg-gradient-to-br from-lime-400 to-lime-700 text-white shadow-md shadow-lime-500/30",
         button: "bg-lime-700 text-white hover:bg-lime-800",
         outline: "border-lime-200 bg-lime-50/60 text-lime-900 hover:bg-lime-100",
         tabActive: "data-[state=active]:bg-white data-[state=active]:text-lime-900 data-[state=active]:shadow-sm",
         ring: "focus-visible:ring-lime-500",
         pageGlow: "from-lime-100/70",
-        alertButton: "bg-gradient-to-r from-lime-700 to-emerald-600 text-white hover:from-lime-800 hover:to-emerald-700",
+        alertButton: "bg-gradient-to-r from-lime-500 to-lime-700 text-white hover:from-lime-600 hover:to-lime-800",
       };
 
   const statusChip = (isDelivered: boolean, large = false) => (
@@ -727,23 +750,13 @@ export default function AllOrders() {
     );
   };
 
-  // Today's sales (admins only). Counts every order placed since midnight
-  // on this device's clock, pending and ready.
-  const startOfToday = new Date();
-  startOfToday.setHours(0, 0, 0, 0);
-  const todaysOrders = orders.filter((o) => new Date(o.createdAt) >= startOfToday);
-  const sumOf = (list: Order[]) => list.reduce((sum, o) => sum + (o.subtotal || 0), 0);
+  // Tonight's sales (admins only). A night runs 6 AM to 6 AM so a late
+  // shift isn't split at midnight; pending and ready both count.
   const money = (n: number) =>
     n.toLocaleString("en-US", { style: "currency", currency: "USD" });
-  const todaysSales = {
-    total: sumOf(todaysOrders),
-    count: todaysOrders.length,
-    items: todaysOrders.reduce((sum, o) => sum + getTotalItems(o.items), 0),
-    cash: sumOf(todaysOrders.filter((o) => o.paymentType !== "CARD")),
-    card: sumOf(todaysOrders.filter((o) => o.paymentType === "CARD")),
-    ready: sumOf(todaysOrders.filter((o) => o.status === "DELIVERED")),
-    pending: sumOf(todaysOrders.filter((o) => o.status !== "DELIVERED")),
-  };
+  // Same numbers as the downloadable night report.
+  const todaysSales = buildNightReport(ordersSinceMidnight(orders));
+  const startOfToday = todaysSales.date;
   // Double-click (computer) or double-tap (phone) on Total.
   const handleTotalTap = () => {
     if (!isAdmin) return;
@@ -835,8 +848,11 @@ export default function AllOrders() {
                 <span className="font-semibold text-red-600">New order!</span>
               ) : (
                 <>
-                  <span className="hidden sm:inline">Live · updated {getTimeSinceLastFetch()}</span>
-                  <span className="sm:hidden">Live</span>
+                  <span className="hidden sm:inline">
+                    Live{shiftOn ? " · sound on" : ""}
+                    {shiftOn && screenAwake ? " · screen awake" : ""} · updated {getTimeSinceLastFetch()}
+                  </span>
+                  <span className="sm:hidden">{shiftOn ? "Live · sound on" : "Live"}</span>
                 </>
               )}
             </div>
@@ -849,6 +865,32 @@ export default function AllOrders() {
           </div>
         </div>
       </header>
+
+      {/* Start shift: one tap turns on the new-order sound and keeps the
+          screen awake. Shown until it's been tapped. */}
+      {!shiftOn && (
+        <div className="shrink-0 px-4 pt-3 md:px-6">
+          <div className="mx-auto flex max-w-7xl items-center gap-3 rounded-2xl bg-white p-3 shadow-sm ring-1 ring-zinc-200 sm:p-4">
+            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-red-100 text-red-700">
+              <Bell className="h-5 w-5" aria-hidden="true" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-bold text-zinc-900 sm:text-base">Start your shift</p>
+              <p className="text-xs text-zinc-600 sm:text-sm">Turns on the new-order sound and keeps this screen awake.</p>
+            </div>
+            <button
+              type="button"
+              onClick={async () => {
+                await startShift(unlockSound);
+                playNotificationSound(); // so staff hear that sound works
+              }}
+              className={`h-11 shrink-0 rounded-xl px-4 text-sm font-bold shadow-sm transition-colors sm:px-5 sm:text-base ${accent.button}`}
+            >
+              Start shift
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="flex-1 overflow-hidden">
         {loading ? (
@@ -1060,11 +1102,11 @@ export default function AllOrders() {
       {/* Today's sales — admins only, opened by double-tapping Total */}
       {isAdmin && (
         <Dialog open={salesOpen} onOpenChange={setSalesOpen}>
-          <DialogContent className="w-[calc(100%-1.5rem)] max-w-md rounded-3xl border-zinc-200 bg-white">
+          <DialogContent className="max-h-[90vh] w-[calc(100%-1.5rem)] max-w-md overflow-y-auto rounded-3xl border-zinc-200 bg-white">
             <DialogHeader>
               <DialogTitle className="text-left text-zinc-900">
                 <span className="block text-xs font-semibold tracking-widest text-zinc-500 uppercase">
-                  Today&apos;s sales ·{" "}
+                  Tonight&apos;s sales ·{" "}
                   {startOfToday.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}
                 </span>
                 <span className="mt-1 block text-4xl font-extrabold tracking-tight tabular-nums">
@@ -1089,7 +1131,33 @@ export default function AllOrders() {
                 </div>
               ))}
             </div>
-            <p className="text-xs text-zinc-500">Only admins can see this. Staff never see prices.</p>
+            {todaysSales.topItems.length > 0 && (
+              <div className="rounded-2xl bg-zinc-50 p-3 ring-1 ring-zinc-200">
+                <div className="mb-2 text-[11px] font-semibold tracking-wide text-zinc-500 uppercase">Top items</div>
+                <ul className="space-y-1.5">
+                  {todaysSales.topItems.slice(0, 5).map((t, i) => (
+                    <li key={t.name} className="flex items-center gap-2 text-sm">
+                      <span className="w-4 text-xs font-bold text-zinc-400 tabular-nums">{i + 1}</span>
+                      <span className="min-w-0 flex-1 truncate font-medium text-zinc-900">{t.name}</span>
+                      <span className="text-zinc-500 tabular-nums">×{t.quantity}</span>
+                      <span className="w-20 text-right font-semibold text-zinc-900 tabular-nums">{money(t.sales)}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            <button
+              type="button"
+              onClick={() => downloadNightReport(todaysSales, brand.name)}
+              disabled={todaysSales.count === 0}
+              className={`flex h-12 w-full items-center justify-center gap-2 rounded-2xl text-base font-semibold transition-colors disabled:opacity-40 ${accent.button}`}
+            >
+              Download tonight&apos;s report
+            </button>
+            <p className="text-xs text-zinc-500">
+              Only admins can see this. Staff never see prices. Download the report before wash-up: wash-up clears
+              tonight&apos;s orders.
+            </p>
           </DialogContent>
         </Dialog>
       )}

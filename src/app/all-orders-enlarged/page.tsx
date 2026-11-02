@@ -40,6 +40,7 @@ import {
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { useBrand } from "@/lib/use-brand";
+import { useShiftMode } from "@/lib/use-shift-mode";
 
 interface OrderItem {
   id: string;
@@ -111,6 +112,16 @@ export default function AllOrdersEnlarged() {
   }, []);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  // One tap turns on the sound and keeps the TV awake for the shift.
+  const { shiftOn, screenAwake, startShift } = useShiftMode();
+  const unlockSound = async () => {
+    const a = audioRef.current;
+    if (a) {
+      await a.play().catch(() => {});
+      a.pause();
+      a.currentTime = 0;
+    }
+  };
   const previousOrderIdsRef = useRef<Set<string>>(new Set());
   const isInitialLoadRef = useRef(true);
   const alertLoopRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -754,6 +765,28 @@ export default function AllOrdersEnlarged() {
           </div>
         </div>
       </header>
+
+      {/* Start shift: one tap turns on the new-order sound and keeps the
+          TV awake. Shown until it's been tapped. */}
+      {!shiftOn ? (
+        <button
+          type="button"
+          onClick={async () => {
+            await startShift(unlockSound);
+            playNotificationSound(); // so staff hear that sound works
+          }}
+          className="flex w-full shrink-0 items-center justify-center gap-3 border-b border-border bg-card px-4 py-4 text-base font-bold text-foreground transition-colors hover:bg-muted md:text-lg"
+        >
+          <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-red-100 text-red-700">
+            <Bell className="h-5 w-5" aria-hidden="true" />
+          </span>
+          Tap to start shift: turns on the new-order sound and keeps this screen awake
+        </button>
+      ) : (
+        <div className="shrink-0 border-b border-border bg-card px-4 py-1.5 text-center text-xs font-medium text-muted-foreground">
+          Shift on · sound on{screenAwake ? " · screen stays awake" : ""}
+        </div>
+      )}
 
       {hasUnacknowledgedOrder && (
         <button

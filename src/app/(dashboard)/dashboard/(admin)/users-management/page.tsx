@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Plus, Trash2, Loader2, Eye, EyeOff, X, UserPlus, RotateCcw, CheckCircle2, History, Download } from "lucide-react"
+import { Plus, Trash2, Loader2, Eye, EyeOff, X, UserPlus, RotateCcw, CheckCircle2, History, Download, Zap } from "lucide-react"
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -30,6 +30,7 @@ import {
 import { toast } from "sonner"
 import { useSession } from "next-auth/react"
 import { useBrand } from "@/lib/use-brand"
+import { buildNightReport, downloadNightReport, type ReportOrder } from "@/lib/night-report"
 
 interface User {
   id: string
@@ -123,6 +124,73 @@ export default function UserManagement() {
   // full order history as two CSV files, so there's a copy saved outside
   // the app before Washup, Clear Orders Only, or Delete Menu is ever run.
   const [isBackupDownloading, setIsBackupDownloading] = useState(false)
+  const [isReportDownloading, setIsReportDownloading] = useState(false)
+
+  // Night report of EVERY order wash-up is about to delete (a night can run
+  // past midnight, so this isn't limited to "today").
+  const handleDownloadNightReport = async () => {
+    setIsReportDownloading(true)
+    try {
+      const res = await fetch("/api/orders/get", { cache: "no-store" })
+      if (!res.ok) throw new Error("Couldn't load orders")
+      const orders: ReportOrder[] = await res.json()
+      if (!Array.isArray(orders) || orders.length === 0) {
+        toast.message("No orders to report", { description: "There are no orders on the board right now." })
+        return
+      }
+      const firstOrderAt = orders.reduce(
+        (min, o) => (new Date(o.createdAt) < min ? new Date(o.createdAt) : min),
+        new Date()
+      )
+      downloadNightReport(buildNightReport(orders, firstOrderAt), brand.name)
+      toast.success("Night report downloaded")
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Couldn't download the report")
+    } finally {
+      setIsReportDownloading(false)
+    }
+  }
+
+  // "Speed up photos": moves menu photos still saved inside the database
+  // out to image storage, so the menu loads faster on phones.
+  const [photosLeft, setPhotosLeft] = useState<number | null>(null)
+  const [photoStorageOn, setPhotoStorageOn] = useState(false)
+  const [isMovingPhotos, setIsMovingPhotos] = useState(false)
+
+  useEffect(() => {
+    fetch("/api/admin/move-photos")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (d) {
+          setPhotosLeft(d.remaining)
+          setPhotoStorageOn(!!d.enabled)
+        }
+      })
+      .catch(() => {})
+  }, [])
+
+  const handleMovePhotos = async () => {
+    setIsMovingPhotos(true)
+    const toastId = toast.loading("Speeding up photos…")
+    try {
+      let remaining = photosLeft ?? 1
+      let safety = 200
+      while (remaining > 0 && safety-- > 0) {
+        const res = await fetch("/api/admin/move-photos", { method: "POST" })
+        const data = await res.json().catch(() => ({}))
+        if (!res.ok) throw new Error(data?.error || "Couldn't move photos")
+        remaining = data.remaining
+        setPhotosLeft(remaining)
+        toast.loading(`Speeding up photos… ${remaining} left`, { id: toastId })
+        if (data.moved === 0 && remaining > 0) break
+      }
+      toast.success(remaining > 0 ? `${remaining} photos couldn't be moved` : "All photos are fast now", { id: toastId })
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Couldn't move photos", { id: toastId, duration: 15000 })
+    } finally {
+      setIsMovingPhotos(false)
+    }
+  }
 
   // Fetch users from database
   useEffect(() => {
@@ -681,6 +749,18 @@ export default function UserManagement() {
                     )}
                     Download Backup
                   </Button>
+                  {photosLeft !== null && photosLeft > 0 && (
+                    <Button
+                      variant="outline"
+                      onClick={handleMovePhotos}
+                      disabled={isMovingPhotos}
+                      title={photoStorageOn ? "Move menu photos to fast image storage" : "Connect Vercel Blob storage first"}
+                      className="gap-2"
+                    >
+                      {isMovingPhotos ? <Loader2 className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}
+                      Speed up photos ({photosLeft})
+                    </Button>
+                  )}
                   <Button
                     variant="outline"
                     onClick={() => setIsClearOrdersDialogOpen(true)}
@@ -1038,6 +1118,26 @@ export default function UserManagement() {
               photos are kept so you can rebuild the menu quickly. This action cannot be undone.
             </DialogDescription>
           </DialogHeader>
+
+          {!isWashupRunning && (
+            <div className="flex flex-col gap-2 rounded-xl border border-amber-300 bg-amber-50 p-3">
+              <p className="text-sm font-semibold text-amber-900">Save tonight&apos;s numbers first</p>
+              <p className="text-xs text-amber-800">
+                Download the night report (sales, cash vs card, top items, every order) before wash-up deletes the
+                orders.
+              </p>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleDownloadNightReport}
+                disabled={isReportDownloading}
+                className="gap-2 self-start bg-white"
+              >
+                {isReportDownloading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                Download night report
+              </Button>
+            </div>
+          )}
 
           {!isWashupRunning ? (
             <>
