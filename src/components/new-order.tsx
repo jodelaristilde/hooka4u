@@ -394,21 +394,22 @@ export default function NewOrder({ onOrderComplete, onBack }: NewOrderProps) {
 
     {/* Bottom Overlay */}
     <div className="absolute inset-x-0 bottom-0 p-2 sm:p-4 bg-gradient-to-t from-black/85 via-black/55 to-transparent space-y-1 sm:space-y-2 text-center sm:text-left">
-    {/* Price Badge */}
-    <div className={isJaeky ? "mx-auto sm:mx-0 w-fit bg-purple-500 text-white text-xs sm:text-base font-bold px-2 py-0.5 sm:px-3 sm:py-1 rounded-full shadow-md" : "mx-auto sm:mx-0 w-fit bg-lime-500 text-black text-xs sm:text-base font-bold px-2 py-0.5 sm:px-3 sm:py-1 rounded-full shadow-md"}>
-      ${product.price.toFixed(2)}
-    </div>
       {/* Title */}
       <h3 className="text-white font-semibold text-sm sm:text-xl md:text-2xl leading-tight line-clamp-2 break-words">
         {product.name}
       </h3>
 
-      {/* Description */}
-      {product.description && (
-        <p className="hidden sm:block text-zinc-300 text-xs line-clamp-2">
-          {product.description}
-        </p>
-      )}
+      {/* Price and description on the same line */}
+      <div className="flex items-center justify-center gap-2 sm:justify-start">
+        <div className={isJaeky ? "shrink-0 w-fit bg-purple-500 text-white text-xs sm:text-base font-bold px-2 py-0.5 sm:px-3 sm:py-1 rounded-full shadow-md" : "shrink-0 w-fit bg-lime-500 text-black text-xs sm:text-base font-bold px-2 py-0.5 sm:px-3 sm:py-1 rounded-full shadow-md"}>
+          ${product.price.toFixed(2)}
+        </div>
+        {product.description && (
+          <p className="hidden sm:block min-w-0 flex-1 text-zinc-300 text-xs line-clamp-2">
+            {product.description}
+          </p>
+        )}
+      </div>
 
       {/* Add to Cart Button */}
       <button

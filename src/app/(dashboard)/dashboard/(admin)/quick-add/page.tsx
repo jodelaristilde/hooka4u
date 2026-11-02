@@ -136,6 +136,8 @@ export default function QuickAddPage() {
   const [saving, setSaving] = useState(false);
   const [saveProgress, setSaveProgress] = useState(0);
   const [saved, setSaved] = useState<DraftItem[]>([]);
+  // How many of the saved items were new to the Item Library this time.
+  const [libraryAdded, setLibraryAdded] = useState(0);
   const [moreOpen, setMoreOpen] = useState(false);
 
   useEffect(() => {
@@ -309,6 +311,22 @@ export default function QuickAddPage() {
       }
     }
 
+    // Every new item also goes into the Item Library so its photo can be
+    // reused after a wash-up — unless the library already has an item with
+    // the same name (any capitalization), so nothing gets saved twice.
+    const nameKey = (n: string) => n.trim().replace(/\s+/g, " ").toLowerCase();
+    const libraryNames = new Set<string>();
+    try {
+      const res = await fetch("/api/menu-templates");
+      if (res.ok) {
+        const templates: { name?: string | null }[] = await res.json();
+        templates.forEach((t) => t.name && libraryNames.add(nameKey(t.name)));
+      }
+    } catch (err) {
+      console.error("Error loading item library:", err);
+    }
+    let addedToLibrary = 0;
+
     const done: DraftItem[] = [];
     const failed: DraftItem[] = [];
 
@@ -328,6 +346,22 @@ export default function QuickAddPage() {
         });
         if (!res.ok) throw new Error(`Status ${res.status}`);
         done.push(item);
+
+        // Best effort: the menu item is what matters.
+        const key = nameKey(item.name);
+        if (!libraryNames.has(key)) {
+          libraryNames.add(key);
+          try {
+            const libRes = await fetch("/api/menu-templates", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ name: item.name.trim(), image: item.image, category }),
+            });
+            if (libRes.ok) addedToLibrary++;
+          } catch (err) {
+            console.error("Error saving to item library:", err);
+          }
+        }
       } catch (err) {
         console.error("Error saving menu item:", err);
         failed.push(item);
@@ -337,6 +371,7 @@ export default function QuickAddPage() {
 
     setSaving(false);
     setSaved((prev) => [...prev, ...done]);
+    setLibraryAdded((prev) => prev + addedToLibrary);
 
     if (failed.length) {
       // Keep only the ones that didn't save so they can be retried.
@@ -356,6 +391,7 @@ export default function QuickAddPage() {
   const startOver = () => {
     setItems([]);
     setSaved([]);
+    setLibraryAdded(0);
     setCategory(null);
     setPriceForAll("");
     setStep("upload");
@@ -699,6 +735,11 @@ export default function QuickAddPage() {
                 <span className="font-semibold text-zinc-900">{category ? titleCase(category) : "the menu"}</span>
                 {" "}and showing on the menu now.
               </p>
+              <p className="-mt-2 text-sm text-zinc-600">
+                {libraryAdded > 0
+                  ? `${libraryAdded} new photo${libraryAdded === 1 ? "" : "s"} saved to your Item Library.`
+                  : "Already in your Item Library, so nothing new was saved there."}
+              </p>
               <div className="grid w-full grid-cols-4 gap-2">
                 {saved.map((item) => (
                   // eslint-disable-next-line @next/next/no-img-element
@@ -753,15 +794,17 @@ export default function QuickAddPage() {
           )}
           {step === "done" && (
             <>
-              <button type="button" className={primaryBtn} onClick={startOver}>
-                Add more
-              </button>
+              {/* Done takes you back to the dashboard. Log out is still in
+                  the More menu at the top. */}
+              <a href="/dashboard" className={primaryBtn}>
+                Done
+              </a>
               <button
                 type="button"
-                onClick={() => signOut({ callbackUrl: "/login" })}
+                onClick={startOver}
                 className={`flex h-12 w-full items-center justify-center rounded-2xl border border-zinc-300 bg-white text-base font-semibold text-zinc-700 hover:bg-zinc-50 focus-visible:outline-none focus-visible:ring-4 ${c.focus}`}
               >
-                Log out
+                Add more
               </button>
             </>
           )}

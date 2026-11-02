@@ -53,13 +53,13 @@ export default async function Dashboard() {
       title: "New Order",
       url: "/dashboard/new-order",
       icon: BookA,
-      description: "Create and submit a new order",
+      description: "Staff place orders on iPad or phone",
     },
     {
       title: "All Orders",
       url: "/dashboard/all-orders",
       icon: ListOrdered,
-      description: "View and manage all orders",
+      description: "View orders",
     },
     {
       title: "Menu Prices",
@@ -72,7 +72,6 @@ export default async function Dashboard() {
       url: "/dashboard/menu",
       icon: Menu,
       description: "Manage menu items and categories",
-      requiresAdmin: true,
     },
     {
       title: "Item Library",
@@ -134,13 +133,24 @@ export default async function Dashboard() {
             style={{ opacity: 0.5 }}
             aria-hidden="true"
           />
-          <div className={`relative flex items-center gap-2 ${brand.accentTextStrong}`}>
-            <Sparkles className="h-5 w-5" />
-            <span className="text-sm font-semibold tracking-widest uppercase">
-              {brand.name}
-            </span>
-          </div>
-          <p className="relative mt-3 max-w-3xl text-3xl leading-tight font-extrabold tracking-tight text-zinc-900 sm:text-5xl">
+          {isJaeky ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src="/jaeky-wordmark-transparent.png"
+              alt="Jaeky"
+              className="relative h-16 w-auto sm:h-20"
+            />
+          ) : (
+            <div className={`relative flex items-center gap-2 ${brand.accentTextStrong}`}>
+              <Sparkles className="h-5 w-5" />
+              <span className="text-sm font-semibold tracking-widest uppercase">
+                {brand.name}
+              </span>
+            </div>
+          )}
+          {/* One line on every screen size: the text shrinks with the screen
+              width instead of wrapping. */}
+          <p className="relative mt-3 text-[clamp(0.95rem,4.4vw,2rem)] leading-tight font-bold tracking-tight whitespace-nowrap text-zinc-900">
             {brand.tagline}
           </p>
           <h2 className={`relative mt-3 text-lg font-semibold sm:text-xl ${brand.accentTextStrong}`}>

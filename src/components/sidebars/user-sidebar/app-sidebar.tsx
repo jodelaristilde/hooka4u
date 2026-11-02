@@ -48,7 +48,6 @@ const sidebarData = {
       title: "Menu",
       url: "/dashboard/menu",
       icon: Menu,
-      requiresAdmin: true,
     },
     {
       title: "Item Library",
