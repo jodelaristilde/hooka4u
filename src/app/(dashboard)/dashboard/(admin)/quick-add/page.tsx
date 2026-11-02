@@ -7,7 +7,7 @@
 // Saves straight to the live menu through /api/menu-items, the same as the
 // Menu page.
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { signOut } from "next-auth/react";
 import {
   ArrowLeft,
@@ -32,6 +32,7 @@ import { useBrand } from "@/lib/use-brand";
 import {
   MAX_FILE_BYTES,
   MIN_DIMENSION,
+  isImageFile,
   looksLikeFilenameId,
   nameFromFileName,
   processImageFile,
@@ -117,7 +118,9 @@ export default function QuickAddPage() {
   const [step, setStep] = useState<Step>("upload");
   const [items, setItems] = useState<DraftItem[]>([]);
   const nextId = useRef(1);
-  const folderInputRef = useRef<HTMLInputElement>(null);
+  // Phones can't pick folders, so the folder button only shows on a
+  // computer (a real mouse/trackpad). Starts hidden to match the server.
+  const [isComputer, setIsComputer] = useState(false);
 
   const [dbCategories, setDbCategories] = useState<DbCategory[]>([]);
   const [itemCategories, setItemCategories] = useState<string[]>([]);
@@ -131,10 +134,17 @@ export default function QuickAddPage() {
   const [saved, setSaved] = useState<DraftItem[]>([]);
   const [moreOpen, setMoreOpen] = useState(false);
 
-  // React's input types don't include the non-standard folder-picker
-  // attribute, so set it directly on the element.
   useEffect(() => {
-    const el = folderInputRef.current;
+    const mq = window.matchMedia("(hover: hover) and (pointer: fine)");
+    const update = () => setIsComputer(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
+
+  // React's input types don't include the non-standard folder-picker
+  // attribute, so set it directly on the element when it appears.
+  const folderInputRef = useCallback((el: HTMLInputElement | null) => {
     if (el) {
       el.setAttribute("webkitdirectory", "");
       el.setAttribute("directory", "");
@@ -201,7 +211,7 @@ export default function QuickAddPage() {
     let skippedSize = 0;
 
     for (const file of files) {
-      if (!file.type.startsWith("image/")) {
+      if (!isImageFile(file)) {
         skippedType++;
         continue;
       }
@@ -218,7 +228,7 @@ export default function QuickAddPage() {
       });
     }
     if (skippedSize) {
-      toast.error(`Skipped ${skippedSize} photo${skippedSize > 1 ? "s" : ""} over 5MB`);
+      toast.error(`Skipped ${skippedSize} photo${skippedSize > 1 ? "s" : ""} over 25MB`);
     }
     if (accepted.length === 0) return;
 
@@ -404,14 +414,16 @@ export default function QuickAddPage() {
       </div>
 
       {/* The card for this step */}
-      <main className="min-h-0 flex-1 overflow-y-auto">
+      <div className="min-h-0 flex-1 overflow-y-auto">
         <div className="mx-auto flex w-full max-w-xl flex-col gap-5 px-5 py-6">
           <h1 className="text-3xl font-bold tracking-tight">{STEP_TITLE[step]}</h1>
 
           {/* STEP 1: PHOTOS */}
           {step === "upload" && (
             <>
-              <p className="-mt-3 text-base text-zinc-600">Pick one photo, a few, or a whole folder.</p>
+              <p className="-mt-3 text-base text-zinc-600">
+                {isComputer ? "Pick one photo, a few, or a whole folder." : "Pick one photo or a bunch at once."}
+              </p>
 
               <label
                 className={`flex min-h-44 cursor-pointer flex-col items-center justify-center gap-3 rounded-3xl border-2 border-dashed p-6 text-center transition-colors focus-within:ring-4 ${c.drop} ${c.focus}`}
@@ -420,10 +432,10 @@ export default function QuickAddPage() {
                   <ImagePlus className="h-7 w-7" aria-hidden="true" />
                 </span>
                 <span className="text-lg font-semibold">Choose photos</span>
-                <span className="text-sm">From your phone or computer</span>
+                <span className="text-sm">We&apos;ll make them all the same size and look</span>
                 <input
                   type="file"
-                  accept="image/*"
+                  accept="image/*,.heic,.heif"
                   multiple
                   className="sr-only"
                   onChange={(e) => {
@@ -433,22 +445,24 @@ export default function QuickAddPage() {
                 />
               </label>
 
-              <label
-                className={`flex h-14 cursor-pointer items-center justify-center gap-2 rounded-2xl border border-zinc-300 bg-white text-base font-semibold text-zinc-700 hover:bg-zinc-50 focus-within:ring-4 ${c.focus}`}
-              >
-                <FolderOpen className="h-5 w-5" aria-hidden="true" />
-                Choose a whole folder
-                <input
-                  ref={folderInputRef}
-                  type="file"
-                  multiple
-                  className="sr-only"
-                  onChange={(e) => {
-                    addFiles(e.target.files);
-                    e.target.value = "";
-                  }}
-                />
-              </label>
+              {isComputer && (
+                <label
+                  className={`flex h-14 cursor-pointer items-center justify-center gap-2 rounded-2xl border border-zinc-300 bg-white text-base font-semibold text-zinc-700 hover:bg-zinc-50 focus-within:ring-4 ${c.focus}`}
+                >
+                  <FolderOpen className="h-5 w-5" aria-hidden="true" />
+                  Choose a whole folder
+                  <input
+                    ref={folderInputRef}
+                    type="file"
+                    multiple
+                    className="sr-only"
+                    onChange={(e) => {
+                      addFiles(e.target.files);
+                      e.target.value = "";
+                    }}
+                  />
+                </label>
+              )}
 
               {items.length > 0 && (
                 <div className="flex flex-col gap-3">
@@ -662,7 +676,7 @@ export default function QuickAddPage() {
             </div>
           )}
         </div>
-      </main>
+      </div>
 
       {/* One big button at the bottom */}
       <div className="border-t border-zinc-200 bg-white pb-[env(safe-area-inset-bottom)]">
