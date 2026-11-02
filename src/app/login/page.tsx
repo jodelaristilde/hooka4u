@@ -1,4 +1,3 @@
-import { GalleryVerticalEnd } from "lucide-react";
 import { LoginForm } from "@/components/login-form";
 import Link from "next/link";
 import { headers } from "next/headers";
@@ -18,9 +17,7 @@ export default async function LoginPage() {
       <div className="flex flex-col gap-4 p-6 md:p-10">
         <Link
           href="/login"
-          className={`flex items-center gap-2 font-medium ${
-            isJaeky ? "justify-center sm:justify-start w-full sm:w-auto" : ""
-          }`}
+          className="flex w-full items-center justify-center gap-2 font-medium sm:w-auto sm:justify-start"
         >
           {isJaeky ? (
             // Dark (black + purple) version of the logo here specifically —
@@ -32,12 +29,9 @@ export default async function LoginPage() {
             // eslint-disable-next-line @next/next/no-img-element
             <img src="/jaeky-logo-dark.png" alt="Jaeky" className="h-20 sm:h-24 w-auto" />
           ) : (
-            <>
-              <div className="bg-primary text-primary-foreground flex size-6 items-center justify-center rounded-md flex-col">
-                <GalleryVerticalEnd className="size-4" />
-              </div>
-              <b>VIPService4U</b>
-            </>
+            // Gold version: VIP Service 4U pages are black & gold.
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src="/vipservice4u-logo-gold.png" alt="VIP Service 4U" className="h-20 sm:h-24 w-auto" />
           )}
         </Link>
 
@@ -70,6 +64,9 @@ export default async function LoginPage() {
           </div>
         ) : (
           <div className="max-w-lg space-y-8">
+            {/* Gold version: this panel is black. */}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/vipservice4u-logo-gold.png" alt="VIP Service 4U" className="w-full max-w-sm h-auto" />
             <div className="h-1 w-12 bg-white"></div>
             <h2 className="text-4xl font-light text-white leading-tight tracking-tight">
               Streamlined ordering for your team

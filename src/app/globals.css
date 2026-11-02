@@ -5617,3 +5617,100 @@
             }
 
             /*# sourceURL=elementor-frontend-inline-css */
+/* ==========================================================================
+   VIP Service 4U — black & gold club theme
+   --------------------------------------------------------------------------
+   The root layout puts data-site="vipservice4u" on <html> for the VIP
+   domain. Instead of restyling every page by hand, this swaps the colors the
+   pages already use, for this site only (Jaeky is untouched):
+   - white / zinc / gray / neutral flip to deep blacks and soft whites
+     (so light cards become dark glass and dark text becomes light)
+   - lime (VIP's old accent) becomes champagne gold
+   - the light tints of emerald / amber / red (status chips) become dark
+     tints, and their dark text shades become light, so chips stay readable
+   - the shared shadcn tokens (background, card, primary, border…) go dark
+     with gold primary and thin gold-tinted borders
+   ========================================================================== */
+[data-site="vipservice4u"] {
+  color-scheme: dark;
+
+  --color-white: #141417;
+  --color-black: #000000;
+
+  --color-zinc-50: #0a0a0b;   --color-gray-50: #0a0a0b;   --color-neutral-50: #0a0a0b;
+  --color-zinc-100: #1b1b1f;  --color-gray-100: #1b1b1f;  --color-neutral-100: #0a0a0b;
+  --color-zinc-200: #2c2719;  --color-gray-200: #2c2719;  --color-neutral-200: #2c2719;
+  --color-zinc-300: #3e3624;  --color-gray-300: #3e3624;  --color-neutral-300: #3e3624;
+  --color-zinc-400: #8a8a94;  --color-gray-400: #8a8a94;  --color-neutral-400: #8a8a94;
+  --color-zinc-500: #a8a8b0;  --color-gray-500: #a8a8b0;  --color-neutral-500: #a8a8b0;
+  --color-zinc-600: #c9c9cf;  --color-gray-600: #c9c9cf;  --color-neutral-600: #c9c9cf;
+  --color-zinc-700: #e1e1e6;  --color-gray-700: #e1e1e6;  --color-neutral-700: #e1e1e6;
+  --color-zinc-800: #eeeef1;  --color-gray-800: #eeeef1;  --color-neutral-800: #eeeef1;
+  --color-zinc-900: #f8f6f0;  --color-gray-900: #f8f6f0;  --color-neutral-900: #f8f6f0;
+  --color-zinc-950: #000000;  --color-gray-950: #000000;  --color-neutral-950: #000000;
+
+  /* lime -> champagne gold */
+  --color-lime-50: #15110a;
+  --color-lime-100: #211a0c;
+  --color-lime-200: #3a2e12;
+  --color-lime-300: #6b5520;
+  --color-lime-400: #ecd27a;
+  --color-lime-500: #ddb94e;
+  --color-lime-600: #d1ab3f;
+  --color-lime-700: #c49a32;
+  --color-lime-800: #f2de9c;
+  --color-lime-900: #f8ecc0;
+  --color-lime-950: #fcf6de;
+
+  --color-emerald-50: #0a1a13;  --color-emerald-100: #0e271c;  --color-emerald-200: #164030;
+  --color-emerald-300: #1e5a42; --color-emerald-700: #6ee7b7;  --color-emerald-800: #a7f3d0;
+  --color-emerald-900: #d1fae5;
+
+  --color-amber-50: #1d1506;    --color-amber-100: #2b1f08;    --color-amber-200: #4a340d;
+  --color-amber-300: #6e4d13;   --color-amber-700: #fcd34d;    --color-amber-800: #fde68a;
+  --color-amber-900: #fef3c7;
+
+  --color-red-50: #2a0f0f;      --color-red-100: #3a1313;      --color-red-200: #5c1b1b;
+  --color-red-300: #7f2525;     --color-red-700: #fca5a5;      --color-red-800: #fecaca;
+
+  --background: #0a0a0b;
+  --foreground: #f8f6f0;
+  --card: #141417;
+  --card-foreground: #f8f6f0;
+  --popover: #141417;
+  --popover-foreground: #f8f6f0;
+  --primary: #ddb94e;
+  --primary-foreground: #0a0a0b;
+  --secondary: #1f1d18;
+  --secondary-foreground: #f8f6f0;
+  --muted: #1b1b1f;
+  --muted-foreground: #a8a8b0;
+  --accent: #241f14;
+  --accent-foreground: #f2de9c;
+  --destructive: #ef4444;
+  --border: rgba(221, 185, 78, 0.18);
+  --input: rgba(221, 185, 78, 0.22);
+  --ring: #ddb94e;
+  --sidebar: #0d0c0a;
+  --sidebar-foreground: #f8f6f0;
+  --sidebar-primary: #ddb94e;
+  --sidebar-primary-foreground: #0a0a0b;
+  --sidebar-accent: #221d12;
+  --sidebar-accent-foreground: #f2de9c;
+  --sidebar-border: rgba(221, 185, 78, 0.16);
+  --sidebar-ring: #ddb94e;
+}
+
+/* A soft gold glow behind every VIP page */
+[data-site="vipservice4u"] body {
+  background-color: #0a0a0b;
+  background-image:
+    radial-gradient(ellipse 80% 45% at 50% -10%, rgba(221, 185, 78, 0.16), transparent 70%),
+    radial-gradient(ellipse 60% 35% at 100% 100%, rgba(221, 185, 78, 0.07), transparent 70%);
+  background-attachment: fixed;
+}
+
+[data-site="vipservice4u"] ::selection {
+  background-color: #ddb94e;
+  color: #0a0a0b;
+}

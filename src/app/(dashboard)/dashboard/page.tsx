@@ -140,6 +140,9 @@ export default async function Dashboard() {
               alt="Jaeky"
               className="relative h-16 w-auto sm:h-20"
             />
+          ) : brand.logoSrc ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={brand.logoSrc} alt={brand.name} className="relative h-20 w-auto sm:h-24" />
           ) : (
             <div className={`relative flex items-center gap-2 ${brand.accentTextStrong}`}>
               <Sparkles className="h-5 w-5" />
@@ -150,7 +153,11 @@ export default async function Dashboard() {
           )}
           {/* One line on every screen size: the text shrinks with the screen
               width instead of wrapping. */}
-          <p className="relative mt-3 text-[clamp(0.95rem,4.4vw,2rem)] leading-tight font-bold tracking-tight whitespace-nowrap text-zinc-900">
+          <p
+            className={`relative mt-3 text-[clamp(0.95rem,4.4vw,2rem)] leading-tight font-bold tracking-tight text-zinc-900 ${
+              brand.tagline.length <= 40 ? "whitespace-nowrap" : "text-balance"
+            }`}
+          >
             {brand.tagline}
           </p>
           <h2 className={`relative mt-3 text-lg font-semibold sm:text-xl ${brand.accentTextStrong}`}>

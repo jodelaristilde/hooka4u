@@ -16,7 +16,8 @@ type Brand = {
   logoSrc?: string;
   subLine?: string;
   taglineSrc?: string;
-  theme: "dark-lime" | "dark-purple" | "light-purple";
+  logoAlt?: string;
+  theme: "dark-lime" | "dark-purple" | "light-purple" | "light-green" | "dark-gold";
 };
 
 const BRANDS: Brand[] = [
@@ -25,15 +26,17 @@ const BRANDS: Brand[] = [
     logoSrc: "/jaeky-wordmark-only.png",
     subLine: "Got You",
     taglineSrc: "/jaeky-tagline-only.png",
+    logoAlt: "Jaeky",
     theme: "light-purple",
   },
 ];
 
+// VIP Service 4U: gold logo, black & gold club look.
 const DEFAULT_BRAND: Brand = {
   match: "",
-  topLine: "Welcome To",
-  bottomLine: "VIP SERVICE 4U",
-  theme: "dark-lime",
+  logoSrc: "/vipservice4u-logo-gold.png",
+  logoAlt: "VIP Service 4U",
+  theme: "dark-gold",
 };
 
 export default async function Home() {
@@ -49,6 +52,7 @@ export default async function Home() {
       logoSrc={brand.logoSrc}
       subLine={brand.subLine}
       taglineSrc={brand.taglineSrc}
+      logoAlt={brand.logoAlt}
       theme={brand.theme}
     />
   );
