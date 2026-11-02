@@ -70,8 +70,30 @@ export async function POST(request: Request) {
     return NextResponse.json(menuItem, { status: 201 });
   } catch (error) {
     console.error('Error creating menu item:', error);
+    // Say WHY it failed, so the person adding items (and support) can tell
+    // what to fix instead of a generic "failed".
+    const err = error as { code?: string; message?: string; meta?: { target?: unknown } };
+    if (err?.code === "P2002") {
+      // A unique rule in the database blocked this. Usually an old rule
+      // left over from before the two sites shared one database, which
+      // only allows one item per name across BOTH sites.
+      return NextResponse.json(
+        {
+          error:
+            "An item with this name already exists (the database only allows one item per name). Try a slightly different name.",
+          code: "DUPLICATE_NAME",
+          target: err.meta?.target ?? null,
+        },
+        { status: 409 }
+      );
+    }
+    const firstLine = (err?.message || "").split("\n").map((l) => l.trim()).filter(Boolean).pop() || "";
     return NextResponse.json(
-      { error: "Failed to create menu item" },
+      {
+        error: "Failed to create menu item",
+        detail: firstLine.slice(0, 300),
+        code: err?.code ?? null,
+      },
       { status: 500 }
     );
   }
