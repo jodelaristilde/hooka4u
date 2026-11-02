@@ -348,7 +348,7 @@ export default function NewOrder({ onOrderComplete, onBack }: NewOrderProps) {
                 <EmptyHookahState />
               </div>
             ) : (
-              <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 gap-2 sm:gap-5">
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-5 md:grid-cols-4 lg:grid-cols-5">
                 {visibleProducts.map((product) => {
                   const inCart = cart[product.id]
                   const isSelected = inCart && inCart.quantity > 0
@@ -356,69 +356,64 @@ export default function NewOrder({ onOrderComplete, onBack }: NewOrderProps) {
                   return (
 <div
   key={product.id}
-  className={`cursor-pointer transition-all active:scale-[0.97] border overflow-hidden rounded-lg relative ${
+  className={`flex cursor-pointer flex-col overflow-hidden rounded-xl border transition-all active:scale-[0.97] ${
     isSelected
       ? isJaeky
-        ? "bg-purple-100 dark:bg-purple-950 shadow-md border-purple-300 dark:border-purple-800"
-        : "bg-lime-100 dark:bg-lime-950 shadow-md border-lime-300 dark:border-lime-800"
+        ? "border-purple-500 bg-zinc-800 shadow-md ring-2 ring-purple-500"
+        : "border-lime-500 bg-zinc-800 shadow-md ring-2 ring-lime-500"
       : isJaeky
         ? "border-zinc-700 bg-zinc-800 hover:border-purple-500 hover:shadow-sm"
         : "border-zinc-700 bg-zinc-800 hover:border-lime-500 hover:shadow-sm"
   }`}
   onClick={() => handleProductClick(product)}
 >
-  {/* Square Image Container */}
-  <div className="relative w-full aspect-square bg-zinc-900 overflow-hidden">
-
-    {/* Product Image */}
+  {/* Photo: nothing on top of it, so the whole item is visible */}
+  <div className="relative aspect-square w-full overflow-hidden bg-zinc-900">
     {product.image ? (
+      // eslint-disable-next-line @next/next/no-img-element
       <img
         src={product.image || "/placeholder.svg"}
         alt={product.name}
-        className="absolute inset-0 w-full h-full object-cover"
+        className="absolute inset-0 h-full w-full object-cover"
       />
     ) : (
       <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-zinc-800 to-zinc-900">
-        <ShoppingCart className="w-8 h-8 sm:w-10 sm:h-10 text-zinc-700" />
+        <ShoppingCart className="h-8 w-8 text-zinc-700 sm:h-10 sm:w-10" />
       </div>
     )}
-
-
 
     {/* Quantity Badge */}
     {isSelected && (
-      <div className="absolute top-2 right-2 sm:top-3 sm:right-3 bg-red-500 text-white w-6 h-6 sm:px-2 sm:py-1 sm:w-auto sm:h-auto flex items-center justify-center text-xs font-medium rounded-full shadow-md">
+      <div className="absolute top-2 right-2 flex h-7 min-w-7 items-center justify-center rounded-full bg-red-500 px-2 text-sm font-bold text-white shadow-md sm:top-3 sm:right-3">
         {inCart.quantity}
       </div>
     )}
+  </div>
 
-    {/* Bottom Overlay */}
-    <div className="absolute inset-x-0 bottom-0 p-2 sm:p-4 bg-gradient-to-t from-black/85 via-black/55 to-transparent space-y-1 sm:space-y-2 text-center sm:text-left">
-      {/* Title */}
-      <h3 className="text-white font-semibold text-sm sm:text-xl md:text-2xl leading-tight line-clamp-2 break-words">
-        {product.name}
-      </h3>
+  {/* Name, price + description, and Add — below the photo */}
+  <div className="flex flex-1 flex-col gap-2 p-2.5 sm:p-4">
+    <h3 className="line-clamp-2 break-words text-sm leading-tight font-semibold text-white sm:text-lg">
+      {product.name}
+    </h3>
 
-      {/* Price and description on the same line, on phones too */}
-      <div className={`flex items-center gap-1.5 sm:gap-2 ${product.description ? "justify-start" : "justify-center sm:justify-start"}`}>
-        <div className={isJaeky ? "shrink-0 w-fit bg-purple-500 text-white text-[11px] sm:text-base font-bold px-1.5 py-0.5 sm:px-3 sm:py-1 rounded-full shadow-md" : "shrink-0 w-fit bg-lime-500 text-black text-[11px] sm:text-base font-bold px-1.5 py-0.5 sm:px-3 sm:py-1 rounded-full shadow-md"}>
-          ${product.price.toFixed(2)}
-        </div>
-        {product.description && (
-          <p className="min-w-0 flex-1 text-left text-zinc-200 text-[11px] leading-tight sm:text-xs line-clamp-2">
-            {product.description}
-          </p>
-        )}
+    {/* Price and description on the same line */}
+    <div className="flex items-center gap-2">
+      <div className={isJaeky ? "w-fit shrink-0 rounded-full bg-purple-500 px-2 py-0.5 text-xs font-bold text-white sm:px-3 sm:py-1 sm:text-base" : "w-fit shrink-0 rounded-full bg-lime-500 px-2 py-0.5 text-xs font-bold text-black sm:px-3 sm:py-1 sm:text-base"}>
+        ${product.price.toFixed(2)}
       </div>
-
-      {/* Add to Cart Button */}
-      <button
-        className={isJaeky ? "w-full mt-1 sm:mt-2 bg-purple-500 hover:bg-purple-400 text-white text-xs sm:text-base font-semibold py-2 sm:py-3.5 rounded-md transition active:scale-95" : "w-full mt-1 sm:mt-2 bg-lime-500 hover:bg-lime-400 text-black text-xs sm:text-base font-semibold py-2 sm:py-3.5 rounded-md transition active:scale-95"}
-      >
-        <span className="sm:hidden">Add</span>
-        <span className="hidden sm:inline">Add to Cart</span>
-      </button>
+      {product.description && (
+        <p className="line-clamp-2 min-w-0 flex-1 text-xs leading-tight text-zinc-300">
+          {product.description}
+        </p>
+      )}
     </div>
+
+    {/* Add to Cart Button */}
+    <button
+      className={isJaeky ? "mt-auto w-full rounded-lg bg-purple-500 py-2.5 text-sm font-semibold text-white transition hover:bg-purple-400 active:scale-95 sm:py-3 sm:text-base" : "mt-auto w-full rounded-lg bg-lime-500 py-2.5 text-sm font-semibold text-black transition hover:bg-lime-400 active:scale-95 sm:py-3 sm:text-base"}
+    >
+      Add to Cart
+    </button>
   </div>
 </div>
 
@@ -666,7 +661,7 @@ export default function NewOrder({ onOrderComplete, onBack }: NewOrderProps) {
       {totalItems > 0 && (
         <div className="fixed bottom-0 left-0 right-0 md:hidden p-4">
           <Button
-            className="w-full bg-primary hover:bg-primary/90 text-primary-foreground h-12 text-base font-semibold rounded-lg"
+            className={isJaeky ? "w-full bg-purple-600 hover:bg-purple-700 text-white h-12 text-base font-semibold rounded-lg" : "w-full bg-primary hover:bg-primary/90 text-primary-foreground h-12 text-base font-semibold rounded-lg"}
             onClick={handleMobileOrderButton}
           >
             <ShoppingCart className="w-5 h-5 mr-2" />
