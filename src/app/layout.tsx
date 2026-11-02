@@ -48,18 +48,23 @@ export const viewport: Viewport = {
   themeColor: "#09090b",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // Lets globals.css give each site its own colors (VIP Service 4U gets the
+  // black & gold club theme; Jaeky stays as-is).
+  const headersList = await headers();
+  const site = siteFromHostname(headersList.get("host") || "");
+
   return (
-    <html lang="en">
+    <html lang="en" data-site={site}>
       <body
         className={`${geistSans.variable} ${geistMono.variable} overflow-x-hidden antialiased`}
       >
         {/* <ThemeContextProvider> */}
-          <Toaster theme="light" />
+          <Toaster theme={site === "vipservice4u" ? "dark" : "light"} />
           <AuthProvider>{children}</AuthProvider>
         {/* </ThemeContextProvider> */}
       </body>

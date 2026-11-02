@@ -32,7 +32,7 @@ export const THEMES: Record<SiteId, BrandTheme> = {
     site: "vipservice4u",
     name: "VIP Service 4U",
     shortName: "VIP SERVICE 4U",
-    logoSrc: null,
+    logoSrc: "/vipservice4u-logo-gold.png",
     tagline: "Everything you need to run the floor tonight, all in one place.",
     accentText: "text-lime-600",
     accentTextStrong: "text-lime-700",

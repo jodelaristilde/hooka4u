@@ -5,7 +5,7 @@ import Link from "next/link";
 import NewOrder from "@/components/new-order";
 
 type Screen = "hero" | "order";
-type Theme = "dark-lime" | "dark-purple" | "light-purple";
+type Theme = "dark-lime" | "dark-purple" | "light-purple" | "light-green" | "dark-gold";
 
 interface OrderLandingProps {
   // Either pass topLine/bottomLine for a plain text hero (VIP Service 4U's
@@ -24,6 +24,8 @@ interface OrderLandingProps {
   // graphic), shown instead of the plain-text `slogan` when provided —
   // used so the tagline matches the wordmark's exact lettering.
   taglineSrc?: string;
+  // Alt text for the logo image (the brand name).
+  logoAlt?: string;
   theme: Theme;
 }
 
@@ -63,6 +65,29 @@ const THEME_CLASSES: Record<
     primaryShadow: "0 10px 40px rgba(168, 85, 247, 0.5)",
     outlineBtn: "text-purple-300 border-purple-500/60 hover:bg-purple-500/10",
   },
+  // VIP Service 4U club look: black, champagne gold, soft gold glow.
+  "dark-gold": {
+    mainBg: "bg-black",
+    bgGradient: "from-[#2a2010]/80 via-black to-black",
+    line: "via-[#ddb94e]",
+    slogan: "text-[#e8d9a8]",
+    subLine: "from-[#f3dc8a] via-[#ddb94e] to-[#a8801f]",
+    primaryBtn: "from-[#f3dc8a] via-[#ddb94e] to-[#b8902c]",
+    primaryBtnHoverBg: "from-[#f7e6a6] via-[#e6c360] to-[#c49a32]",
+    primaryShadow: "0 10px 40px rgba(221, 185, 78, 0.35)",
+    outlineBtn: "text-[#ddb94e] border-[#ddb94e]/60 hover:bg-[#ddb94e]/10",
+  },
+  "light-green": {
+    mainBg: "bg-white",
+    bgGradient: "from-emerald-50 via-white to-white",
+    line: "via-emerald-400",
+    slogan: "text-zinc-600",
+    subLine: "from-emerald-500 via-emerald-600 to-green-800",
+    primaryBtn: "from-emerald-500 to-green-700",
+    primaryBtnHoverBg: "from-emerald-600 to-green-800",
+    primaryShadow: "0 10px 40px rgba(16, 185, 129, 0.35)",
+    outlineBtn: "text-green-800 border-emerald-400 hover:bg-emerald-50",
+  },
   "light-purple": {
     mainBg: "bg-white",
     bgGradient: "from-purple-50 via-white to-white",
@@ -88,6 +113,7 @@ export default function OrderLanding({
   subLine,
   slogan,
   taglineSrc,
+  logoAlt,
   theme,
 }: OrderLandingProps) {
   const [screen, setScreen] = useState<Screen>("hero");
@@ -131,7 +157,7 @@ export default function OrderLanding({
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={logoSrc}
-              alt="Jaeky"
+              alt={logoAlt ?? ""}
               className="mx-auto w-full max-w-lg sm:max-w-2xl md:max-w-3xl h-auto"
             />
             {subLine && (
