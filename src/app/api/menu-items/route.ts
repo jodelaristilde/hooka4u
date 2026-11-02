@@ -43,12 +43,21 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { name, description, price, image, category, available } = body;
 
+    // Price is required: every item on the menu needs a real price.
+    const priceValue = typeof price === "string" ? parseFloat(price) : price;
+    if (typeof priceValue !== "number" || !Number.isFinite(priceValue) || priceValue <= 0) {
+      return NextResponse.json(
+        { error: "Price is required and must be more than $0.00" },
+        { status: 400 }
+      );
+    }
+
     const menuItem = await prisma.menuItems.create({
       data: {
         name,
         description,
         image: image || null,
-        price: price ?? 0,
+        price: Math.round(priceValue * 100) / 100,
         category: category || null,
         available: available ?? false,
         site,

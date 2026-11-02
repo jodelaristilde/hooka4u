@@ -46,9 +46,9 @@ export async function PUT(
     const { price, available } = body;
 
     // Validate price
-    if (typeof price !== "number" || price < 0) {
+    if (typeof price !== "number" || !Number.isFinite(price) || price <= 0) {
       return NextResponse.json(
-        { error: "Invalid price. Price must be a number greater than or equal to 0." },
+        { error: "Price is required and must be more than $0.00." },
         { status: 400 }
       );
     }

@@ -293,6 +293,8 @@ export default function MenuItemsPage() {
     name: "",
     description: "",
     category: "" as Category,
+    // Kept as text while typing; must be a real price above $0 to save.
+    price: "",
   });
 
   // The full list of category names to show, in order: every category
@@ -588,6 +590,7 @@ export default function MenuItemsPage() {
         name: item.name,
         description: item.description || "",
         category: item.category || activeTab,
+        price: item.price > 0 ? String(item.price) : "",
       });
       setImagePreview(item.image || null);
     } else {
@@ -596,6 +599,7 @@ export default function MenuItemsPage() {
         name: "",
         description: "",
         category: activeTab,
+        price: "",
       });
       setImagePreview(null);
     }
@@ -612,6 +616,7 @@ export default function MenuItemsPage() {
       name: "",
       description: "",
       category: activeTab,
+      price: "",
     });
     setImagePreview(null);
     setImageFile(null);
@@ -632,6 +637,14 @@ export default function MenuItemsPage() {
     if (looksLikeFilenameId(formData.name.trim())) {
       toast.error("That name looks like a photo ID, not an item name", {
         description: "Please type a real name for this item before saving.",
+      });
+      return;
+    }
+
+    const priceValue = parseFloat(formData.price);
+    if (!formData.price.trim() || isNaN(priceValue) || priceValue <= 0) {
+      toast.error("Price is required", {
+        description: "Please enter a price above $0.00 for this item.",
       });
       return;
     }
@@ -676,7 +689,7 @@ export default function MenuItemsPage() {
         body: JSON.stringify({
           name: formData.name.trim(),
           description: formData.description.trim() || null,
-          price: selectedItem?.price ?? 0,
+          price: Math.round(priceValue * 100) / 100,
           image: imageBase64,
           category: finalCategory,
           available: true,
@@ -1237,18 +1250,28 @@ export default function MenuItemsPage() {
               />
             </div>
 
-            <div className="bg-muted/50 border border-border rounded-lg p-3">
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium text-foreground">Price</span>
-                <span className="text-lg font-bold text-primary">
-                  ${(selectedItem?.price ?? 0).toFixed(2)}
+            <div className="space-y-2">
+              <Label htmlFor="price">
+                Price <span className="text-destructive">*</span>
+              </Label>
+              <div className="relative">
+                <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                  $
                 </span>
+                <Input
+                  id="price"
+                  inputMode="decimal"
+                  placeholder="0.00"
+                  className="pl-7"
+                  value={formData.price}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      price: e.target.value.replace(/[^0-9.]/g, "").replace(/(\..*)\./g, "$1"),
+                    })
+                  }
+                />
               </div>
-              <p className="text-xs text-muted-foreground mt-1">
-                {selectedItem
-                  ? "Update the price from the Menu Prices page."
-                  : "Price is set to $0.00 by default and can be updated later."}
-              </p>
             </div>
           </div>
 

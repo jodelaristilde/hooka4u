@@ -78,12 +78,16 @@ export default function UserManagement() {
   const [showWashupPassword, setShowWashupPassword] = useState(false)
   const [isWashupRunning, setIsWashupRunning] = useState(false)
   const [washupProgress, setWashupProgress] = useState(0)
-  // Menu items/categories are intentionally NOT part of Washup — wiping the
-  // menu is now only ever done through the separate "Delete Menu" button
-  // below, so it's never an accidental side effect of a Washup reset.
+  // Washup is the full end-of-event reset: orders, the whole menu (items,
+  // prices, categories) and non-admin users. The Item Library (saved photos)
+  // is deliberately kept so the menu can be rebuilt quickly next time.
+  // "Clear Orders Only" and "Delete Menu" are still there for the lighter,
+  // single-purpose resets.
   const [washupSteps, setWashupSteps] = useState<WashupStep[]>([
     { id: "order-items", description: "Deleting all order items", status: "pending" },
     { id: "orders", description: "Deleting all orders", status: "pending" },
+    { id: "menu-items", description: "Deleting all menu items and prices", status: "pending" },
+    { id: "menu-categories", description: "Deleting all menu categories", status: "pending" },
     { id: "users", description: "Deleting all users", status: "pending" },
   ])
 
@@ -261,6 +265,8 @@ export default function UserManagement() {
     setWashupSteps([
       { id: "order-items", description: "Deleting all order items", status: "pending" },
       { id: "orders", description: "Deleting all orders", status: "pending" },
+      { id: "menu-items", description: "Deleting all menu items and prices", status: "pending" },
+      { id: "menu-categories", description: "Deleting all menu categories", status: "pending" },
       { id: "users", description: "Deleting all users", status: "pending" },
     ])
   }
@@ -300,47 +306,32 @@ export default function UserManagement() {
         throw new Error(error.message || "Invalid password")
       }
 
-      // Step 1: Delete all order items (has to happen before orders can be
-      // deleted, since order items are a required relation of it). Menu
-      // items/categories are never touched by Washup — see the separate
-      // "Delete Menu" button for that.
-      updateStepStatus("order-items", "in-progress")
-      setWashupProgress(20)
-      const orderItemsResponse = await fetch("/api/washup", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ step: "order-items" }),
-      })
-      if (!orderItemsResponse.ok) throw new Error("Failed to delete order items")
-      updateStepStatus("order-items", "completed")
-      setWashupProgress(45)
-
-      // Step 2: Delete all orders
-      updateStepStatus("orders", "in-progress")
-      setWashupProgress(65)
-      const ordersResponse = await fetch("/api/washup", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ step: "orders" }),
-      })
-      if (!ordersResponse.ok) throw new Error("Failed to delete orders")
-      updateStepStatus("orders", "completed")
-      setWashupProgress(90)
-
-      // Step 3: Delete all users
-      updateStepStatus("users", "in-progress")
-      setWashupProgress(95)
-      const usersResponse = await fetch("/api/washup", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ step: "users" }),
-      })
-      if (!usersResponse.ok) throw new Error("Failed to delete users")
-      updateStepStatus("users", "completed")
+      // Run every step in order. Order items go first (orders and menu
+      // items both have a required relation to them), then orders, then the
+      // menu, then user accounts. The Item Library is never touched.
+      const steps: { id: string; failMessage: string }[] = [
+        { id: "order-items", failMessage: "Failed to delete order items" },
+        { id: "orders", failMessage: "Failed to delete orders" },
+        { id: "menu-items", failMessage: "Failed to delete menu items" },
+        { id: "menu-categories", failMessage: "Failed to delete menu categories" },
+        { id: "users", failMessage: "Failed to delete users" },
+      ]
+      for (let i = 0; i < steps.length; i++) {
+        const { id, failMessage } = steps[i]
+        updateStepStatus(id, "in-progress")
+        setWashupProgress(Math.round((i / steps.length) * 100) + 5)
+        const response = await fetch("/api/washup", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ step: id }),
+        })
+        if (!response.ok) throw new Error(failMessage)
+        updateStepStatus(id, "completed")
+      }
       setWashupProgress(100)
 
       toast.success("Washup completed successfully!", {
-        description: "All data has been reset.",
+        description: "Orders, menu, prices and users are cleared. Item Library photos were kept.",
       })
 
       // Refresh users list after washup completes
@@ -1042,9 +1033,9 @@ export default function UserManagement() {
               Confirm Washup
             </DialogTitle>
             <DialogDescription>
-              This will permanently delete all orders and order items, and all non-admin user accounts. Your menu
-              items and categories are NOT affected — use the separate "Delete Menu" button for that. This action
-              cannot be undone.
+              This will permanently delete everything from this event: all orders (New Order and All Orders), every
+              menu item with its price, all menu categories, and all non-admin user accounts. Your Item Library
+              photos are kept so you can rebuild the menu quickly. This action cannot be undone.
             </DialogDescription>
           </DialogHeader>
 
