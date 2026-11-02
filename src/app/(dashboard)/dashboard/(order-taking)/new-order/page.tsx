@@ -453,20 +453,19 @@ return (
                       
                       {/* Product Info */}
                       <div className="px-3 sm:px-4 py-3 space-y-2">
-                        <div>
-                          <h3 className="font-semibold text-xs sm:text-sm text-foreground leading-snug line-clamp-1">
-                            {product.name}
-                          </h3>
-                          {product.description && (
-                            <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
-                              {product.description}
-                            </p>
-                          )}
-                        </div>
-                        <div className="pt-1">
-                          <span className="font-semibold text-sm sm:text-base text-foreground">
+                        <h3 className="font-semibold text-xs sm:text-sm text-foreground leading-snug line-clamp-1">
+                          {product.name}
+                        </h3>
+                        {/* Price and description on the same line */}
+                        <div className="flex items-baseline gap-2">
+                          <span className="shrink-0 font-semibold text-sm sm:text-base text-foreground">
                             ${product.price.toFixed(2)}
                           </span>
+                          {product.description && (
+                            <span className="min-w-0 flex-1 text-xs text-muted-foreground line-clamp-2">
+                              {product.description}
+                            </span>
+                          )}
                         </div>
                       </div>
                     </CardContent>

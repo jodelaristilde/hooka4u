@@ -399,13 +399,13 @@ export default function NewOrder({ onOrderComplete, onBack }: NewOrderProps) {
         {product.name}
       </h3>
 
-      {/* Price and description on the same line */}
-      <div className="flex items-center justify-center gap-2 sm:justify-start">
-        <div className={isJaeky ? "shrink-0 w-fit bg-purple-500 text-white text-xs sm:text-base font-bold px-2 py-0.5 sm:px-3 sm:py-1 rounded-full shadow-md" : "shrink-0 w-fit bg-lime-500 text-black text-xs sm:text-base font-bold px-2 py-0.5 sm:px-3 sm:py-1 rounded-full shadow-md"}>
+      {/* Price and description on the same line, on phones too */}
+      <div className={`flex items-center gap-1.5 sm:gap-2 ${product.description ? "justify-start" : "justify-center sm:justify-start"}`}>
+        <div className={isJaeky ? "shrink-0 w-fit bg-purple-500 text-white text-[11px] sm:text-base font-bold px-1.5 py-0.5 sm:px-3 sm:py-1 rounded-full shadow-md" : "shrink-0 w-fit bg-lime-500 text-black text-[11px] sm:text-base font-bold px-1.5 py-0.5 sm:px-3 sm:py-1 rounded-full shadow-md"}>
           ${product.price.toFixed(2)}
         </div>
         {product.description && (
-          <p className="hidden sm:block min-w-0 flex-1 text-zinc-300 text-xs line-clamp-2">
+          <p className="min-w-0 flex-1 text-left text-zinc-200 text-[11px] leading-tight sm:text-xs line-clamp-2">
             {product.description}
           </p>
         )}
