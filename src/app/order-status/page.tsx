@@ -78,7 +78,7 @@ export default function OrderStatusPage() {
       className={
         isJaeky
           ? "min-h-screen bg-gradient-to-b from-purple-50 via-white to-white flex flex-col items-center justify-center p-4 sm:p-6"
-          : "min-h-screen bg-zinc-950 flex flex-col items-center justify-center p-4 sm:p-6"
+          : "min-h-screen bg-white flex flex-col items-center justify-center p-4 sm:p-6"
       }
     >
       <div className="w-full max-w-md">
@@ -86,12 +86,12 @@ export default function OrderStatusPage() {
           className={
             isJaeky
               ? "text-3xl sm:text-4xl font-bold text-zinc-900 text-center mb-2"
-              : "text-3xl sm:text-4xl font-bold text-white text-center mb-2"
+              : "text-3xl sm:text-4xl font-bold text-zinc-900 text-center mb-2"
           }
         >
           Check Your Order
         </h1>
-        <p className={isJaeky ? "text-zinc-500 text-center text-sm mb-8" : "text-zinc-400 text-center text-sm mb-8"}>
+        <p className={isJaeky ? "text-zinc-500 text-center text-sm mb-8" : "text-zinc-500 text-center text-sm mb-8"}>
           Enter your order number to see if it's ready.
         </p>
 
@@ -105,7 +105,7 @@ export default function OrderStatusPage() {
             className={
               isJaeky
                 ? "flex-1 h-12 rounded-lg bg-white border border-purple-200 text-zinc-900 placeholder:text-zinc-400 px-4 text-lg focus:outline-none focus:ring-2 focus:ring-purple-500 shadow-sm"
-                : "flex-1 h-12 rounded-lg bg-zinc-900 border border-zinc-700 text-white placeholder:text-zinc-500 px-4 text-lg focus:outline-none focus:ring-2 focus:ring-lime-500"
+                : "flex-1 h-12 rounded-lg bg-zinc-50 border border-zinc-200 text-zinc-900 placeholder:text-zinc-500 px-4 text-lg focus:outline-none focus:ring-2 focus:ring-lime-500"
             }
           />
           <button
@@ -140,10 +140,10 @@ export default function OrderStatusPage() {
             className={
               isJaeky
                 ? "rounded-2xl border-4 border-purple-400 bg-white shadow-md p-6 flex flex-col items-center gap-4"
-                : "rounded-2xl border-4 border-lime-500 bg-zinc-900 p-6 flex flex-col items-center gap-4"
+                : "rounded-2xl border-4 border-lime-500 bg-zinc-50 p-6 flex flex-col items-center gap-4"
             }
           >
-            <p className={isJaeky ? "text-sm uppercase tracking-widest text-zinc-500" : "text-sm uppercase tracking-widest text-zinc-400"}>
+            <p className={isJaeky ? "text-sm uppercase tracking-widest text-zinc-500" : "text-sm uppercase tracking-widest text-zinc-500"}>
               Order Number
             </p>
             <p className={isJaeky ? "text-6xl font-black text-purple-600 tabular-nums" : "text-6xl font-black text-lime-500 tabular-nums"}>{result.orderNumber}</p>
@@ -163,7 +163,7 @@ export default function OrderStatusPage() {
               {isDelivered ? "Ready" : "Pending"}
             </div>
 
-            <p className={isJaeky ? "text-zinc-400 text-xs" : "text-zinc-500 text-xs"}>
+            <p className={isJaeky ? "text-zinc-500 text-xs" : "text-zinc-500 text-xs"}>
               This page updates automatically every few seconds.
             </p>
           </div>

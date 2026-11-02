@@ -317,7 +317,7 @@ export default function NewOrder({ onOrderComplete, onBack }: NewOrderProps) {
                 className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
                   activeTab === tab
                     ? isJaeky ? "bg-purple-500 text-white" : "bg-lime-500 text-black"
-                    : "bg-zinc-800 text-zinc-300 hover:bg-zinc-700"
+                    : "bg-white text-zinc-600 hover:bg-zinc-100"
                 }`}
               >
                 {tab === "ALL" ? "All" : titleCase(tab)}
@@ -359,16 +359,16 @@ export default function NewOrder({ onOrderComplete, onBack }: NewOrderProps) {
   className={`flex cursor-pointer flex-col overflow-hidden rounded-xl border transition-all active:scale-[0.97] ${
     isSelected
       ? isJaeky
-        ? "border-purple-500 bg-zinc-800 shadow-md ring-2 ring-purple-500"
-        : "border-lime-500 bg-zinc-800 shadow-md ring-2 ring-lime-500"
+        ? "border-purple-500 bg-white shadow-md ring-2 ring-purple-500"
+        : "border-lime-500 bg-white shadow-md ring-2 ring-lime-500"
       : isJaeky
-        ? "border-zinc-700 bg-zinc-800 hover:border-purple-500 hover:shadow-sm"
-        : "border-zinc-700 bg-zinc-800 hover:border-lime-500 hover:shadow-sm"
+        ? "border-zinc-200 bg-white hover:border-purple-500 hover:shadow-sm"
+        : "border-zinc-200 bg-white hover:border-lime-500 hover:shadow-sm"
   }`}
   onClick={() => handleProductClick(product)}
 >
   {/* Photo: nothing on top of it, so the whole item is visible */}
-  <div className="relative aspect-square w-full overflow-hidden bg-zinc-900">
+  <div className="relative aspect-square w-full overflow-hidden bg-zinc-50">
     {product.image ? (
       // eslint-disable-next-line @next/next/no-img-element
       <img
@@ -377,7 +377,7 @@ export default function NewOrder({ onOrderComplete, onBack }: NewOrderProps) {
         className="absolute inset-0 h-full w-full object-cover"
       />
     ) : (
-      <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-zinc-800 to-zinc-900">
+      <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-zinc-100 to-zinc-200">
         <ShoppingCart className="h-8 w-8 text-zinc-700 sm:h-10 sm:w-10" />
       </div>
     )}
@@ -392,7 +392,7 @@ export default function NewOrder({ onOrderComplete, onBack }: NewOrderProps) {
 
   {/* Name, price + description, and Add — below the photo */}
   <div className="flex flex-1 flex-col gap-2 p-2.5 sm:p-4">
-    <h3 className="line-clamp-2 break-words text-sm leading-tight font-semibold text-white sm:text-lg">
+    <h3 className="line-clamp-2 break-words text-sm leading-tight font-semibold text-zinc-900 sm:text-lg">
       {product.name}
     </h3>
 
@@ -402,7 +402,7 @@ export default function NewOrder({ onOrderComplete, onBack }: NewOrderProps) {
         ${product.price.toFixed(2)}
       </div>
       {product.description && (
-        <p className="line-clamp-2 min-w-0 flex-1 text-xs leading-tight text-zinc-300">
+        <p className="line-clamp-2 min-w-0 flex-1 text-xs leading-tight text-zinc-600">
           {product.description}
         </p>
       )}
@@ -426,14 +426,14 @@ export default function NewOrder({ onOrderComplete, onBack }: NewOrderProps) {
 
         {/* Desktop Cart Sidebar */}
         <div
-          className={`hidden md:flex flex-col transition-all duration-300 ease-in-out border-l border-border bg-zinc-250 text-white ${
+          className={`hidden md:flex flex-col transition-all duration-300 ease-in-out border-l border-border bg-white text-zinc-900 ${
             isCartOpen ? "w-[400px]" : "w-0"
           } overflow-hidden`}
         >
           {isCartOpen && !showOrderForm && (
             <>
               {/* Cart Header */}
-              <div className="flex items-center justify-between p-4 border-b border-zinc-800 bg-zinc-900">
+              <div className="flex items-center justify-between p-4 border-b border-zinc-200 bg-zinc-50">
                 <h2 className="text-lg font-semibold flex items-center gap-2">
                   <ShoppingCart className={isJaeky ? "w-5 h-5 text-purple-500" : "w-5 h-5 text-lime-500"} />
                   Current Order
@@ -441,7 +441,7 @@ export default function NewOrder({ onOrderComplete, onBack }: NewOrderProps) {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-8 w-8 hover:bg-zinc-800 text-white"
+                  className="h-8 w-8 hover:bg-white text-zinc-900"
                   onClick={() => setIsCartOpen(false)}
                 >
                   <X className="w-4 h-4" />
@@ -451,7 +451,7 @@ export default function NewOrder({ onOrderComplete, onBack }: NewOrderProps) {
               {/* Cart Items */}
               <div className="flex-1 overflow-y-auto p-4">
                 {cartItems.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center h-full text-zinc-400">
+                  <div className="flex flex-col items-center justify-center h-full text-zinc-500">
                     <ShoppingCart className="w-12 h-12 mb-3 opacity-50" />
                     <p className="font-medium text-sm">No items yet</p>
                     <p className="text-xs text-center mt-1 text-zinc-500">Select products to start</p>
@@ -459,7 +459,7 @@ export default function NewOrder({ onOrderComplete, onBack }: NewOrderProps) {
                 ) : (
                   <div className="space-y-3">
                     {cartItems.map((item) => (
-                      <div key={item.id} className="bg-zinc-800 rounded-lg p-3.5 border border-zinc-700 transition-all">
+                      <div key={item.id} className="bg-white rounded-lg p-3.5 border border-zinc-200 transition-all">
                         <div className="flex items-start justify-between mb-3">
                           <div className="flex items-start gap-3 flex-1 min-w-0">
                             {item.image ? (
@@ -472,14 +472,14 @@ export default function NewOrder({ onOrderComplete, onBack }: NewOrderProps) {
                               <div className="w-12 h-12 rounded-md bg-zinc-700 flex-shrink-0" />
                             )}
                             <div className="flex-1 min-w-0">
-                              <h4 className="font-bold text-base text-white truncate">{item.name}</h4>
-                              <p className="text-xs text-zinc-400 mt-0.5">${item.price.toFixed(2)}</p>
+                              <h4 className="font-bold text-base text-zinc-900 truncate">{item.name}</h4>
+                              <p className="text-xs text-zinc-500 mt-0.5">${item.price.toFixed(2)}</p>
                             </div>
                           </div>
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-9 w-9 -mt-1 -mr-1 hover:bg-red-500/20 hover:text-red-400 text-zinc-400 transition-colors active:scale-90"
+                            className="h-9 w-9 -mt-1 -mr-1 hover:bg-red-50 hover:text-red-600 text-zinc-500 transition-colors active:scale-90"
                             onClick={() => removeFromCart(item.id)}
                           >
                             <X className="w-4 h-4" />
@@ -490,16 +490,16 @@ export default function NewOrder({ onOrderComplete, onBack }: NewOrderProps) {
                             <Button
                               variant="outline"
                               size="icon"
-                              className="h-11 w-11 border-zinc-700 hover:bg-zinc-700 bg-transparent text-white hover:text-white active:scale-90 transition-transform"
+                              className="h-11 w-11 border-zinc-200 hover:bg-zinc-100 bg-transparent text-zinc-900 hover:text-zinc-900 active:scale-90 transition-transform"
                               onClick={() => updateQuantity(item.id, -1)}
                             >
                               <Minus className="w-4 h-4" />
                             </Button>
-                            <span className="w-8 text-center font-semibold text-base text-white">{item.quantity}</span>
+                            <span className="w-8 text-center font-semibold text-base text-zinc-900">{item.quantity}</span>
                             <Button
                               variant="outline"
                               size="icon"
-                              className="h-11 w-11 border-zinc-700 hover:bg-zinc-700 bg-transparent text-white hover:text-white active:scale-90 transition-transform"
+                              className="h-11 w-11 border-zinc-200 hover:bg-zinc-100 bg-transparent text-zinc-900 hover:text-zinc-900 active:scale-90 transition-transform"
                               onClick={() => updateQuantity(item.id, 1)}
                             >
                               <Plus className="w-4 h-4" />
@@ -516,9 +516,9 @@ export default function NewOrder({ onOrderComplete, onBack }: NewOrderProps) {
               </div>
 
               {/* Cart Footer */}
-              <div className="border-t border-zinc-800 bg-zinc-900 p-4 space-y-4">
+              <div className="border-t border-zinc-200 bg-zinc-50 p-4 space-y-4">
                 <div className="flex justify-between items-center">
-                  <span className="text-sm font-semibold text-white">Total</span>
+                  <span className="text-sm font-semibold text-zinc-900">Total</span>
                   <span className={isJaeky ? "text-xl font-bold text-purple-500" : "text-xl font-bold text-lime-500"}>${subtotal.toFixed(2)}</span>
                 </div>
                 <Button
@@ -535,11 +535,11 @@ export default function NewOrder({ onOrderComplete, onBack }: NewOrderProps) {
           {isCartOpen && showOrderForm && (
             <>
               {/* Order Form Header */}
-              <div className="flex items-center gap-2 p-4 border-b border-zinc-800 bg-zinc-900">
+              <div className="flex items-center gap-2 p-4 border-b border-zinc-200 bg-zinc-50">
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-8 w-8 -ml-2 hover:bg-zinc-800 text-white"
+                  className="h-8 w-8 -ml-2 hover:bg-white text-zinc-900"
                   onClick={handleBackToCart}
                 >
                   <ArrowLeft className="w-4 h-4" />
@@ -553,7 +553,7 @@ export default function NewOrder({ onOrderComplete, onBack }: NewOrderProps) {
               {/* Order Form Content */}
               <div className="flex-1 overflow-y-auto p-4 space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="customerName" className="text-sm font-medium text-black">
+                  <Label htmlFor="customerName" className="text-sm font-medium text-zinc-900">
                     Customer Name *
                   </Label>
                   <Input
@@ -563,36 +563,36 @@ export default function NewOrder({ onOrderComplete, onBack }: NewOrderProps) {
                     onChange={(e) => setCustomerName(e.target.value)}
                     className={`h-9 border text-black placeholder:text-zinc-500 text-sm transition-colors ${
                       customerName.trim()
-                        ? "bg-green-500/20 border-green-500/50"
-                        : "bg-red-500/20 border-red-500/50"
+                        ? "bg-emerald-50 border-emerald-400"
+                        : "bg-white border-red-300"
                     }`}
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label className="text-sm font-medium text-black">Payment Type *</Label>
+                  <Label className="text-sm font-medium text-zinc-900">Payment Type *</Label>
                   <RadioGroup value={paymentType} onValueChange={(value) => setPaymentType(value as "CASH" | "CARD")}>
                     <div
                       className={`flex items-center space-x-2 rounded-md border px-3 py-2 transition-colors ${
                         paymentType === "CASH"
-                          ? "bg-green-500/20 border-green-500/50"
-                          : "bg-red-500/20 border-red-500/50"
+                          ? "bg-emerald-50 border-emerald-400"
+                          : "bg-white border-red-300"
                       }`}
                     >
-                      <RadioGroupItem value="CASH" id="cash" className={isJaeky ? "border-zinc-600 text-purple-500" : "border-zinc-600 text-lime-500"} />
-                      <Label htmlFor="cash" className="text-sm font-normal cursor-pointer text-black">
+                      <RadioGroupItem value="CASH" id="cash" className={isJaeky ? "border-zinc-300 text-purple-500" : "border-zinc-300 text-lime-500"} />
+                      <Label htmlFor="cash" className="text-sm font-normal cursor-pointer text-zinc-900">
                         Cash
                       </Label>
                     </div>
                     <div
                       className={`flex items-center space-x-2 rounded-md border px-3 py-2 transition-colors ${
                         paymentType === "CARD"
-                          ? "bg-green-500/20 border-green-500/50"
-                          : "bg-red-500/20 border-red-500/50"
+                          ? "bg-emerald-50 border-emerald-400"
+                          : "bg-white border-red-300"
                       }`}
                     >
-                      <RadioGroupItem value="CARD" id="card" className={isJaeky ? "border-zinc-600 text-purple-500" : "border-zinc-600 text-lime-500"} />
-                      <Label htmlFor="card" className="text-sm font-normal cursor-pointer text-black">
+                      <RadioGroupItem value="CARD" id="card" className={isJaeky ? "border-zinc-300 text-purple-500" : "border-zinc-300 text-lime-500"} />
+                      <Label htmlFor="card" className="text-sm font-normal cursor-pointer text-zinc-900">
                         Card
                       </Label>
                     </div>
@@ -600,7 +600,7 @@ export default function NewOrder({ onOrderComplete, onBack }: NewOrderProps) {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="seating" className="text-sm font-medium text-black">
+                  <Label htmlFor="seating" className="text-sm font-medium text-zinc-900">
                     Seating Location *
                   </Label>
                   <Input
@@ -610,33 +610,33 @@ export default function NewOrder({ onOrderComplete, onBack }: NewOrderProps) {
                     onChange={(e) => setSeating(e.target.value)}
                     className={`h-9 border text-black placeholder:text-zinc-500 text-sm transition-colors ${
                       seating.trim()
-                        ? "bg-green-500/20 border-green-500/50"
-                        : "bg-red-500/20 border-red-500/50"
+                        ? "bg-emerald-50 border-emerald-400"
+                        : "bg-white border-red-300"
                     }`}
                   />
                 </div>
 
-                <div className="border-t border-zinc-800 pt-4">
-                  <h3 className="font-semibold text-sm text-black mb-3">Order Summary</h3>
+                <div className="border-t border-zinc-200 pt-4">
+                  <h3 className="font-semibold text-sm text-zinc-900 mb-3">Order Summary</h3>
                   <div className="space-y-2">
                     {cartItems.map((item) => (
                       <div key={item.id} className="flex justify-between text-sm">
-                        <span className="text-zinc-400">
+                        <span className="text-zinc-500">
                           {item.quantity}x {item.name}
                         </span>
                         <span className={isJaeky ? "text-purple-500 font-medium" : "text-lime-500 font-medium"}>${(item.price * item.quantity).toFixed(2)}</span>
                       </div>
                     ))}
                   </div>
-                  <div className="flex justify-between items-center mt-4 pt-4 border-t border-zinc-800">
-                    <span className="font-semibold text-black">Total</span>
+                  <div className="flex justify-between items-center mt-4 pt-4 border-t border-zinc-200">
+                    <span className="font-semibold text-zinc-900">Total</span>
                     <span className={isJaeky ? "text-xl font-bold text-purple-500" : "text-xl font-bold text-lime-500"}>${subtotal.toFixed(2)}</span>
                   </div>
                 </div>
               </div>
 
               {/* Order Form Footer */}
-              <div className="border-t border-zinc-800 bg-zinc-900 p-4">
+              <div className="border-t border-zinc-200 bg-zinc-50 p-4">
                 <Button
                   className={isJaeky ? "w-full bg-purple-600 hover:bg-purple-700 text-white h-12 text-base font-medium transition-colors active:scale-95" : "w-full bg-lime-600 hover:bg-lime-700 text-black h-12 text-base font-medium transition-colors active:scale-95"}
                   onClick={handleConfirmOrder}
@@ -677,18 +677,18 @@ export default function NewOrder({ onOrderComplete, onBack }: NewOrderProps) {
 
       {/* Mobile Sheet Drawer */}
       <div
-        className={`fixed right-0 top-0 bottom-0 w-full max-w-md bg-zinc-950 text-black shadow-2xl z-50 md:hidden transition-transform duration-300 ease-out flex flex-col ${
+        className={`fixed right-0 top-0 bottom-0 w-full max-w-md bg-white text-zinc-900 shadow-2xl z-50 md:hidden transition-transform duration-300 ease-out flex flex-col ${
           isMobileSheetOpen ? "translate-x-0" : "translate-x-full"
         }`}
       >
         {/* Sheet Header */}
-        <div className="flex items-center justify-between p-4 border-b border-zinc-800 bg-zinc-900">
+        <div className="flex items-center justify-between p-4 border-b border-zinc-200 bg-zinc-50">
           <h2 className="text-lg font-semibold flex items-center gap-2">
             {mobileSheetView === "form" && (
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-8 w-8 -ml-2 hover:bg-zinc-800 text-black"
+                className="h-8 w-8 -ml-2 hover:bg-white text-zinc-900"
                 onClick={handleMobileSheetBackToCart}
               >
                 <ArrowLeft className="w-4 h-4" />
@@ -700,7 +700,7 @@ export default function NewOrder({ onOrderComplete, onBack }: NewOrderProps) {
           <Button
             variant="ghost"
             size="icon"
-            className="h-8 w-8 hover:bg-zinc-800 text-black"
+            className="h-8 w-8 hover:bg-white text-zinc-900"
             onClick={() => setIsMobileSheetOpen(false)}
           >
             <X className="w-5 h-5" />
@@ -713,7 +713,7 @@ export default function NewOrder({ onOrderComplete, onBack }: NewOrderProps) {
             {/* Cart Items View */}
             <div className="flex-1 overflow-y-auto p-4">
               {cartItems.length === 0 ? (
-                <div className="flex flex-col items-center justify-center h-full text-zinc-400">
+                <div className="flex flex-col items-center justify-center h-full text-zinc-500">
                   <ShoppingCart className="w-12 h-12 mb-3 opacity-50" />
                   <p className="font-medium text-sm">No items yet</p>
                   <p className="text-xs text-center mt-1 text-zinc-500">Select products to start</p>
@@ -721,7 +721,7 @@ export default function NewOrder({ onOrderComplete, onBack }: NewOrderProps) {
               ) : (
                 <div className="space-y-3">
                   {cartItems.map((item) => (
-                    <div key={item.id} className="bg-zinc-800 rounded-lg p-3.5 border border-zinc-700 transition-all">
+                    <div key={item.id} className="bg-white rounded-lg p-3.5 border border-zinc-200 transition-all">
                       <div className="flex items-start justify-between mb-3">
                         <div className="flex items-start gap-3 flex-1 min-w-0">
                           {item.image ? (
@@ -734,14 +734,14 @@ export default function NewOrder({ onOrderComplete, onBack }: NewOrderProps) {
                             <div className="w-12 h-12 rounded-md bg-zinc-700 flex-shrink-0" />
                           )}
                           <div className="flex-1 min-w-0">
-                            <h4 className="font-bold text-base text-white truncate">{item.name}</h4>
-                            <p className="text-xs text-zinc-400 mt-0.5">${item.price.toFixed(2)}</p>
+                            <h4 className="font-bold text-base text-zinc-900 truncate">{item.name}</h4>
+                            <p className="text-xs text-zinc-500 mt-0.5">${item.price.toFixed(2)}</p>
                           </div>
                         </div>
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-9 w-9 -mt-1 -mr-1 hover:bg-red-500/20 hover:text-red-400 text-zinc-400 transition-colors active:scale-90"
+                          className="h-9 w-9 -mt-1 -mr-1 hover:bg-red-50 hover:text-red-600 text-zinc-500 transition-colors active:scale-90"
                           onClick={() => removeFromCart(item.id)}
                         >
                           <X className="w-4 h-4" />
@@ -752,16 +752,16 @@ export default function NewOrder({ onOrderComplete, onBack }: NewOrderProps) {
                           <Button
                             variant="outline"
                             size="icon"
-                            className="h-11 w-11 border-zinc-700 hover:bg-zinc-700 bg-transparent text-white hover:text-white active:scale-90 transition-transform"
+                            className="h-11 w-11 border-zinc-200 hover:bg-zinc-100 bg-transparent text-zinc-900 hover:text-zinc-900 active:scale-90 transition-transform"
                             onClick={() => updateQuantity(item.id, -1)}
                           >
                             <Minus className="w-4 h-4" />
                           </Button>
-                          <span className="w-8 text-center font-semibold text-base text-white">{item.quantity}</span>
+                          <span className="w-8 text-center font-semibold text-base text-zinc-900">{item.quantity}</span>
                           <Button
                             variant="outline"
                             size="icon"
-                            className="h-11 w-11 border-zinc-700 hover:bg-zinc-700 bg-transparent text-white hover:text-white active:scale-90 transition-transform"
+                            className="h-11 w-11 border-zinc-200 hover:bg-zinc-100 bg-transparent text-zinc-900 hover:text-zinc-900 active:scale-90 transition-transform"
                             onClick={() => updateQuantity(item.id, 1)}
                           >
                             <Plus className="w-4 h-4" />
@@ -778,9 +778,9 @@ export default function NewOrder({ onOrderComplete, onBack }: NewOrderProps) {
             </div>
 
             {/* Cart Footer */}
-            <div className="border-t border-zinc-800 bg-zinc-900 p-4 space-y-4">
+            <div className="border-t border-zinc-200 bg-zinc-50 p-4 space-y-4">
               <div className="flex justify-between items-center">
-                <span className="text-sm font-semibold text-white">Total</span>
+                <span className="text-sm font-semibold text-zinc-900">Total</span>
                 <span className={isJaeky ? "text-xl font-bold text-purple-500" : "text-xl font-bold text-lime-500"}>${subtotal.toFixed(2)}</span>
               </div>
               <Button
@@ -797,7 +797,7 @@ export default function NewOrder({ onOrderComplete, onBack }: NewOrderProps) {
             {/* Order Form View */}
             <div className="flex-1 overflow-y-auto p-4 space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="customerName" className="text-sm font-medium text-white">
+                <Label htmlFor="customerName" className="text-sm font-medium text-zinc-900">
                   Customer Name *
                 </Label>
                 <Input
@@ -805,38 +805,38 @@ export default function NewOrder({ onOrderComplete, onBack }: NewOrderProps) {
                   placeholder="Enter customer name"
                   value={customerName}
                   onChange={(e) => setCustomerName(e.target.value)}
-                  className={`h-9 border text-white placeholder:text-zinc-400 text-sm transition-colors ${
+                  className={`h-9 border text-zinc-900 placeholder:text-zinc-500 text-sm transition-colors ${
                     customerName.trim()
-                      ? "bg-green-500/20 border-green-500/50"
-                      : "bg-red-500/20 border-red-500/50"
+                      ? "bg-emerald-50 border-emerald-400"
+                      : "bg-white border-red-300"
                   }`}
                 />
               </div>
 
               <div className="space-y-2">
-                <Label className="text-sm font-medium text-white">Payment Type *</Label>
+                <Label className="text-sm font-medium text-zinc-900">Payment Type *</Label>
                 <RadioGroup value={paymentType} onValueChange={(value) => setPaymentType(value as "CASH" | "CARD")}>
                   <div
                     className={`flex items-center space-x-2 rounded-md border px-3 py-2 transition-colors ${
                       paymentType === "CASH"
-                        ? "bg-green-500/20 border-green-500/50"
-                        : "bg-red-500/20 border-red-500/50"
+                        ? "bg-emerald-50 border-emerald-400"
+                        : "bg-white border-red-300"
                     }`}
                   >
-                    <RadioGroupItem value="CASH" id="cash-mobile" className={isJaeky ? "border-zinc-600 text-purple-500" : "border-zinc-600 text-lime-500"} />
-                    <Label htmlFor="cash-mobile" className="text-sm font-normal cursor-pointer text-white">
+                    <RadioGroupItem value="CASH" id="cash-mobile" className={isJaeky ? "border-zinc-300 text-purple-500" : "border-zinc-300 text-lime-500"} />
+                    <Label htmlFor="cash-mobile" className="text-sm font-normal cursor-pointer text-zinc-900">
                       Cash
                     </Label>
                   </div>
                   <div
                     className={`flex items-center space-x-2 rounded-md border px-3 py-2 transition-colors ${
                       paymentType === "CARD"
-                        ? "bg-green-500/20 border-green-500/50"
-                        : "bg-red-500/20 border-red-500/50"
+                        ? "bg-emerald-50 border-emerald-400"
+                        : "bg-white border-red-300"
                     }`}
                   >
-                    <RadioGroupItem value="CARD" id="card-mobile" className={isJaeky ? "border-zinc-600 text-purple-500" : "border-zinc-600 text-lime-500"} />
-                    <Label htmlFor="card-mobile" className="text-sm font-normal cursor-pointer text-white">
+                    <RadioGroupItem value="CARD" id="card-mobile" className={isJaeky ? "border-zinc-300 text-purple-500" : "border-zinc-300 text-lime-500"} />
+                    <Label htmlFor="card-mobile" className="text-sm font-normal cursor-pointer text-zinc-900">
                       Card
                     </Label>
                   </div>
@@ -844,7 +844,7 @@ export default function NewOrder({ onOrderComplete, onBack }: NewOrderProps) {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="seating-mobile" className="text-sm font-medium text-white">
+                <Label htmlFor="seating-mobile" className="text-sm font-medium text-zinc-900">
                   Seating Location *
                 </Label>
                 <Input
@@ -852,35 +852,35 @@ export default function NewOrder({ onOrderComplete, onBack }: NewOrderProps) {
                   placeholder="Enter seating location"
                   value={seating}
                   onChange={(e) => setSeating(e.target.value)}
-                  className={`h-9 border text-white placeholder:text-zinc-400 text-sm transition-colors ${
+                  className={`h-9 border text-zinc-900 placeholder:text-zinc-500 text-sm transition-colors ${
                     seating.trim()
-                      ? "bg-green-500/20 border-green-500/50"
-                      : "bg-red-500/20 border-red-500/50"
+                      ? "bg-emerald-50 border-emerald-400"
+                      : "bg-white border-red-300"
                   }`}
                 />
               </div>
 
-              <div className="border-t border-zinc-800 pt-4">
-                <h3 className="font-semibold text-sm text-white mb-3">Order Summary</h3>
+              <div className="border-t border-zinc-200 pt-4">
+                <h3 className="font-semibold text-sm text-zinc-900 mb-3">Order Summary</h3>
                 <div className="space-y-2">
                   {cartItems.map((item) => (
                     <div key={item.id} className="flex justify-between text-sm">
-                      <span className="text-zinc-400">
+                      <span className="text-zinc-500">
                         {item.quantity}x {item.name}
                       </span>
                       <span className={isJaeky ? "text-purple-500 font-medium" : "text-lime-500 font-medium"}>${(item.price * item.quantity).toFixed(2)}</span>
                     </div>
                   ))}
                 </div>
-                <div className="flex justify-between items-center mt-4 pt-4 border-t border-zinc-800">
-                  <span className="font-semibold text-white">Total</span>
+                <div className="flex justify-between items-center mt-4 pt-4 border-t border-zinc-200">
+                  <span className="font-semibold text-zinc-900">Total</span>
                   <span className={isJaeky ? "text-xl font-bold text-purple-500" : "text-xl font-bold text-lime-500"}>${subtotal.toFixed(2)}</span>
                 </div>
               </div>
             </div>
 
             {/* Order Form Footer */}
-            <div className="border-t border-zinc-800 bg-zinc-900 p-4">
+            <div className="border-t border-zinc-200 bg-zinc-50 p-4">
               <Button
                 className={isJaeky ? "w-full bg-purple-600 hover:bg-purple-700 text-white h-12 text-base font-medium transition-colors active:scale-95" : "w-full bg-lime-600 hover:bg-lime-700 text-white h-12 text-base font-medium transition-colors active:scale-95"}
                 onClick={handleConfirmOrder}
@@ -917,18 +917,18 @@ export default function NewOrder({ onOrderComplete, onBack }: NewOrderProps) {
       <Dialog open={showSuccessDialog} onOpenChange={setShowSuccessDialog}>
         <DialogContent
           showCloseButton={false}
-          className="sm:max-w-md bg-zinc-900 text-white border-zinc-800"
+          className="sm:max-w-md bg-zinc-50 text-zinc-900 border-zinc-200"
         >
           <DialogHeader>
             <DialogTitle className={isJaeky ? "text-purple-500 text-xl" : "text-lime-500 text-xl"}>Order Placed Successfully!</DialogTitle>
-            <DialogDescription className="text-zinc-400">
+            <DialogDescription className="text-zinc-500">
               Your order has been placed and is being prepared.
             </DialogDescription>
           </DialogHeader>
           <div className="flex flex-col gap-6 py-4">
             <div className="flex flex-col items-center gap-2">
-              <p className="text-sm uppercase tracking-widest text-zinc-400">Your Order Number</p>
-              <div className={isJaeky ? "flex items-center justify-center w-full rounded-2xl border-4 border-purple-500 bg-zinc-950 py-6" : "flex items-center justify-center w-full rounded-2xl border-4 border-lime-500 bg-zinc-950 py-6"}>
+              <p className="text-sm uppercase tracking-widest text-zinc-500">Your Order Number</p>
+              <div className={isJaeky ? "flex items-center justify-center w-full rounded-2xl border-4 border-purple-500 bg-white py-6" : "flex items-center justify-center w-full rounded-2xl border-4 border-lime-500 bg-white py-6"}>
                 <p className={isJaeky ? "text-7xl sm:text-8xl font-black text-purple-500 tabular-nums tracking-wider" : "text-7xl sm:text-8xl font-black text-lime-500 tabular-nums tracking-wider"}>
                   {lastOrderId}
                 </p>

@@ -364,7 +364,7 @@ return (
     {/* Main Content */}
     <div className="flex flex-col md:flex-row flex-1 overflow-hidden">
       {/* Products Section */}
-      <div className="flex-1 flex flex-col overflow-hidden pb-20 md:pb-0 bg-zinc-50 dark:bg-zinc-900 md:bg-background">
+      <div className="flex-1 flex flex-col overflow-hidden pb-20 md:pb-0 bg-zinc-50 dark:bg-zinc-50 md:bg-background">
         {/* Category Tabs */}
         {!loading && !error && categoryTabs.length > 1 && (
           <div className="flex gap-2 px-3 sm:px-6 pt-3 sm:pt-6 pb-1 sm:pb-2">
@@ -479,7 +479,7 @@ return (
 
       {/* Mobile Bottom Button - Fixed Position */}
       {totalItems > 0 && (
-        <div className="fixed bottom-15 left-0 right-0 md:hidden bg-white dark:bg-zinc-900 border-t border-border p-4">
+        <div className="fixed bottom-15 left-0 right-0 md:hidden bg-white dark:bg-zinc-50 border-t border-border p-4">
           <Button
             className="w-full bg-primary hover:bg-primary/90 text-primary-foreground h-12 text-base font-semibold rounded-lg"
             onClick={handleMobileOrderButton}
@@ -500,18 +500,18 @@ return (
 
       {/* Mobile Sheet Drawer */}
       <div
-        className={`fixed right-0 top-0 bottom-0 w-full max-w-md bg-zinc-950 dark:bg-zinc-950 text-white shadow-2xl z-50 md:hidden transition-transform duration-300 ease-out flex flex-col ${
+        className={`fixed right-0 top-0 bottom-0 w-full max-w-md bg-white dark:bg-white text-zinc-900 shadow-2xl z-50 md:hidden transition-transform duration-300 ease-out flex flex-col ${
           isMobileSheetOpen ? "translate-x-0" : "translate-x-full"
         }`}
       >
         {/* Sheet Header */}
-        <div className="flex items-center justify-between p-4 border-b border-zinc-800 dark:border-zinc-800 bg-zinc-900 dark:bg-zinc-900">
+        <div className="flex items-center justify-between p-4 border-b border-zinc-200 dark:border-zinc-200 bg-zinc-50 dark:bg-zinc-50">
           <h2 className="text-lg font-semibold flex items-center gap-2">
             {mobileSheetView === "form" && (
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-8 w-8 -ml-2 hover:bg-zinc-800 text-white"
+                className="h-8 w-8 -ml-2 hover:bg-white text-zinc-900"
                 onClick={handleMobileSheetBackToCart}
               >
                 <ArrowLeft className="w-4 h-4" />
@@ -523,7 +523,7 @@ return (
           <Button
             variant="ghost"
             size="icon"
-            className="h-8 w-8 hover:bg-zinc-800 text-white"
+            className="h-8 w-8 hover:bg-white text-zinc-900"
             onClick={() => setIsMobileSheetOpen(false)}
           >
             <X className="w-5 h-5" />
@@ -536,7 +536,7 @@ return (
             {/* Cart Items View */}
             <div className="flex-1 overflow-y-auto p-4">
               {cartItems.length === 0 ? (
-                <div className="flex flex-col items-center justify-center h-full text-zinc-400">
+                <div className="flex flex-col items-center justify-center h-full text-zinc-500">
                   <ShoppingCart className="w-12 h-12 mb-3 opacity-50" />
                   <p className="font-medium text-sm">No items yet</p>
                   <p className="text-xs text-center mt-1 text-zinc-500">
@@ -548,21 +548,21 @@ return (
                   {cartItems.map((item) => (
                     <div
                       key={item.id}
-                      className="bg-zinc-800 dark:bg-zinc-800 rounded-lg p-3.5 border border-zinc-700 dark:border-zinc-700 transition-all"
+                      className="bg-white dark:bg-white rounded-lg p-3.5 border border-zinc-200 dark:border-zinc-200 transition-all"
                     >
                       <div className="flex items-start justify-between mb-3">
                         <div className="flex-1 min-w-0">
-                          <h4 className="font-bold text-base text-white truncate">
+                          <h4 className="font-bold text-base text-zinc-900 truncate">
                             {item.name}
                           </h4>
-                          <p className="text-xs text-zinc-400 dark:text-zinc-400 mt-0.5">
+                          <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
                             ${item.price.toFixed(2)}
                           </p>
                         </div>
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-7 w-7 -mt-1 -mr-1 hover:bg-red-500/20 hover:text-red-400 text-zinc-400 transition-colors"
+                          className="h-7 w-7 -mt-1 -mr-1 hover:bg-red-50 hover:text-red-600 text-zinc-500 transition-colors"
                           onClick={() => removeFromCart(item.id)}
                         >
                           <X className="w-3.5 h-3.5" />
@@ -573,18 +573,18 @@ return (
                           <Button
                             variant="outline"
                             size="icon"
-                            className="h-8 w-8 border-zinc-700 dark:border-zinc-700 hover:bg-zinc-700 dark:hover:bg-zinc-700 bg-transparent text-white hover:text-white"
+                            className="h-8 w-8 border-zinc-200 dark:border-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-100 bg-transparent text-zinc-900 hover:text-zinc-900"
                             onClick={() => updateQuantity(item.id, -1)}
                           >
                             <Minus className="w-3 h-3" />
                           </Button>
-                          <span className="w-6 text-center font-semibold text-sm text-white">
+                          <span className="w-6 text-center font-semibold text-sm text-zinc-900">
                             {item.quantity}
                           </span>
                           <Button
                             variant="outline"
                             size="icon"
-                            className="h-8 w-8 border-zinc-700 dark:border-zinc-700 hover:bg-zinc-700 dark:hover:bg-zinc-700 bg-transparent text-white hover:text-white"
+                            className="h-8 w-8 border-zinc-200 dark:border-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-100 bg-transparent text-zinc-900 hover:text-zinc-900"
                             onClick={() => updateQuantity(item.id, 1)}
                           >
                             <Plus className="w-3 h-3" />
@@ -601,9 +601,9 @@ return (
             </div>
 
             {/* Cart Footer */}
-            <div className="border-t border-zinc-800 dark:border-zinc-800 bg-zinc-900 dark:bg-zinc-900 p-4 space-y-4">
+            <div className="border-t border-zinc-200 dark:border-zinc-200 bg-zinc-50 dark:bg-zinc-50 p-4 space-y-4">
               <div className="flex justify-between items-center">
-                <span className="text-sm font-semibold text-white">Total</span>
+                <span className="text-sm font-semibold text-zinc-900">Total</span>
                 <span className={isJaeky ? "text-xl font-bold text-purple-500" : "text-xl font-bold text-lime-500"}>
                   ${subtotal.toFixed(2)}
                 </span>
@@ -622,7 +622,7 @@ return (
             {/* Order Form View */}
             <div className="flex-1 overflow-y-auto p-4 space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="customerName" className="text-sm font-medium text-white">
+                <Label htmlFor="customerName" className="text-sm font-medium text-zinc-900">
                   Customer Name *
                 </Label>
                 <Input
@@ -630,38 +630,38 @@ return (
                   placeholder="Enter customer name"
                   value={customerName}
                   onChange={(e) => setCustomerName(e.target.value)}
-                  className={`h-9 border text-white placeholder:text-zinc-400 text-sm transition-colors ${
+                  className={`h-9 border text-zinc-900 placeholder:text-zinc-500 text-sm transition-colors ${
                     customerName.trim()
-                      ? "bg-green-500/20 border-green-500/50"
-                      : "bg-red-500/20 border-red-500/50"
+                      ? "bg-emerald-50 border-emerald-400"
+                      : "bg-white border-red-300"
                   }`}
                 />
               </div>
 
               <div className="space-y-2">
-                <Label className="text-sm font-medium text-white">Payment Type *</Label>
+                <Label className="text-sm font-medium text-zinc-900">Payment Type *</Label>
                 <RadioGroup value={paymentType} onValueChange={(value) => setPaymentType(value as "CASH" | "CARD")}>
                   <div
                     className={`flex items-center space-x-2 rounded-md border px-3 py-2 transition-colors ${
                       paymentType === "CASH"
-                        ? "bg-green-500/20 border-green-500/50"
-                        : "bg-red-500/20 border-red-500/50"
+                        ? "bg-emerald-50 border-emerald-400"
+                        : "bg-white border-red-300"
                     }`}
                   >
-                    <RadioGroupItem value="CASH" id="cash" className={isJaeky ? "border-zinc-600 text-purple-500" : "border-zinc-600 text-lime-500"} />
-                    <Label htmlFor="cash" className="text-sm font-normal cursor-pointer text-white">
+                    <RadioGroupItem value="CASH" id="cash" className={isJaeky ? "border-zinc-300 text-purple-500" : "border-zinc-300 text-lime-500"} />
+                    <Label htmlFor="cash" className="text-sm font-normal cursor-pointer text-zinc-900">
                       Cash
                     </Label>
                   </div>
                   <div
                     className={`flex items-center space-x-2 rounded-md border px-3 py-2 transition-colors ${
                       paymentType === "CARD"
-                        ? "bg-green-500/20 border-green-500/50"
-                        : "bg-red-500/20 border-red-500/50"
+                        ? "bg-emerald-50 border-emerald-400"
+                        : "bg-white border-red-300"
                     }`}
                   >
-                    <RadioGroupItem value="CARD" id="card" className={isJaeky ? "border-zinc-600 text-purple-500" : "border-zinc-600 text-lime-500"} />
-                    <Label htmlFor="card" className="text-sm font-normal cursor-pointer text-white">
+                    <RadioGroupItem value="CARD" id="card" className={isJaeky ? "border-zinc-300 text-purple-500" : "border-zinc-300 text-lime-500"} />
+                    <Label htmlFor="card" className="text-sm font-normal cursor-pointer text-zinc-900">
                       Credit Card
                     </Label>
                   </div>
@@ -669,7 +669,7 @@ return (
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="seating" className="text-sm font-medium text-white">
+                <Label htmlFor="seating" className="text-sm font-medium text-zinc-900">
                   Seating Location *
                 </Label>
                 <Input
@@ -677,21 +677,21 @@ return (
                   placeholder="e.g., Table 5, VIP 2"
                   value={seating}
                   onChange={(e) => setSeating(e.target.value)}
-                  className={`h-9 border text-white placeholder:text-zinc-400 text-sm transition-colors ${
+                  className={`h-9 border text-zinc-900 placeholder:text-zinc-500 text-sm transition-colors ${
                     seating.trim()
-                      ? "bg-green-500/20 border-green-500/50"
-                      : "bg-red-500/20 border-red-500/50"
+                      ? "bg-emerald-50 border-emerald-400"
+                      : "bg-white border-red-300"
                   }`}
                 />
               </div>
 
               {/* Order Summary */}
-              <div className="pt-4 border-t border-zinc-700 dark:border-zinc-700">
-                <h3 className="text-sm font-semibold text-white mb-3">Order Summary</h3>
+              <div className="pt-4 border-t border-zinc-200 dark:border-zinc-200">
+                <h3 className="text-sm font-semibold text-zinc-900 mb-3">Order Summary</h3>
                 <div className="space-y-2">
                   {cartItems.map((item) => (
                     <div key={item.id} className="flex justify-between text-sm">
-                      <span className="text-zinc-400 dark:text-zinc-400">
+                      <span className="text-zinc-500 dark:text-zinc-400">
                         {item.quantity}x {item.name}
                       </span>
                       <span className={isJaeky ? "font-medium text-purple-500" : "font-medium text-lime-500"}>
@@ -704,9 +704,9 @@ return (
             </div>
 
             {/* Form Footer */}
-            <div className="border-t border-zinc-800 dark:border-zinc-800 bg-zinc-900 dark:bg-zinc-900 p-4 space-y-4">
+            <div className="border-t border-zinc-200 dark:border-zinc-200 bg-zinc-50 dark:bg-zinc-50 p-4 space-y-4">
               <div className="flex justify-between items-center">
-                <span className="text-sm font-semibold text-white">Total</span>
+                <span className="text-sm font-semibold text-zinc-900">Total</span>
                 <span className={isJaeky ? "text-xl font-bold text-purple-500" : "text-xl font-bold text-lime-500"}>
                   ${subtotal.toFixed(2)}
                 </span>
@@ -864,8 +864,8 @@ return (
                   onChange={(e) => setCustomerName(e.target.value)}
                   className={`h-9 border text-sm transition-colors ${
                     customerName.trim()
-                      ? "bg-green-500/20 border-green-500/50"
-                      : "bg-red-500/20 border-red-500/50"
+                      ? "bg-emerald-50 border-emerald-400"
+                      : "bg-white border-red-300"
                   }`}
                 />
               </div>
@@ -876,8 +876,8 @@ return (
                   <div
                     className={`flex items-center space-x-2 rounded-md border px-3 py-2 transition-colors ${
                       paymentType === "CASH"
-                        ? "bg-green-500/20 border-green-500/50"
-                        : "bg-red-500/20 border-red-500/50"
+                        ? "bg-emerald-50 border-emerald-400"
+                        : "bg-white border-red-300"
                     }`}
                   >
                     <RadioGroupItem value="CASH" id="cash" />
@@ -888,8 +888,8 @@ return (
                   <div
                     className={`flex items-center space-x-2 rounded-md border px-3 py-2 transition-colors ${
                       paymentType === "CARD"
-                        ? "bg-green-500/20 border-green-500/50"
-                        : "bg-red-500/20 border-red-500/50"
+                        ? "bg-emerald-50 border-emerald-400"
+                        : "bg-white border-red-300"
                     }`}
                   >
                     <RadioGroupItem value="CARD" id="card" />
@@ -911,8 +911,8 @@ return (
                   onChange={(e) => setSeating(e.target.value)}
                   className={`h-9 border text-sm transition-colors ${
                     seating.trim()
-                      ? "bg-green-500/20 border-green-500/50"
-                      : "bg-red-500/20 border-red-500/50"
+                      ? "bg-emerald-50 border-emerald-400"
+                      : "bg-white border-red-300"
                   }`}
                 />
               </div>
@@ -968,18 +968,18 @@ return (
      <Dialog open={showSuccessDialog} onOpenChange={setShowSuccessDialog}>
       <DialogContent
         showCloseButton={false}
-        className="sm:max-w-md bg-zinc-900 text-white border-zinc-800"
+        className="sm:max-w-md bg-zinc-50 text-zinc-900 border-zinc-200"
       >
         <DialogHeader>
           <DialogTitle className={isJaeky ? "text-purple-500 text-xl" : "text-lime-500 text-xl"}>Order Placed Successfully!</DialogTitle>
-          <DialogDescription className="text-zinc-400">
+          <DialogDescription className="text-zinc-500">
             Your order has been placed and is being prepared.
           </DialogDescription>
         </DialogHeader>
         <div className="flex flex-col gap-6 py-4">
           <div className="flex flex-col items-center gap-2">
-            <p className="text-sm uppercase tracking-widest text-zinc-400">Order Number</p>
-            <div className={isJaeky ? "flex items-center justify-center w-full rounded-2xl border-4 border-purple-500 bg-zinc-950 py-6" : "flex items-center justify-center w-full rounded-2xl border-4 border-lime-500 bg-zinc-950 py-6"}>
+            <p className="text-sm uppercase tracking-widest text-zinc-500">Order Number</p>
+            <div className={isJaeky ? "flex items-center justify-center w-full rounded-2xl border-4 border-purple-500 bg-white py-6" : "flex items-center justify-center w-full rounded-2xl border-4 border-lime-500 bg-white py-6"}>
               <p className={isJaeky ? "text-7xl sm:text-8xl font-black text-purple-500 tabular-nums tracking-wider" : "text-7xl sm:text-8xl font-black text-lime-500 tabular-nums tracking-wider"}>
                 {lastOrderId}
               </p>
