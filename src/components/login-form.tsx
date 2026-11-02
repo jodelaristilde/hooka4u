@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { signIn } from "next-auth/react";
+import { getSession, signIn } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
@@ -32,15 +32,20 @@ export function LoginForm({ className, isJaeky, ...props }: LoginFormProps) {
     const result = await signIn("credentials", {
       username,
       password,
-      redirect: true,
-      callbackUrl: "/dashboard",
+      redirect: false,
     });
 
-    setLoading(false);
-
-    if (result?.error) {
+    if (!result || result.error) {
+      setLoading(false);
       setError("Invalid username or password.");
+      return;
     }
+
+    // Admins go straight into the step-by-step Add Items screen
+    // (photo → category → price → done). Everyone else gets the dashboard.
+    const session = await getSession();
+    window.location.href =
+      session?.user?.role === "ADMIN" ? "/dashboard/quick-add" : "/dashboard";
   };
 
   return (

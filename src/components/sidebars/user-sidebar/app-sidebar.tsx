@@ -2,6 +2,7 @@
 
 import { BookA, Bot, DollarSign, Frame, GalleryVerticalEnd, Home, ImagePlus, Library, ListOrdered, Menu, MenuSquare, Users } from "lucide-react"
 import { useSession } from "next-auth/react"
+import { usePathname } from "next/navigation"
 import * as React from "react"
 import { NavMain } from "@/components/sidebars/user-sidebar/nav-main"
 import { HomepageQR } from "@/components/sidebars/user-sidebar/nav-projects"
@@ -93,6 +94,13 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       return true
     })
   }, [session?.user?.role])
+
+  // The step-by-step Add Items screen is a full-screen flow with its own
+  // "More" menu, so no sidebar or bottom bar there.
+  const pathname = usePathname()
+  if (pathname?.startsWith("/dashboard/quick-add")) {
+    return null
+  }
 
   if (isMobile) {
     return (
