@@ -1,6 +1,6 @@
 "use client"
 
-import { BookA, Bot, DollarSign, Frame, GalleryVerticalEnd, Home, Library, ListOrdered, Menu, MenuSquare, Users } from "lucide-react"
+import { BookA, Bot, DollarSign, Frame, GalleryVerticalEnd, Home, ImagePlus, Library, ListOrdered, Menu, MenuSquare, Users } from "lucide-react"
 import { useSession } from "next-auth/react"
 import * as React from "react"
 import { NavMain } from "@/components/sidebars/user-sidebar/nav-main"
@@ -20,6 +20,12 @@ const sidebarData = {
       title: "Dashboard",
       url: "/dashboard",
       icon: Home,
+    },
+    {
+      title: "Add Items",
+      url: "/dashboard/quick-add",
+      icon: ImagePlus,
+      requiresAdmin: true,
     },
     {
       title: "New Order",

@@ -17,6 +17,8 @@ import {
   Users,
   Frame,
   Sparkles,
+  ImagePlus,
+  ChevronDown,
 } from "lucide-react";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
@@ -105,7 +107,7 @@ export default async function Dashboard() {
 
       <div className="flex flex-1 flex-col gap-8 p-4 pt-8 sm:p-8">
         {/* Hero */}
-        <div className={`relative overflow-hidden rounded-2xl border ${brand.accentBorder} bg-gradient-to-br ${brand.bannerGradient} p-8 shadow-sm`}>
+        <div className={`relative overflow-hidden rounded-2xl border ${brand.accentBorder} bg-gradient-to-br ${brand.bannerGradient} p-6 shadow-sm sm:p-8`}>
           <div
             className={`pointer-events-none absolute -top-24 -right-24 h-72 w-72 animate-pulse rounded-full ${brand.accentBg} blur-3xl`}
             style={{ opacity: 0.4 }}
@@ -130,7 +132,52 @@ export default async function Dashboard() {
           </p>
         </div>
 
-        {/* Everything in one box */}
+        {/* One big thing to do first. Admins add items step by step;
+            everyone else jumps straight into taking an order. */}
+        {(() => {
+          const isAdmin = userRole === "ADMIN";
+          const main = isAdmin
+            ? {
+                title: "Add items",
+                url: "/dashboard/quick-add",
+                icon: ImagePlus,
+                description: "Photo, category, price. Done.",
+              }
+            : {
+                title: "New Order",
+                url: "/dashboard/new-order",
+                icon: BookA,
+                description: "Create and submit a new order",
+              };
+          const MainIcon = main.icon;
+          return (
+            <a
+              href={main.url}
+              className={
+                brand.site === "jaeky"
+                  ? "group flex items-center gap-4 rounded-2xl bg-purple-700 p-5 text-white shadow-lg shadow-purple-500/25 transition-all hover:-translate-y-0.5 hover:bg-purple-800 sm:p-6"
+                  : "group flex items-center gap-4 rounded-2xl bg-lime-700 p-5 text-white shadow-lg shadow-lime-500/25 transition-all hover:-translate-y-0.5 hover:bg-lime-800 sm:p-6"
+              }
+            >
+              <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-white/15">
+                <MainIcon className="h-7 w-7" />
+              </span>
+              <span className="flex min-w-0 flex-col">
+                <span className="text-xl font-bold">{main.title}</span>
+                <span className="text-sm text-white/85">{main.description}</span>
+              </span>
+            </a>
+          );
+        })()}
+
+        {/* Everything in one box — kept as-is, just folded under "More" */}
+        <details className="group/more">
+          <summary className="flex cursor-pointer list-none items-center justify-between rounded-2xl border border-zinc-200 bg-white px-5 py-4 text-sm font-semibold text-zinc-700 shadow-sm hover:bg-zinc-50 [&::-webkit-details-marker]:hidden">
+            More
+            <ChevronDown className="h-4 w-4 text-zinc-500 transition-transform group-open/more:rotate-180" />
+          </summary>
+          <div className="mt-3">
+
         <div className="relative overflow-hidden rounded-2xl border border-zinc-200 bg-white p-5 shadow-lg shadow-zinc-200/50 sm:p-6">
           <div
             className={`pointer-events-none absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${brand.accentGradient}`}
@@ -194,6 +241,8 @@ export default async function Dashboard() {
             })}
           </div>
         </div>
+          </div>
+        </details>
       </div>
     </div>
   );
