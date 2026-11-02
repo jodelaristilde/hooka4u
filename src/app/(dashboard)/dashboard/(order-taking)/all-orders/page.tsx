@@ -44,6 +44,7 @@ import {
 } from "@/components/ui/dialog";
 import Link from "next/link";
 import { useBrand } from "@/lib/use-brand";
+import { useSession } from "next-auth/react";
 
 interface OrderItem {
   id: string;
@@ -98,6 +99,11 @@ export default function AllOrders() {
   // New orders waiting in the flashing alert pop-up, oldest first. The
   // pop-up, the flashing and the tone all stay until staff tap "View order".
   const [alertQueue, setAlertQueue] = useState<string[]>([]);
+  // Admin-only "today's sales" panel, opened by double-tapping Total.
+  const { data: session } = useSession();
+  const isAdmin = session?.user?.role === "ADMIN";
+  const [salesOpen, setSalesOpen] = useState(false);
+  const lastTotalTapRef = useRef(0);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const previousOrderIdsRef = useRef<Set<string>>(new Set());
@@ -721,6 +727,35 @@ export default function AllOrders() {
     );
   };
 
+  // Today's sales (admins only). Counts every order placed since midnight
+  // on this device's clock, pending and ready.
+  const startOfToday = new Date();
+  startOfToday.setHours(0, 0, 0, 0);
+  const todaysOrders = orders.filter((o) => new Date(o.createdAt) >= startOfToday);
+  const sumOf = (list: Order[]) => list.reduce((sum, o) => sum + (o.subtotal || 0), 0);
+  const money = (n: number) =>
+    n.toLocaleString("en-US", { style: "currency", currency: "USD" });
+  const todaysSales = {
+    total: sumOf(todaysOrders),
+    count: todaysOrders.length,
+    items: todaysOrders.reduce((sum, o) => sum + getTotalItems(o.items), 0),
+    cash: sumOf(todaysOrders.filter((o) => o.paymentType !== "CARD")),
+    card: sumOf(todaysOrders.filter((o) => o.paymentType === "CARD")),
+    ready: sumOf(todaysOrders.filter((o) => o.status === "DELIVERED")),
+    pending: sumOf(todaysOrders.filter((o) => o.status !== "DELIVERED")),
+  };
+  // Double-click (computer) or double-tap (phone) on Total.
+  const handleTotalTap = () => {
+    if (!isAdmin) return;
+    const now = Date.now();
+    if (now - lastTotalTapRef.current < 400) {
+      lastTotalTapRef.current = 0;
+      setSalesOpen(true);
+    } else {
+      lastTotalTapRef.current = now;
+    }
+  };
+
   // The order shown in the flashing new-order pop-up (oldest waiting first).
   const alertOrder = alertQueue.length > 0 ? orders.find((o) => o.id === alertQueue[0]) ?? null : null;
   const viewAlertOrder = () => {
@@ -843,7 +878,13 @@ export default function AllOrders() {
                     { label: "Pending", value: pendingOrders.length, box: "bg-amber-50 ring-amber-200", tone: "text-amber-700" },
                     { label: "Ready", value: deliveredOrders.length, box: "bg-emerald-50 ring-emerald-200", tone: "text-emerald-700" },
                   ].map((stat) => (
-                    <div key={stat.label} className={`rounded-2xl px-3 py-2.5 ring-1 lg:min-w-32 ${stat.box}`}>
+                    <div
+                      key={stat.label}
+                      onClick={stat.label === "Total" ? handleTotalTap : undefined}
+                      className={`rounded-2xl px-3 py-2.5 ring-1 select-none lg:min-w-32 ${stat.box} ${
+                        stat.label === "Total" && isAdmin ? "cursor-pointer" : ""
+                      }`}
+                    >
                       <div className="text-[11px] font-semibold tracking-wide text-zinc-500 uppercase">{stat.label}</div>
                       <div className={`text-2xl leading-tight font-extrabold tabular-nums ${stat.tone}`}>{stat.value}</div>
                     </div>
@@ -1015,6 +1056,43 @@ export default function AllOrders() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Today's sales — admins only, opened by double-tapping Total */}
+      {isAdmin && (
+        <Dialog open={salesOpen} onOpenChange={setSalesOpen}>
+          <DialogContent className="w-[calc(100%-1.5rem)] max-w-md rounded-3xl border-zinc-200 bg-white">
+            <DialogHeader>
+              <DialogTitle className="text-left text-zinc-900">
+                <span className="block text-xs font-semibold tracking-widest text-zinc-500 uppercase">
+                  Today&apos;s sales ·{" "}
+                  {startOfToday.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}
+                </span>
+                <span className="mt-1 block text-4xl font-extrabold tracking-tight tabular-nums">
+                  {money(todaysSales.total)}
+                </span>
+                <span className="mt-1 block text-sm font-normal text-zinc-500">
+                  {todaysSales.count} order{todaysSales.count === 1 ? "" : "s"} · {todaysSales.items} item
+                  {todaysSales.items === 1 ? "" : "s"}
+                </span>
+              </DialogTitle>
+            </DialogHeader>
+            <div className="grid grid-cols-2 gap-2">
+              {[
+                { label: "Cash", value: todaysSales.cash, box: "bg-zinc-50 ring-zinc-200" },
+                { label: "Card", value: todaysSales.card, box: "bg-zinc-50 ring-zinc-200" },
+                { label: "Ready", value: todaysSales.ready, box: "bg-emerald-50 ring-emerald-200" },
+                { label: "Still pending", value: todaysSales.pending, box: "bg-amber-50 ring-amber-200" },
+              ].map((row) => (
+                <div key={row.label} className={`rounded-2xl px-3 py-2.5 ring-1 ${row.box}`}>
+                  <div className="text-[11px] font-semibold tracking-wide text-zinc-500 uppercase">{row.label}</div>
+                  <div className="text-lg font-bold text-zinc-900 tabular-nums">{money(row.value)}</div>
+                </div>
+              ))}
+            </div>
+            <p className="text-xs text-zinc-500">Only admins can see this. Staff never see prices.</p>
+          </DialogContent>
+        </Dialog>
+      )}
 
       {/* Order details, opened by tapping a card in the grid */}
       <Dialog
