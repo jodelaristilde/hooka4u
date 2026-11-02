@@ -329,6 +329,7 @@ export default function QuickAddPage() {
 
     const done: DraftItem[] = [];
     const failed: DraftItem[] = [];
+    let firstFailReason = "";
 
     for (const item of readyItems) {
       try {
@@ -344,7 +345,21 @@ export default function QuickAddPage() {
             available: true,
           }),
         });
-        if (!res.ok) throw new Error(`Status ${res.status}`);
+        if (!res.ok) {
+          // Turn the server's answer into words a person can act on.
+          let reason = "";
+          if (res.status === 413) {
+            reason = "The photo is too large to send. Try a smaller photo.";
+          } else {
+            try {
+              const data = await res.json();
+              reason = [data?.error, data?.detail].filter(Boolean).join(" — ");
+            } catch {
+              reason = "";
+            }
+          }
+          throw new Error(reason || `The server said no (error ${res.status}).`);
+        }
         done.push(item);
 
         // Best effort: the menu item is what matters.
@@ -365,6 +380,11 @@ export default function QuickAddPage() {
       } catch (err) {
         console.error("Error saving menu item:", err);
         failed.push(item);
+        if (!firstFailReason) {
+          firstFailReason = `${item.name.trim()}: ${
+            err instanceof Error && err.message ? err.message : "couldn't reach the server"
+          }`;
+        }
       }
       setSaveProgress((p) => p + 1);
     }
@@ -377,9 +397,10 @@ export default function QuickAddPage() {
       // Keep only the ones that didn't save so they can be retried.
       setItems((prev) => prev.filter((i) => failed.some((f) => f.id === i.id)));
       toast.error(`${failed.length} item${failed.length > 1 ? "s" : ""} didn't save`, {
-        description: done.length
-          ? `${done.length} saved. Tap Save to try the rest again.`
-          : "Check your connection and tap Save again.",
+        description: `${firstFailReason}${
+          done.length ? ` (${done.length} other${done.length === 1 ? "" : "s"} saved.)` : ""
+        }`,
+        duration: 15000,
       });
       return;
     }
