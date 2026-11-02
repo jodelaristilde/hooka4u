@@ -129,6 +129,10 @@ export default function QuickAddPage() {
   const [addingCategory, setAddingCategory] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState("");
 
+  // "Same price for all": typing here fills every item's price at once.
+  // Any single price can still be changed afterwards.
+  const [priceForAll, setPriceForAll] = useState("");
+
   const [saving, setSaving] = useState(false);
   const [saveProgress, setSaveProgress] = useState(0);
   const [saved, setSaved] = useState<DraftItem[]>([]);
@@ -353,7 +357,16 @@ export default function QuickAddPage() {
     setItems([]);
     setSaved([]);
     setCategory(null);
+    setPriceForAll("");
     setStep("upload");
+  };
+
+  const cleanPrice = (raw: string) => raw.replace(/[^0-9.]/g, "").replace(/(\..*)\./g, "$1");
+
+  const applyPriceForAll = (raw: string) => {
+    const price = cleanPrice(raw);
+    setPriceForAll(price);
+    setItems((prev) => prev.map((i) => (i.status === "ready" ? { ...i, price } : i)));
   };
 
   const goBack = () => {
@@ -599,6 +612,30 @@ export default function QuickAddPage() {
                   {category ? titleCase(category) : ""}
                 </span>
               </p>
+
+              {readyItems.length > 1 && (
+                <div className={`flex flex-col gap-2 rounded-2xl border-2 p-4 ${c.selected}`}>
+                  <label htmlFor="price-for-all" className="text-base font-semibold text-zinc-900">
+                    Same price for all {readyItems.length}?
+                  </label>
+                  <span
+                    className={`flex h-14 items-center gap-1 rounded-xl border border-zinc-300 bg-white px-4 focus-within:ring-2 ${c.focus}`}
+                  >
+                    <span className="text-lg text-zinc-500">$</span>
+                    <input
+                      id="price-for-all"
+                      inputMode="decimal"
+                      value={priceForAll}
+                      onChange={(e) => applyPriceForAll(e.target.value)}
+                      placeholder="0.00"
+                      className="h-12 min-w-0 flex-1 bg-transparent text-lg text-zinc-900 focus:outline-none"
+                    />
+                  </span>
+                  <span className="text-sm text-zinc-600">
+                    Type it once and every item gets it. You can still change one below.
+                  </span>
+                </div>
+              )}
 
               <div className="flex flex-col gap-3">
                 {readyItems.map((item) => {
