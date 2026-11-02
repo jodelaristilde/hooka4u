@@ -95,12 +95,16 @@ export default function AllOrders() {
   // shows this order's current status, even while it's open and the
   // 5-second poll brings in an update.
   const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
+  // New orders waiting in the flashing alert pop-up, oldest first. The
+  // pop-up, the flashing and the tone all stay until staff tap "View order".
+  const [alertQueue, setAlertQueue] = useState<string[]>([]);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const previousOrderIdsRef = useRef<Set<string>>(new Set());
   const isInitialLoadRef = useRef(true);
   const alertLoopRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const audioUnlockedRef = useRef(false);
+  const audioCtxRef = useRef<AudioContext | null>(null);
 
   // This page is only ever meaningful once it's running in the browser (it
   // fetches its own data on mount). Rendering it for real on the server
@@ -129,6 +133,17 @@ export default function AllOrders() {
     // interaction, so the alert sound actually plays later when a new
     // order comes in with no direct click on the audio itself.
     const unlockAudio = () => {
+      try {
+        if (!audioCtxRef.current) {
+          const Ctx =
+            window.AudioContext ||
+            (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+          if (Ctx) audioCtxRef.current = new Ctx();
+        }
+        audioCtxRef.current?.resume().catch(() => {});
+      } catch {
+        // Web Audio not available; the plain beep below is the fallback.
+      }
       if (audioUnlockedRef.current || !audioRef.current) return;
       audioRef.current
         .play()
@@ -168,11 +183,18 @@ export default function AllOrders() {
   const handleNewOrder = (newOrder: Order) => {
     startAlertLoop();
 
+    // Pop the new order up front. Close any other open dialog first so the
+    // alert's button can always be tapped.
+    setExpandedOrderId(null);
+    setDeleteDialogOpen(false);
+    setAlertQueue((prev) => (prev.includes(newOrder.id) ? prev : [...prev, newOrder.id]));
+
     if ("Notification" in window && Notification.permission === "granted") {
+      // No price here: staff don't see prices.
       new Notification("🔔 New Order Received!", {
-        body: `Order from ${
-          newOrder.customerName || "Guest"
-        } - $${newOrder.subtotal.toFixed(2)}`,
+        body: `Order from ${newOrder.customerName || "Guest"}${
+          newOrder.Seating ? ` · ${newOrder.Seating}` : ""
+        }`,
         icon: "/notification-icon.png",
         badge: "/badge-icon.png",
         tag: newOrder.id,
@@ -186,6 +208,30 @@ export default function AllOrders() {
   };
 
   const playNotificationSound = () => {
+    // Two-note chime, loud enough to hear in a busy room.
+    const ctx = audioCtxRef.current;
+    if (ctx && ctx.state === "running") {
+      const t0 = ctx.currentTime;
+      [
+        { freq: 880, at: 0 },
+        { freq: 1318.5, at: 0.18 },
+        { freq: 880, at: 0.5 },
+        { freq: 1318.5, at: 0.68 },
+      ].forEach(({ freq, at }) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = "triangle";
+        osc.frequency.value = freq;
+        gain.gain.setValueAtTime(0.0001, t0 + at);
+        gain.gain.exponentialRampToValueAtTime(0.6, t0 + at + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.0001, t0 + at + 0.3);
+        osc.connect(gain).connect(ctx.destination);
+        osc.start(t0 + at);
+        osc.stop(t0 + at + 0.32);
+      });
+      if ("vibrate" in navigator) navigator.vibrate?.([250, 120, 250]);
+      return;
+    }
     if (audioRef.current) {
       audioRef.current.currentTime = 0;
       audioRef.current.play().catch((err) => {
@@ -205,7 +251,7 @@ export default function AllOrders() {
 
     alertLoopRef.current = setInterval(() => {
       playNotificationSound();
-    }, 2500);
+    }, 2000);
   };
 
   const acknowledgeNewOrders = () => {
@@ -215,6 +261,7 @@ export default function AllOrders() {
     }
     setHasUnacknowledgedOrder(false);
     setUnacknowledgedOrderIds(new Set());
+    setAlertQueue([]);
   };
 
   // Fetch the product catalog's images once (it rarely changes) and build
@@ -412,17 +459,23 @@ export default function AllOrders() {
   const accent = isJaeky
     ? {
         chip: "bg-purple-100 text-purple-800 ring-1 ring-purple-200",
+        ticket: "bg-gradient-to-br from-purple-600 to-fuchsia-600 text-white shadow-md shadow-purple-500/30",
         button: "bg-purple-700 text-white hover:bg-purple-800",
-        outline: "border-purple-300 text-purple-800 hover:bg-purple-50",
-        tabActive: "data-[state=active]:bg-purple-700 data-[state=active]:text-white",
+        outline: "border-purple-200 bg-purple-50/60 text-purple-800 hover:bg-purple-100",
+        tabActive: "data-[state=active]:bg-white data-[state=active]:text-purple-800 data-[state=active]:shadow-sm",
         ring: "focus-visible:ring-purple-500",
+        pageGlow: "from-purple-100/70",
+        alertButton: "bg-gradient-to-r from-purple-700 to-fuchsia-600 text-white hover:from-purple-800 hover:to-fuchsia-700",
       }
     : {
         chip: "bg-lime-100 text-lime-900 ring-1 ring-lime-300",
+        ticket: "bg-gradient-to-br from-lime-600 to-emerald-600 text-white shadow-md shadow-lime-500/30",
         button: "bg-lime-700 text-white hover:bg-lime-800",
-        outline: "border-lime-300 text-lime-900 hover:bg-lime-50",
-        tabActive: "data-[state=active]:bg-lime-700 data-[state=active]:text-white",
+        outline: "border-lime-200 bg-lime-50/60 text-lime-900 hover:bg-lime-100",
+        tabActive: "data-[state=active]:bg-white data-[state=active]:text-lime-900 data-[state=active]:shadow-sm",
         ring: "focus-visible:ring-lime-500",
+        pageGlow: "from-lime-100/70",
+        alertButton: "bg-gradient-to-r from-lime-700 to-emerald-600 text-white hover:from-lime-800 hover:to-emerald-700",
       };
 
   const statusChip = (isDelivered: boolean, large = false) => (
@@ -445,7 +498,7 @@ export default function AllOrders() {
 
   const infoChip = (icon: React.ReactNode, label: string, large = false) => (
     <span
-      className={`inline-flex items-center gap-1.5 rounded-full bg-zinc-100 font-medium text-zinc-700 ring-1 ring-zinc-200 ${
+      className={`inline-flex items-center gap-1.5 rounded-full bg-white font-medium text-zinc-700 ring-1 ring-zinc-200 ${
         large ? "px-3 py-1 text-sm" : "px-2.5 py-0.5 text-xs"
       }`}
     >
@@ -454,22 +507,26 @@ export default function AllOrders() {
     </span>
   );
 
-  // Light, easy-to-scan tile for the grid: who, when, status, what they
-  // ordered (thumbnails + count + total). Marking an order ready still only
-  // happens from the full detail popup, so a stray tap on the grid can't
-  // change an order's status.
+  const paymentChip = (order: Order, large = false) =>
+    infoChip(
+      order.paymentType === "CARD" ? (
+        <CreditCard className={large ? "h-4 w-4" : "h-3.5 w-3.5"} aria-hidden="true" />
+      ) : (
+        <Banknote className={large ? "h-4 w-4" : "h-3.5 w-3.5"} aria-hidden="true" />
+      ),
+      order.paymentType === "CARD" ? "Card" : "Cash",
+      large
+    );
+
+  // No prices anywhere on this page: staff don't need to see them.
   const renderOrderCard = (order: Order) => {
     const isDelivered = order.status === "DELIVERED";
-    const isVIP = order.Seating?.toUpperCase().includes("VIP");
     const isNew = unacknowledgedOrderIds.has(order.id);
     const itemCount = getTotalItems(order.items);
     const thumbs = order.items
       .map((item) => (item.product?.id ? productImages[item.product.id] : undefined))
       .filter((src): src is string => Boolean(src))
-      .slice(0, 4);
-    const itemNames = order.items
-      .map((item) => `${item.quantity}× ${item.product?.name ?? "Item"}`)
-      .join(", ");
+      .slice(0, 3);
 
     const openOrder = () => {
       acknowledgeNewOrders();
@@ -488,29 +545,33 @@ export default function AllOrders() {
             openOrder();
           }
         }}
-        className={`group relative flex cursor-pointer flex-col gap-3 rounded-2xl border bg-white p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 ${accent.ring} ${
-          isNew ? "border-red-400 ring-2 ring-red-400/60" : "border-zinc-200"
+        className={`group relative flex cursor-pointer flex-col gap-3.5 rounded-3xl border bg-white/90 p-4 shadow-[0_1px_2px_rgba(0,0,0,0.04),0_8px_24px_-12px_rgba(0,0,0,0.12)] backdrop-blur transition-all hover:-translate-y-0.5 hover:shadow-[0_2px_4px_rgba(0,0,0,0.05),0_16px_32px_-12px_rgba(0,0,0,0.18)] focus-visible:outline-none focus-visible:ring-2 active:scale-[0.99] ${accent.ring} ${
+          isNew ? "border-red-400 ring-2 ring-red-400/60" : "border-zinc-200/80"
         }`}
       >
         {isNew && (
-          <span className="absolute -top-2.5 left-4 flex items-center gap-1 rounded-full bg-red-600 px-2 py-0.5 text-[11px] font-bold tracking-wide text-white shadow">
+          <span className="absolute -top-2.5 right-4 flex items-center gap-1 rounded-full bg-red-600 px-2 py-0.5 text-[11px] font-bold tracking-wide text-white shadow">
             <span className="h-1.5 w-1.5 animate-ping rounded-full bg-white" aria-hidden="true" />
             NEW
           </span>
         )}
 
-        {/* Who and when */}
-        <div className="flex items-start gap-3">
-          {order.orderNumber != null && (
-            <span className={`shrink-0 rounded-lg px-2 py-1 text-sm font-bold tabular-nums ${accent.chip}`}>
-              #{order.orderNumber}
-            </span>
-          )}
+        {/* Ticket number, who, when */}
+        <div className="flex items-center gap-3">
+          <span
+            className={`flex h-12 min-w-12 shrink-0 flex-col items-center justify-center rounded-2xl px-2 leading-none ${accent.ticket}`}
+          >
+            <span className="text-[9px] font-semibold tracking-widest uppercase opacity-80">No.</span>
+            <span className="text-lg font-extrabold tabular-nums">{order.orderNumber ?? "—"}</span>
+          </span>
           <div className="min-w-0 flex-1">
-            <h3 className="truncate text-lg leading-tight font-bold text-zinc-900">
+            <h3 className="truncate text-lg leading-tight font-bold tracking-tight text-zinc-900">
               {order.customerName || "Guest"}
             </h3>
-            <p className="mt-0.5 text-xs text-zinc-500">{formatDate(order.createdAt)}</p>
+            <p className="mt-0.5 flex items-center gap-1 text-xs text-zinc-500">
+              <Clock className="h-3 w-3" aria-hidden="true" />
+              {formatDate(order.createdAt)}
+            </p>
           </div>
           <button
             type="button"
@@ -519,7 +580,7 @@ export default function AllOrders() {
               e.stopPropagation();
               handleDeleteClick(order);
             }}
-            className="-mt-1 -mr-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-zinc-400 transition-colors hover:bg-red-50 hover:text-red-600"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-zinc-400 transition-colors hover:bg-red-50 hover:text-red-600"
           >
             <Trash2 className="h-4 w-4" />
           </button>
@@ -528,52 +589,51 @@ export default function AllOrders() {
         {/* Status, payment, seat */}
         <div className="flex flex-wrap items-center gap-1.5">
           {statusChip(isDelivered)}
-          {infoChip(
-            order.paymentType === "CARD" ? (
-              <CreditCard className="h-3.5 w-3.5" aria-hidden="true" />
-            ) : (
-              <Banknote className="h-3.5 w-3.5" aria-hidden="true" />
-            ),
-            order.paymentType === "CARD" ? "Card" : "Cash"
-          )}
+          {paymentChip(order)}
           {order.Seating && infoChip(<MapPin className="h-3.5 w-3.5" aria-hidden="true" />, order.Seating)}
-          {isVIP && (
-            <span className="rounded-full bg-amber-400 px-2.5 py-0.5 text-xs font-bold text-amber-950">VIP</span>
-          )}
         </div>
 
-        {/* What they ordered */}
-        <div className="flex items-center gap-3 rounded-xl bg-zinc-50 p-2.5 ring-1 ring-zinc-100">
-          {thumbs.length > 0 ? (
-            <div className="flex shrink-0 -space-x-2">
-              {thumbs.map((src, i) => (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  key={i}
-                  src={src}
-                  alt=""
-                  className="h-10 w-10 rounded-lg object-cover ring-2 ring-white"
-                />
+        {/* What they ordered (no prices) */}
+        <div className="rounded-2xl bg-zinc-50 p-3 ring-1 ring-zinc-100">
+          <div className="flex items-center gap-3">
+            {thumbs.length > 0 ? (
+              <div className="flex shrink-0 -space-x-3">
+                {thumbs.map((src, i) => (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    key={i}
+                    src={src}
+                    alt=""
+                    className="h-11 w-11 rounded-xl object-cover ring-2 ring-white"
+                  />
+                ))}
+              </div>
+            ) : (
+              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-zinc-200 text-zinc-500">
+                <Package className="h-5 w-5" aria-hidden="true" />
+              </span>
+            )}
+            <ul className="min-w-0 flex-1 space-y-0.5">
+              {order.items.slice(0, 2).map((item) => (
+                <li key={item.id} className="truncate text-sm text-zinc-800">
+                  <span className="font-bold tabular-nums">{item.quantity}×</span>{" "}
+                  {item.product?.name ?? "Item no longer available"}
+                </li>
               ))}
-            </div>
-          ) : (
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-zinc-200 text-zinc-500">
-              <Package className="h-5 w-5" aria-hidden="true" />
-            </span>
-          )}
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-medium text-zinc-800">{itemNames || "No items"}</p>
-            <p className="text-xs text-zinc-500">
+              {order.items.length > 2 && (
+                <li className="text-xs font-medium text-zinc-500">+{order.items.length - 2} more</li>
+              )}
+            </ul>
+            <span className="shrink-0 rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-zinc-700 ring-1 ring-zinc-200 tabular-nums">
               {itemCount} item{itemCount === 1 ? "" : "s"}
-            </p>
+            </span>
           </div>
-          <span className="shrink-0 text-base font-bold text-zinc-900 tabular-nums">
-            ${order.subtotal.toFixed(2)}
-          </span>
         </div>
 
         <span
-          className={`mt-auto flex h-10 items-center justify-center rounded-xl border text-sm font-semibold transition-colors ${accent.outline}`}
+          className={`mt-auto flex h-11 items-center justify-center rounded-2xl text-sm font-semibold transition-colors ${
+            isDelivered ? `border ${accent.outline}` : accent.button
+          }`}
         >
           View order
         </span>
@@ -581,37 +641,25 @@ export default function AllOrders() {
     );
   };
 
-  // Full detail view for whichever order was tapped in the grid.
+  // Full detail view for whichever order was tapped (no prices).
   const renderExpandedOrderDetails = (order: Order) => {
     const isDelivered = order.status === "DELIVERED";
-    const isVIP = order.Seating?.toUpperCase().includes("VIP");
+    const itemCount = getTotalItems(order.items);
 
     return (
       <div className="flex flex-col gap-5">
         <div className="flex flex-wrap items-center gap-2">
           {statusChip(isDelivered, true)}
-          {infoChip(
-            order.paymentType === "CARD" ? (
-              <CreditCard className="h-4 w-4" aria-hidden="true" />
-            ) : (
-              <Banknote className="h-4 w-4" aria-hidden="true" />
-            ),
-            order.paymentType === "CARD" ? "Card" : "Cash",
-            true
-          )}
+          {paymentChip(order, true)}
           {order.Seating && infoChip(<MapPin className="h-4 w-4" aria-hidden="true" />, order.Seating, true)}
-          {isVIP && (
-            <span className="rounded-full bg-amber-400 px-3 py-1 text-sm font-bold text-amber-950">VIP</span>
-          )}
         </div>
 
-        <div className="divide-y divide-zinc-100 overflow-hidden rounded-xl border border-zinc-200 bg-white">
+        <div className="divide-y divide-zinc-100 overflow-hidden rounded-2xl border border-zinc-200 bg-white">
           {order.items.map((item) => {
             // A product can be deleted from the menu after an order was
             // placed for it, so `item.product` can be null. Guard every access.
             const productId = item.product?.id;
             const productName = item.product?.name ?? "Item no longer available";
-            const price = item.product?.price;
 
             return (
               <div key={item.id} className="flex items-center gap-3 p-3">
@@ -620,32 +668,23 @@ export default function AllOrders() {
                   <img
                     src={productImages[productId]}
                     alt={productName}
-                    className="h-16 w-16 shrink-0 rounded-lg object-cover"
+                    className="h-16 w-16 shrink-0 rounded-xl object-cover"
                   />
                 ) : (
-                  <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-lg bg-zinc-100 text-zinc-400">
+                  <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-xl bg-zinc-100 text-zinc-400">
                     <Package className="h-6 w-6" aria-hidden="true" />
                   </div>
                 )}
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-base font-semibold text-zinc-900">{productName}</p>
-                  <p className="mt-0.5 text-sm text-zinc-500">
-                    {item.quantity} × {price != null ? `$${price.toFixed(2)}` : "—"}
-                  </p>
-                </div>
-                {price != null && (
-                  <span className="shrink-0 text-base font-semibold text-zinc-900 tabular-nums">
-                    ${(price * item.quantity).toFixed(2)}
-                  </span>
-                )}
+                <p className="min-w-0 flex-1 truncate text-base font-semibold text-zinc-900">{productName}</p>
+                <span className="flex h-10 min-w-10 shrink-0 items-center justify-center rounded-xl bg-zinc-100 px-2 text-lg font-extrabold text-zinc-900 tabular-nums">
+                  ×{item.quantity}
+                </span>
               </div>
             );
           })}
           <div className="flex items-center justify-between bg-zinc-50 p-3">
-            <span className="text-sm font-medium text-zinc-600">
-              Total · {getTotalItems(order.items)} item{getTotalItems(order.items) === 1 ? "" : "s"}
-            </span>
-            <span className="text-xl font-bold text-zinc-900 tabular-nums">${order.subtotal.toFixed(2)}</span>
+            <span className="text-sm font-medium text-zinc-600">Total items</span>
+            <span className="text-lg font-bold text-zinc-900 tabular-nums">{itemCount}</span>
           </div>
         </div>
 
@@ -661,7 +700,7 @@ export default function AllOrders() {
           className={`flex h-14 w-full items-center justify-center gap-2 rounded-2xl text-lg font-semibold transition-colors disabled:opacity-60 ${
             isDelivered
               ? "border border-zinc-300 bg-white text-zinc-800 hover:bg-zinc-50"
-              : "bg-emerald-600 text-white hover:bg-emerald-700"
+              : "bg-emerald-600 text-white shadow-lg shadow-emerald-600/25 hover:bg-emerald-700"
           }`}
         >
           {updatingStatus === order.id ? (
@@ -682,11 +721,17 @@ export default function AllOrders() {
     );
   };
 
-  const salesTotal = deliveredOrders.reduce((sum, order) => sum + order.subtotal, 0);
+  // The order shown in the flashing new-order pop-up (oldest waiting first).
+  const alertOrder = alertQueue.length > 0 ? orders.find((o) => o.id === alertQueue[0]) ?? null : null;
+  const viewAlertOrder = () => {
+    const id = alertQueue[0];
+    acknowledgeNewOrders(); // stops the tone, the flashing and the NEW tags
+    if (id) setExpandedOrderId(id);
+  };
 
   const emptyState = (icon: React.ReactNode, title: string, subtitle: string) => (
     <div className="flex flex-col items-center justify-center py-20 text-center">
-      <span className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-white text-zinc-400 shadow-sm ring-1 ring-zinc-200">
+      <span className="mb-4 flex h-16 w-16 items-center justify-center rounded-3xl bg-white text-zinc-400 shadow-sm ring-1 ring-zinc-200">
         {icon}
       </span>
       <p className="text-base font-semibold text-zinc-800">{title}</p>
@@ -703,14 +748,33 @@ export default function AllOrders() {
   }
 
   return (
-    <div className="flex h-screen flex-col bg-zinc-50">
+    <div className={`flex h-dvh flex-col bg-gradient-to-b ${accent.pageGlow} via-zinc-50 to-zinc-50`}>
+      {/* Flashing keyframes for the new-order pop-up */}
+      <style>{`
+        @keyframes order-alert-flash {
+          0%, 100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.55), 0 25px 50px -12px rgba(0,0,0,0.35); border-color: rgb(220 38 38); }
+          50% { box-shadow: 0 0 0 18px rgba(220, 38, 38, 0), 0 25px 50px -12px rgba(0,0,0,0.35); border-color: rgb(254 202 202); }
+        }
+        @keyframes order-alert-backdrop {
+          0%, 100% { background-color: rgba(127, 29, 29, 0.55); }
+          50% { background-color: rgba(24, 24, 27, 0.55); }
+        }
+        @keyframes order-alert-bell {
+          0%, 100% { transform: rotate(0deg); }
+          20% { transform: rotate(-16deg); }
+          40% { transform: rotate(14deg); }
+          60% { transform: rotate(-10deg); }
+          80% { transform: rotate(6deg); }
+        }
+      `}</style>
+
       {/* Header */}
-      <header className="flex h-14 shrink-0 items-center gap-3 border-b border-zinc-200 bg-white">
-        <div className="flex w-full items-center justify-between gap-2 px-3 md:gap-3 md:px-5">
+      <header className="flex h-14 shrink-0 items-center gap-3 border-b border-zinc-200/70 bg-white/80 backdrop-blur">
+        <div className="flex w-full items-center justify-between gap-2 px-4 md:gap-3 md:px-5">
           <div className="flex min-w-0 items-center gap-2 md:gap-3">
             <SidebarTrigger className="-ml-1 hidden text-zinc-500 hover:text-zinc-900 sm:flex" />
             <Separator orientation="vertical" className="hidden h-4 bg-zinc-200 sm:block" />
-            <Breadcrumb className="min-w-0">
+            <Breadcrumb className="hidden min-w-0 sm:block">
               <BreadcrumbList>
                 <BreadcrumbItem className="hidden md:block">
                   <BreadcrumbLink href="/dashboard" className="text-sm text-zinc-500 hover:text-zinc-900">
@@ -723,36 +787,33 @@ export default function AllOrders() {
                 </BreadcrumbItem>
               </BreadcrumbList>
             </Breadcrumb>
+            <h1 className="text-xl font-extrabold tracking-tight text-zinc-900 sm:hidden">Orders</h1>
           </div>
 
           <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2 text-xs text-zinc-500">
+            <div className="flex items-center gap-2 rounded-full bg-white px-2.5 py-1 text-xs font-medium text-zinc-600 ring-1 ring-zinc-200">
               <span className="relative flex h-2 w-2" aria-hidden="true">
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
                 <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
               </span>
-              <span className="hidden sm:inline">Live · updated {getTimeSinceLastFetch()}</span>
-              <span className="sm:hidden">{getTimeSinceLastFetch()}</span>
+              {hasUnacknowledgedOrder ? (
+                <span className="font-semibold text-red-600">New order!</span>
+              ) : (
+                <>
+                  <span className="hidden sm:inline">Live · updated {getTimeSinceLastFetch()}</span>
+                  <span className="sm:hidden">Live</span>
+                </>
+              )}
             </div>
             <Link
               href="/all-orders-enlarged"
-              className={`inline-flex h-9 items-center rounded-lg px-3 text-sm font-semibold transition-colors ${accent.button}`}
+              className={`hidden h-9 items-center rounded-xl px-3 text-sm font-semibold transition-colors sm:inline-flex ${accent.button}`}
             >
               Enlarge
             </Link>
           </div>
         </div>
       </header>
-
-      {hasUnacknowledgedOrder && (
-        <button
-          onClick={acknowledgeNewOrders}
-          className="flex w-full shrink-0 animate-pulse items-center justify-center gap-2 bg-red-600 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-red-700 md:text-base"
-        >
-          <Bell className="h-5 w-5" />
-          New order received — tap to acknowledge
-        </button>
-      )}
 
       <div className="flex-1 overflow-hidden">
         {loading ? (
@@ -773,28 +834,27 @@ export default function AllOrders() {
           emptyState(<ShoppingBag className="h-8 w-8" />, "No orders yet", "New orders show up here automatically.")
         ) : (
           <Tabs value={activeTab} onValueChange={setActiveTab} className="flex h-full flex-col gap-0">
-            {/* Stats + Pending / Ready switch, across the top */}
-            <div className="shrink-0 border-b border-zinc-200 bg-white px-3 py-3 md:px-6">
+            {/* Counts + Pending / Ready switch */}
+            <div className="shrink-0 px-4 pt-4 pb-2 md:px-6">
               <div className="mx-auto flex max-w-7xl flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-                <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3 lg:flex">
+                <div className="grid grid-cols-3 gap-2 sm:gap-3 lg:flex">
                   {[
-                    { label: "Total", value: String(orders.length), tone: "text-zinc-900" },
-                    { label: "Pending", value: String(pendingOrders.length), tone: "text-amber-700" },
-                    { label: "Ready", value: String(deliveredOrders.length), tone: "text-emerald-700" },
-                    { label: "Sales", value: `$${salesTotal.toFixed(2)}`, tone: "text-zinc-900" },
+                    { label: "Total", value: orders.length, box: "bg-white ring-zinc-200", tone: "text-zinc-900" },
+                    { label: "Pending", value: pendingOrders.length, box: "bg-amber-50 ring-amber-200", tone: "text-amber-700" },
+                    { label: "Ready", value: deliveredOrders.length, box: "bg-emerald-50 ring-emerald-200", tone: "text-emerald-700" },
                   ].map((stat) => (
-                    <div key={stat.label} className="flex min-w-0 items-baseline justify-between gap-2 rounded-xl bg-zinc-50 px-3 py-1.5 ring-1 ring-zinc-200 sm:block sm:py-2 lg:min-w-28">
-                      <div className="text-[11px] font-medium tracking-wide text-zinc-500 uppercase">{stat.label}</div>
-                      <div className={`truncate text-lg font-bold tabular-nums ${stat.tone}`}>{stat.value}</div>
+                    <div key={stat.label} className={`rounded-2xl px-3 py-2.5 ring-1 lg:min-w-32 ${stat.box}`}>
+                      <div className="text-[11px] font-semibold tracking-wide text-zinc-500 uppercase">{stat.label}</div>
+                      <div className={`text-2xl leading-tight font-extrabold tabular-nums ${stat.tone}`}>{stat.value}</div>
                     </div>
                   ))}
                 </div>
-                <TabsList className="grid h-11 w-full grid-cols-2 rounded-xl bg-zinc-100 p-1 lg:w-80">
-                  <TabsTrigger value="pending" className={`h-9 rounded-lg text-sm font-semibold ${accent.tabActive}`}>
-                    Pending ({pendingOrders.length})
+                <TabsList className="grid h-12 w-full grid-cols-2 rounded-2xl bg-zinc-200/70 p-1 lg:w-80">
+                  <TabsTrigger value="pending" className={`h-10 rounded-xl text-sm font-semibold text-zinc-600 ${accent.tabActive}`}>
+                    Pending · {pendingOrders.length}
                   </TabsTrigger>
-                  <TabsTrigger value="delivered" className={`h-9 rounded-lg text-sm font-semibold ${accent.tabActive}`}>
-                    Ready ({deliveredOrders.length})
+                  <TabsTrigger value="delivered" className={`h-10 rounded-xl text-sm font-semibold text-zinc-600 ${accent.tabActive}`}>
+                    Ready · {deliveredOrders.length}
                   </TabsTrigger>
                 </TabsList>
               </div>
@@ -803,7 +863,7 @@ export default function AllOrders() {
             <div className="min-h-0 flex-1 overflow-hidden">
               <TabsContent value="pending" className="m-0 h-full">
                 <ScrollArea className="h-full">
-                  <div className="mx-auto max-w-7xl px-3 py-4 pb-24 md:px-6 md:py-6 md:pb-6">
+                  <div className="mx-auto max-w-7xl px-4 pt-3 pb-28 md:px-6 md:pb-8">
                     {pendingOrders.length === 0 ? (
                       emptyState(<Clock className="h-8 w-8" />, "No pending orders", "Everything is ready.")
                     ) : (
@@ -817,7 +877,7 @@ export default function AllOrders() {
 
               <TabsContent value="delivered" className="m-0 h-full">
                 <ScrollArea className="h-full">
-                  <div className="mx-auto max-w-7xl px-3 py-4 pb-24 md:px-6 md:py-6 md:pb-6">
+                  <div className="mx-auto max-w-7xl px-4 pt-3 pb-28 md:px-6 md:pb-8">
                     {deliveredOrders.length === 0 ? (
                       emptyState(<CheckCircle2 className="h-8 w-8" />, "No ready orders", "Orders show up here once they're marked ready.")
                     ) : (
@@ -833,9 +893,99 @@ export default function AllOrders() {
         )}
       </div>
 
+      {/* NEW ORDER pop-up: flashes with a repeating tone until staff tap
+          "View order". It can't be closed any other way. */}
+      {alertQueue.length > 0 && (
+        <div
+          className="fixed inset-0 z-[60] flex items-end justify-center p-3 backdrop-blur-sm sm:items-center sm:p-6"
+          style={{ animation: "order-alert-backdrop 1s ease-in-out infinite" }}
+        >
+          <div
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="new-order-title"
+            className="w-full max-w-md rounded-[28px] border-4 bg-white p-5 sm:p-6"
+            style={{ animation: "order-alert-flash 1s ease-in-out infinite" }}
+          >
+            <div className="flex items-center gap-3">
+              <span
+                className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-red-600 text-white shadow-lg shadow-red-600/40"
+                style={{ animation: "order-alert-bell 1s ease-in-out infinite" }}
+              >
+                <Bell className="h-6 w-6" aria-hidden="true" />
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-bold tracking-widest text-red-600 uppercase">New order</p>
+                <h2 id="new-order-title" className="truncate text-2xl leading-tight font-extrabold tracking-tight text-zinc-900">
+                  {alertOrder ? (
+                    <>
+                      {alertOrder.orderNumber != null && (
+                        <span className="text-zinc-400">#{alertOrder.orderNumber} </span>
+                      )}
+                      {alertOrder.customerName || "Guest"}
+                    </>
+                  ) : (
+                    "Incoming…"
+                  )}
+                </h2>
+              </div>
+            </div>
+
+            {alertOrder && (
+              <>
+                <div className="mt-4 flex flex-wrap items-center gap-1.5">
+                  {alertOrder.Seating &&
+                    infoChip(<MapPin className="h-4 w-4" aria-hidden="true" />, alertOrder.Seating, true)}
+                  {paymentChip(alertOrder, true)}
+                </div>
+                <ul className="mt-4 space-y-2 rounded-2xl bg-zinc-50 p-3 ring-1 ring-zinc-100">
+                  {alertOrder.items.slice(0, 4).map((item) => {
+                    const src = item.product?.id ? productImages[item.product.id] : undefined;
+                    return (
+                      <li key={item.id} className="flex items-center gap-3">
+                        {src ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={src} alt="" className="h-10 w-10 shrink-0 rounded-lg object-cover" />
+                        ) : (
+                          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-zinc-200 text-zinc-500">
+                            <Package className="h-5 w-5" aria-hidden="true" />
+                          </span>
+                        )}
+                        <span className="min-w-0 flex-1 truncate text-base font-semibold text-zinc-900">
+                          {item.product?.name ?? "Item no longer available"}
+                        </span>
+                        <span className="text-lg font-extrabold text-zinc-900 tabular-nums">×{item.quantity}</span>
+                      </li>
+                    );
+                  })}
+                  {alertOrder.items.length > 4 && (
+                    <li className="text-sm font-medium text-zinc-500">+{alertOrder.items.length - 4} more</li>
+                  )}
+                </ul>
+              </>
+            )}
+
+            {alertQueue.length > 1 && (
+              <p className="mt-3 text-center text-sm font-semibold text-red-700">
+                +{alertQueue.length - 1} more new order{alertQueue.length - 1 === 1 ? "" : "s"} waiting
+              </p>
+            )}
+
+            <button
+              type="button"
+              autoFocus
+              onClick={viewAlertOrder}
+              className={`mt-5 flex h-16 w-full items-center justify-center gap-2 rounded-2xl text-xl font-bold shadow-lg transition-colors focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-red-300 ${accent.alertButton}`}
+            >
+              View order
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Delete Dialog */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <AlertDialogContent className="w-[calc(100%-2rem)] max-w-lg border-zinc-200 bg-white">
+        <AlertDialogContent className="w-[calc(100%-2rem)] max-w-lg rounded-3xl border-zinc-200 bg-white">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-zinc-900">Delete order</AlertDialogTitle>
             <AlertDialogDescription className="text-zinc-600">
@@ -873,15 +1023,15 @@ export default function AllOrders() {
           if (!open) setExpandedOrderId(null);
         }}
       >
-        <DialogContent className="max-h-[90vh] w-[calc(100%-2rem)] max-w-2xl overflow-y-auto border-zinc-200 bg-zinc-50">
+        <DialogContent className="max-h-[90vh] w-[calc(100%-1.5rem)] max-w-2xl overflow-y-auto rounded-3xl border-zinc-200 bg-zinc-50">
           <DialogHeader>
-            <DialogTitle className="flex flex-wrap items-center gap-2 text-xl text-zinc-900">
+            <DialogTitle className="flex flex-wrap items-center gap-2 text-left text-xl text-zinc-900">
               {expandedOrder?.orderNumber != null && (
-                <span className={`rounded-lg px-2.5 py-1 text-base font-bold tabular-nums ${accent.chip}`}>
+                <span className={`rounded-xl px-2.5 py-1 text-base font-bold tabular-nums ${accent.ticket}`}>
                   #{expandedOrder.orderNumber}
                 </span>
               )}
-              <span>{expandedOrder?.customerName || "Guest"}</span>
+              <span className="font-extrabold tracking-tight">{expandedOrder?.customerName || "Guest"}</span>
               {expandedOrder && (
                 <span className="text-sm font-normal text-zinc-500">{formatDate(expandedOrder.createdAt)}</span>
               )}

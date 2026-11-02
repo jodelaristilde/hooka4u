@@ -471,7 +471,6 @@ export default function AllOrdersEnlarged() {
   // just opens that popup ("View Order").
   const renderOrderCard = (order: Order) => {
     const isDelivered = order.status === "DELIVERED";
-    const isVIP = order.Seating?.toUpperCase().includes("VIP");
 
     const openOrder = () => {
       acknowledgeNewOrders();
@@ -506,11 +505,6 @@ export default function AllOrdersEnlarged() {
                 <span className="text-sm text-muted-foreground shrink-0">
                   {formatDate(order.createdAt)}
                 </span>
-                {isVIP && (
-                  <Badge className="bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-400 text-xs px-1.5 py-0 border-amber-300 dark:border-amber-800 shrink-0">
-                    VIP
-                  </Badge>
-                )}
               </div>
             </div>
             <Button
@@ -586,17 +580,9 @@ export default function AllOrdersEnlarged() {
   // images included, no prices anywhere on this screen.
   const renderExpandedOrderDetails = (order: Order) => {
     const isDelivered = order.status === "DELIVERED";
-    const isVIP = order.Seating?.toUpperCase().includes("VIP");
 
     return (
       <div className="flex flex-col gap-5">
-        {isVIP && (
-          <div className="flex items-center gap-2.5 flex-wrap">
-            <Badge className="bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-400 text-sm px-2.5 py-1 border-amber-300 dark:border-amber-800">
-              VIP
-            </Badge>
-          </div>
-        )}
 
         <div className="flex items-center gap-2.5 flex-wrap">
           <Badge
