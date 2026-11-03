@@ -76,6 +76,15 @@ export async function POST(request: Request) {
         });
         return NextResponse.json({ success: true, step: "users" });
 
+      case "settings":
+        // Washup turns "Print ticket when an order is Ready" back off for
+        // this site, so the next event starts without auto-printing.
+        await prisma.siteSetting.updateMany({
+          where: { site },
+          data: { printTickets: false },
+        });
+        return NextResponse.json({ success: true, step: "settings" });
+
       default:
         return NextResponse.json({ message: "Invalid step" }, { status: 400 });
     }
