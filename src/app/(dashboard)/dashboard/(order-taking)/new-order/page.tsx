@@ -231,8 +231,8 @@ const handleConfirmOrder = async () => {
   }
 
   if (!seating.trim()) {
-    toast.info("Seating Location is required", {
-      description: "Please enter a seating location before placing the order.",
+    toast.info("Where are you? is required", {
+      description: "Please enter your table, booth or section before placing the order.",
       action: {
         label: "Close",
         onClick: () => console.log("Toast Closed"),
@@ -670,7 +670,7 @@ return (
 
               <div className="space-y-2">
                 <Label htmlFor="seating" className="text-sm font-medium text-zinc-900">
-                  Seating Location *
+                  Where are you? *
                 </Label>
                 <Input
                   id="seating"
@@ -902,7 +902,7 @@ return (
 
               <div className="space-y-2">
                 <Label htmlFor="seating" className="text-sm font-medium">
-                  Seating Location *
+                  Where are you? *
                 </Label>
                 <Input
                   id="seating"

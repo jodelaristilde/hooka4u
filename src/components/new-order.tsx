@@ -200,8 +200,8 @@ export default function NewOrder({ onOrderComplete, onBack }: NewOrderProps) {
     }
 
     if (!seating.trim()) {
-      toast.info("Seating Location is required", {
-        description: "Please enter a seating location before placing the order.",
+      toast.info("Where are you? is required", {
+        description: "Please enter your table, booth or section before placing the order.",
         action: {
           label: "Close",
           onClick: () => console.log("Toast Closed"),
@@ -601,11 +601,11 @@ export default function NewOrder({ onOrderComplete, onBack }: NewOrderProps) {
 
                 <div className="space-y-2">
                   <Label htmlFor="seating" className="text-sm font-medium text-zinc-900">
-                    Seating Location *
+                    Where are you? *
                   </Label>
                   <Input
                     id="seating"
-                    placeholder="Enter seating location"
+                    placeholder="Table, booth or section"
                     value={seating}
                     onChange={(e) => setSeating(e.target.value)}
                     className={`h-9 border text-black placeholder:text-zinc-500 text-sm transition-colors ${
@@ -845,11 +845,11 @@ export default function NewOrder({ onOrderComplete, onBack }: NewOrderProps) {
 
               <div className="space-y-2">
                 <Label htmlFor="seating-mobile" className="text-sm font-medium text-zinc-900">
-                  Seating Location *
+                  Where are you? *
                 </Label>
                 <Input
                   id="seating-mobile"
-                  placeholder="Enter seating location"
+                  placeholder="Table, booth or section"
                   value={seating}
                   onChange={(e) => setSeating(e.target.value)}
                   className={`h-9 border text-zinc-900 placeholder:text-zinc-500 text-sm transition-colors ${

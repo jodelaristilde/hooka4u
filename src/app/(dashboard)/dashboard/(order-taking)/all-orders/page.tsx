@@ -12,6 +12,7 @@ import {
   Bell,
   CheckCircle2,
   AlertCircle,
+  Printer,
 } from "lucide-react";
 import {
   Breadcrumb,
@@ -46,6 +47,7 @@ import Link from "next/link";
 import { useBrand } from "@/lib/use-brand";
 import { useSession } from "next-auth/react";
 import { useShiftMode } from "@/lib/use-shift-mode";
+import { printOrderTicket } from "@/lib/print-ticket";
 import { buildNightReport, downloadNightReport, todaysOrders as ordersSinceMidnight } from "@/lib/night-report";
 
 interface OrderItem {
@@ -88,6 +90,7 @@ export default function AllOrders() {
   // order as already seen. Any pending order NOT in here alerts.
   const [ackedIds, setAckedIds] = useState<Record<string, number>>({});
   const [ackedLoaded, setAckedLoaded] = useState(false);
+  const [printTickets, setPrintTickets] = useState(false);
   const [productImages, setProductImages] = useState<Record<string, string>>(
     {}
   );
@@ -155,6 +158,11 @@ export default function AllOrders() {
 
     fetchOrders();
     fetchProductImages();
+    // Admin switch: print a ticket when an order is marked Ready.
+    fetch("/api/settings", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => setPrintTickets(Boolean(d?.printTickets)))
+      .catch(() => {});
     requestNotificationPermission();
 
     // Browsers block audio from playing automatically until the page has
@@ -468,6 +476,9 @@ export default function AllOrders() {
           o.id === order.id ? { ...o, status: newStatus } : o
         )
       );
+      if (newStatus === "DELIVERED" && printTickets) {
+        printOrderTicket(order, brand.name);
+      }
     } catch (err) {
       console.error("Error updating order status:", err);
       setError(
@@ -818,10 +829,20 @@ export default function AllOrders() {
           ) : (
             <>
               <CheckCircle2 className="h-5 w-5" />
-              Mark Ready
+              {printTickets ? "Mark Ready & print" : "Mark Ready"}
             </>
           )}
         </button>
+        {printTickets && (
+          <button
+            type="button"
+            onClick={() => printOrderTicket(order, brand.name)}
+            className="flex h-12 w-full items-center justify-center gap-2 rounded-2xl border border-zinc-300 bg-white text-base font-semibold text-zinc-800 transition-colors hover:bg-zinc-50"
+          >
+            <Printer className="h-5 w-5" />
+            Print ticket
+          </button>
+        )}
       </div>
     );
   };

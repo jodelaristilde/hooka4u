@@ -126,3 +126,11 @@ model OrderItem {
   createdAt DateTime? @default(now())
   updatedAt DateTime? @updatedAt
 }
+
+// Per-site switches the admin can turn on/off (one record per site).
+model SiteSetting {
+  id           String   @id @default(uuid()) @map("_id")
+  site         String
+  printTickets Boolean  @default(false)
+  updatedAt    DateTime @updatedAt
+}

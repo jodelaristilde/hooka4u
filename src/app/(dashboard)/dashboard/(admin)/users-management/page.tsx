@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Plus, Trash2, Loader2, Eye, EyeOff, X, UserPlus, RotateCcw, CheckCircle2, History, Download, Zap } from "lucide-react"
+import { Plus, Trash2, Loader2, Eye, EyeOff, X, UserPlus, RotateCcw, CheckCircle2, History, Download, Zap, Printer } from "lucide-react"
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -189,6 +189,39 @@ export default function UserManagement() {
       toast.error(err instanceof Error ? err.message : "Couldn't move photos", { id: toastId, duration: 15000 })
     } finally {
       setIsMovingPhotos(false)
+    }
+  }
+
+  // "Print ticket when Ready": optional, off by default. When on, marking
+  // an order Ready on All Orders / the TV screen opens the print sheet
+  // with a small ticket (no prices) to attach to the order.
+  const [printTickets, setPrintTickets] = useState<boolean | null>(null)
+  const [isSavingPrint, setIsSavingPrint] = useState(false)
+
+  useEffect(() => {
+    fetch("/api/settings", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => setPrintTickets(Boolean(d?.printTickets)))
+      .catch(() => setPrintTickets(false))
+  }, [])
+
+  const togglePrintTickets = async () => {
+    const next = !printTickets
+    setIsSavingPrint(true)
+    try {
+      const res = await fetch("/api/settings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ printTickets: next }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data?.error || "Couldn't save")
+      setPrintTickets(Boolean(data.printTickets))
+      toast.success(next ? "Tickets will print when an order is Ready" : "Ticket printing is off")
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Couldn't save")
+    } finally {
+      setIsSavingPrint(false)
     }
   }
 
@@ -787,6 +820,37 @@ export default function UserManagement() {
                   </Button>
                 </div>
               </div>
+
+              {printTickets !== null && (
+                <div className="mb-6 flex items-center gap-4 rounded-2xl border border-border bg-card p-4 shadow-sm">
+                  <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                    <Printer className="h-5 w-5" />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="font-semibold text-foreground">Print ticket when an order is Ready</p>
+                    <p className="text-sm text-muted-foreground">
+                      Optional. Staff tap Mark Ready and a ticket (no prices) prints to attach to the order.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={printTickets}
+                    aria-label="Print ticket when an order is Ready"
+                    onClick={togglePrintTickets}
+                    disabled={isSavingPrint}
+                    className={`relative h-8 w-14 shrink-0 rounded-full transition-colors disabled:opacity-60 ${
+                      printTickets ? "bg-emerald-600" : "bg-zinc-300"
+                    }`}
+                  >
+                    <span
+                      className={`absolute top-1 left-1 h-6 w-6 rounded-full bg-white shadow transition-transform ${
+                        printTickets ? "translate-x-6" : ""
+                      }`}
+                    />
+                  </button>
+                </div>
+              )}
 
               {loading ? (
                 <div className="flex flex-col items-center justify-center h-64">
