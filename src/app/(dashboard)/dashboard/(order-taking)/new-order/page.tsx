@@ -220,8 +220,8 @@ const handleConfirmOrder = async () => {
   }
 
   if (!paymentType) {
-    toast.info("Payment type is required", {
-      description: "Please select a payment type before placing the order.",
+    toast.info("How you paying is required", {
+      description: "Please choose Cash or Credit card before placing the order.",
       action: {
         label: "Close",
         onClick: () => console.log("Toast Closed"),
@@ -231,8 +231,8 @@ const handleConfirmOrder = async () => {
   }
 
   if (!seating.trim()) {
-    toast.info("Seating Location is required", {
-      description: "Please enter a seating location before placing the order.",
+    toast.info("Where are you? is required", {
+      description: "Please enter your table, booth or section before placing the order.",
       action: {
         label: "Close",
         onClick: () => console.log("Toast Closed"),
@@ -639,7 +639,7 @@ return (
               </div>
 
               <div className="space-y-2">
-                <Label className="text-sm font-medium text-zinc-900">Payment Type *</Label>
+                <Label className="text-sm font-medium text-zinc-900">How you paying? *</Label>
                 <RadioGroup value={paymentType} onValueChange={(value) => setPaymentType(value as "CASH" | "CARD")}>
                   <div
                     className={`flex items-center space-x-2 rounded-md border px-3 py-2 transition-colors ${
@@ -670,7 +670,7 @@ return (
 
               <div className="space-y-2">
                 <Label htmlFor="seating" className="text-sm font-medium text-zinc-900">
-                  Seating Location *
+                  Where are you? *
                 </Label>
                 <Input
                   id="seating"
@@ -871,7 +871,7 @@ return (
               </div>
 
               <div className="space-y-2">
-                <Label className="text-sm font-medium">Payment Type *</Label>
+                <Label className="text-sm font-medium">How you paying? *</Label>
                 <RadioGroup value={paymentType} onValueChange={(value) => setPaymentType(value as "CASH" | "CARD")}>
                   <div
                     className={`flex items-center space-x-2 rounded-md border px-3 py-2 transition-colors ${
@@ -902,7 +902,7 @@ return (
 
               <div className="space-y-2">
                 <Label htmlFor="seating" className="text-sm font-medium">
-                  Seating Location *
+                  Where are you? *
                 </Label>
                 <Input
                   id="seating"
