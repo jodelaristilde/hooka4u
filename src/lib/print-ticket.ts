@@ -3,7 +3,12 @@
 // Prints a small "READY" ticket for one order (no prices) so staff can
 // attach it to the order. Uses the page's own print (window.print) with a
 // print-only block, so it works on iPad/iPhone AirPrint, Android and
-// desktop printers without pop-ups.
+// desktop printers without pop-ups. The ticket is centered across the
+// paper, so it lines up on a receipt printer or a full-size printer.
+//
+// Fully automatic printing (no print sheet) is only possible on a computer
+// running Chrome with the --kiosk-printing flag, which sends straight to the
+// default printer. Phones and iPads always show the print sheet first.
 
 export interface TicketOrder {
   orderNumber?: number | null;
@@ -28,11 +33,11 @@ export function printOrderTicket(order: TicketOrder, brandName: string) {
   style.textContent = `
     #order-ticket-print { display: none; }
     @media print {
-      @page { margin: 6mm; }
+      @page { margin: 4mm; }
       html, body { background: #fff !important; height: auto !important; overflow: visible !important; }
       body > *:not(#order-ticket-print) { display: none !important; }
       #order-ticket-print {
-        display: block !important; width: 72mm;
+        display: block !important; width: 72mm; max-width: 100%; margin: 0 auto;
         font-family: -apple-system, Helvetica, Arial, sans-serif; color: #000; background: #fff;
       }
       #order-ticket-print .t-brand { font-size: 12px; text-transform: uppercase; letter-spacing: 2px; text-align: center; }
