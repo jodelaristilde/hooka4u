@@ -92,10 +92,11 @@ export default function AllOrdersEnlarged() {
   const [activeTab, setActiveTab] = useState("pending");
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [hasUnacknowledgedOrder, setHasUnacknowledgedOrder] = useState(false);
-  const [unacknowledgedOrderIds, setUnacknowledgedOrderIds] = useState<
-    Set<string>
-  >(new Set());
+  // Orders this device already accepted (saved, so a reload or a sleeping
+  // TV never forgets — and never silently skips a new one).
+  const [ackedIds, setAckedIds] = useState<Record<string, number>>({});
+  const [ackedLoaded, setAckedLoaded] = useState(false);
+  const alertedRef = useRef<Set<string>>(new Set());
   const [productImages, setProductImages] = useState<Record<string, string>>(
     {}
   );
@@ -208,6 +209,49 @@ export default function AllOrdersEnlarged() {
     };
   }, []);
 
+  const ackStorageKey = `orders-acked:${brand.site}`;
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem(ackStorageKey);
+      const parsed: Record<string, number> = raw ? JSON.parse(raw) : {};
+      const cutoff = Date.now() - 24 * 60 * 60 * 1000;
+      const kept: Record<string, number> = {};
+      for (const [id, at] of Object.entries(parsed)) if (typeof at === "number" && at > cutoff) kept[id] = at;
+      setAckedIds(kept);
+    } catch {
+      setAckedIds({});
+    }
+    setAckedLoaded(true);
+  }, [ackStorageKey]);
+
+  // Accept one order: stops its alert. Other new orders keep alerting.
+  const ackOrder = (id: string) => {
+    setAckedIds((prev) => {
+      if (prev[id]) return prev;
+      const next = { ...prev, [id]: Date.now() };
+      try {
+        window.localStorage.setItem(ackStorageKey, JSON.stringify(next));
+      } catch {
+        // Storage blocked: still works until the page reloads.
+      }
+      return next;
+    });
+  };
+
+  // When the TV/tablet wakes up or the tab comes back, check right away.
+  useEffect(() => {
+    const onWake = () => {
+      if (document.visibilityState === "visible") fetchOrdersQuietly();
+    };
+    document.addEventListener("visibilitychange", onWake);
+    window.addEventListener("focus", onWake);
+    return () => {
+      document.removeEventListener("visibilitychange", onWake);
+      window.removeEventListener("focus", onWake);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const enterFullscreen = async () => {
     try {
       if (containerRef.current && !document.fullscreenElement) {
@@ -239,8 +283,6 @@ export default function AllOrdersEnlarged() {
   };
 
   const handleNewOrder = (newOrder: Order) => {
-    startAlertLoop();
-
     if ("Notification" in window && Notification.permission === "granted") {
       new Notification("🔔 New Order Received!", {
         body: `Order from ${newOrder.customerName || "Guest"}`,
@@ -249,11 +291,6 @@ export default function AllOrdersEnlarged() {
         tag: newOrder.id,
       });
     }
-
-    // Keep this order visually flagged (pulsing, red border) until
-    // someone taps its card to acknowledge it — not just for a few
-    // seconds, since the sound keeps playing until then too.
-    setUnacknowledgedOrderIds((prev) => new Set(prev).add(newOrder.id));
   };
 
   const playNotificationSound = () => {
@@ -270,9 +307,6 @@ export default function AllOrdersEnlarged() {
   // instead of just chiming once and possibly going unnoticed on a TV
   // display nobody's looking at yet.
   const startAlertLoop = () => {
-    setHasUnacknowledgedOrder(true);
-    playNotificationSound();
-
     if (alertLoopRef.current) return; // already looping
 
     alertLoopRef.current = setInterval(() => {
@@ -280,13 +314,11 @@ export default function AllOrdersEnlarged() {
     }, 2500);
   };
 
-  const acknowledgeNewOrders = () => {
+  const stopAlertLoop = () => {
     if (alertLoopRef.current) {
       clearInterval(alertLoopRef.current);
       alertLoopRef.current = null;
     }
-    setHasUnacknowledgedOrder(false);
-    setUnacknowledgedOrderIds(new Set());
   };
 
   // Fetch the product catalog's images once (it rarely changes) and build
@@ -348,14 +380,9 @@ export default function AllOrdersEnlarged() {
       const data = await response.json();
       const fetchedOrders = Array.isArray(data) ? data : [];
 
+      // New-order alerts are worked out from the order list itself (see
+      // alertQueue below), so nothing is missed between refreshes.
       const currentOrderIds = new Set(fetchedOrders.map((o: Order) => o.id));
-      const newOrders = fetchedOrders.filter(
-        (order: Order) => !previousOrderIdsRef.current.has(order.id)
-      );
-
-      if (newOrders.length > 0) {
-        newOrders.forEach((order: Order) => handleNewOrder(order));
-      }
 
       setOrders(fetchedOrders);
       previousOrderIdsRef.current = currentOrderIds;
@@ -476,6 +503,43 @@ export default function AllOrdersEnlarged() {
   const deliveredOrders = orders.filter((o) => o.status === "DELIVERED");
   const expandedOrder = orders.find((o) => o.id === expandedOrderId) ?? null;
 
+  // Every order not yet accepted on this device (last 6 hours, not Ready)
+  // alerts, oldest first. Accepting one leaves the rest alerting.
+  const nowMs = lastFetchTime?.getTime() ?? 0;
+  const alertQueue = ackedLoaded
+    ? orders
+        .filter(
+          (o) =>
+            o.status !== "DELIVERED" &&
+            !ackedIds[o.id] &&
+            nowMs - new Date(o.createdAt).getTime() < 6 * 60 * 60 * 1000
+        )
+        .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
+        .map((o) => o.id)
+    : [];
+  const alertKey = alertQueue.join(",");
+  useEffect(() => {
+    if (!alertQueue.length) {
+      stopAlertLoop();
+      return;
+    }
+    const fresh = alertQueue.filter((id) => !alertedRef.current.has(id));
+    if (fresh.length) {
+      fresh.forEach((id) => alertedRef.current.add(id));
+      playNotificationSound();
+      fresh.forEach((id) => {
+        const o = orders.find((x) => x.id === id);
+        if (o) handleNewOrder(o);
+      });
+    }
+    startAlertLoop();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [alertKey]);
+
+  const acknowledgeOldest = () => {
+    if (alertQueue[0]) ackOrder(alertQueue[0]);
+  };
+
   // Bigger, easy-to-read tile for the grid — same card design as the main
   // dashboard's All Orders board, just without any price. Marking an order
   // ready only happens from the full detail popup — this card's button
@@ -483,8 +547,9 @@ export default function AllOrdersEnlarged() {
   const renderOrderCard = (order: Order) => {
     const isDelivered = order.status === "DELIVERED";
 
+    const isNew = alertQueue.includes(order.id);
     const openOrder = () => {
-      acknowledgeNewOrders();
+      ackOrder(order.id);
       setExpandedOrderId(order.id);
     };
 
@@ -492,10 +557,19 @@ export default function AllOrdersEnlarged() {
       <Card
         key={order.id}
         onClick={openOrder}
-        className={`group bg-white shadow-sm hover:shadow-md border hover:border-zinc-300 transition-all duration-200 cursor-pointer gap-2 py-4 w-full sm:w-80 ${
-          unacknowledgedOrderIds.has(order.id)
-            ? "animate-pulse border-red-500 ring-2 ring-red-500/50"
-            : "border-zinc-200"
+        style={
+          isDelivered
+            ? undefined
+            : {
+                animation: `${isNew ? "order-card-flash-new" : "order-card-flash"} 1.4s ease-in-out infinite`,
+              }
+        }
+        className={`group bg-white shadow-sm hover:shadow-md border transition-all duration-200 cursor-pointer gap-2 py-4 w-full sm:w-80 ${
+          isNew
+            ? "border-red-500 border-2"
+            : isDelivered
+              ? "border-zinc-200 hover:border-zinc-300"
+              : "border-amber-400 border-2"
         }`}
       >
         <CardHeader className="px-4">
@@ -788,13 +862,29 @@ export default function AllOrdersEnlarged() {
         </div>
       )}
 
-      {hasUnacknowledgedOrder && (
+      <style>{`
+        @keyframes order-card-flash {
+          0%, 100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.55), 0 8px 24px -12px rgba(0,0,0,0.12); }
+          50% { box-shadow: 0 0 0 6px rgba(245, 158, 11, 0.12), 0 8px 24px -12px rgba(0,0,0,0.12); }
+        }
+        @keyframes order-card-flash-new {
+          0%, 100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.6), 0 8px 24px -12px rgba(0,0,0,0.12); }
+          50% { box-shadow: 0 0 0 8px rgba(220, 38, 38, 0.15), 0 8px 24px -12px rgba(0,0,0,0.12); }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          [style*="order-card-flash"] { animation-duration: 3s !important; }
+        }
+      `}</style>
+
+      {alertQueue.length > 0 && (
         <button
-          onClick={acknowledgeNewOrders}
+          onClick={acknowledgeOldest}
           className="flex w-full items-center justify-center gap-2 bg-red-600 hover:bg-red-700 text-white text-sm md:text-base font-semibold py-3 px-4 animate-pulse transition-colors shrink-0"
         >
           <Bell className="w-5 h-5" />
-          New order received — tap to acknowledge
+          {alertQueue.length > 1
+            ? `${alertQueue.length} new orders — tap a card (or here) to accept`
+            : "New order received — tap to accept"}
         </button>
       )}
 

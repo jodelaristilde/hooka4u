@@ -83,10 +83,11 @@ export default function AllOrders() {
   const [lastFetchTime, setLastFetchTime] = useState<Date | null>(null);
   const [updatingStatus, setUpdatingStatus] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("pending");
-  const [hasUnacknowledgedOrder, setHasUnacknowledgedOrder] = useState(false);
-  const [unacknowledgedOrderIds, setUnacknowledgedOrderIds] = useState<
-    Set<string>
-  >(new Set());
+  // Orders this device has accepted ("View order" or tapping the card).
+  // Saved on the device so a reload or a phone waking up never treats a new
+  // order as already seen. Any pending order NOT in here alerts.
+  const [ackedIds, setAckedIds] = useState<Record<string, number>>({});
+  const [ackedLoaded, setAckedLoaded] = useState(false);
   const [productImages, setProductImages] = useState<Record<string, string>>(
     {}
   );
@@ -98,9 +99,6 @@ export default function AllOrders() {
   // shows this order's current status, even while it's open and the
   // 5-second poll brings in an update.
   const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
-  // New orders waiting in the flashing alert pop-up, oldest first. The
-  // pop-up, the flashing and the tone all stay until staff tap "View order".
-  const [alertQueue, setAlertQueue] = useState<string[]>([]);
   // Admin-only "today's sales" panel, opened by double-tapping Total.
   const { data: session } = useSession();
   const isAdmin = session?.user?.role === "ADMIN";
@@ -110,6 +108,9 @@ export default function AllOrders() {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const previousOrderIdsRef = useRef<Set<string>>(new Set());
   const isInitialLoadRef = useRef(true);
+  // Orders that already got their first chime on this page, so a new one
+  // chimes right away and older waiting ones just keep looping.
+  const alertedRef = useRef<Set<string>>(new Set());
   const alertLoopRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const audioUnlockedRef = useRef(false);
   const audioCtxRef = useRef<AudioContext | null>(null);
@@ -209,15 +210,37 @@ export default function AllOrders() {
     };
   }, []);
 
-  const handleNewOrder = (newOrder: Order) => {
-    startAlertLoop();
+  const ackStorageKey = `orders-acked:${brand.site}`;
+  // Load what this device already accepted (last 24 hours only).
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem(ackStorageKey);
+      const parsed: Record<string, number> = raw ? JSON.parse(raw) : {};
+      const cutoff = Date.now() - 24 * 60 * 60 * 1000;
+      const kept: Record<string, number> = {};
+      for (const [id, at] of Object.entries(parsed)) if (typeof at === "number" && at > cutoff) kept[id] = at;
+      setAckedIds(kept);
+    } catch {
+      setAckedIds({});
+    }
+    setAckedLoaded(true);
+  }, [ackStorageKey]);
 
-    // Pop the new order up front. Close any other open dialog first so the
-    // alert's button can always be tapped.
-    setExpandedOrderId(null);
-    setDeleteDialogOpen(false);
-    setAlertQueue((prev) => (prev.includes(newOrder.id) ? prev : [...prev, newOrder.id]));
+  // Accept one order: stops its alert. The others keep alerting.
+  const ackOrder = (id: string) => {
+    setAckedIds((prev) => {
+      if (prev[id]) return prev;
+      const next = { ...prev, [id]: Date.now() };
+      try {
+        window.localStorage.setItem(ackStorageKey, JSON.stringify(next));
+      } catch {
+        // Storage blocked (private mode): still works until the page reloads.
+      }
+      return next;
+    });
+  };
 
+  const showBrowserNotification = (newOrder: Order) => {
     if ("Notification" in window && Notification.permission === "granted") {
       // No price here: staff don't see prices.
       new Notification("🔔 New Order Received!", {
@@ -229,11 +252,6 @@ export default function AllOrders() {
         tag: newOrder.id,
       });
     }
-
-    // Keep this order visually flagged (pulsing, red border) until a
-    // staff member taps its card to acknowledge it — not just for a few
-    // seconds, since the sound keeps playing until then too.
-    setUnacknowledgedOrderIds((prev) => new Set(prev).add(newOrder.id));
   };
 
   const playNotificationSound = () => {
@@ -269,28 +287,18 @@ export default function AllOrders() {
     }
   };
 
-  // Keep playing the notification sound every few seconds until a staff
-  // member taps anywhere on an order card (or the banner) to acknowledge
-  // it, instead of just chiming once and possibly going unnoticed.
   const startAlertLoop = () => {
-    setHasUnacknowledgedOrder(true);
-    playNotificationSound();
-
     if (alertLoopRef.current) return; // already looping
-
     alertLoopRef.current = setInterval(() => {
       playNotificationSound();
     }, 2000);
   };
 
-  const acknowledgeNewOrders = () => {
+  const stopAlertLoop = () => {
     if (alertLoopRef.current) {
       clearInterval(alertLoopRef.current);
       alertLoopRef.current = null;
     }
-    setHasUnacknowledgedOrder(false);
-    setUnacknowledgedOrderIds(new Set());
-    setAlertQueue([]);
   };
 
   // Fetch the product catalog's images once (it rarely changes) and build
@@ -353,14 +361,6 @@ export default function AllOrders() {
       const fetchedOrders = Array.isArray(data) ? data : [];
 
       const currentOrderIds = new Set(fetchedOrders.map((o: Order) => o.id));
-      const newOrders = fetchedOrders.filter(
-        (order: Order) => !previousOrderIdsRef.current.has(order.id)
-      );
-
-      if (newOrders.length > 0) {
-        newOrders.forEach((order: Order) => handleNewOrder(order));
-      }
-
       setOrders(fetchedOrders);
       previousOrderIdsRef.current = currentOrderIds;
       setLastFetchTime(new Date());
@@ -484,6 +484,61 @@ export default function AllOrders() {
   const deliveredOrders = orders.filter((o) => o.status === "DELIVERED");
   const expandedOrder = orders.find((o) => o.id === expandedOrderId) ?? null;
 
+  // Every pending order this device hasn't accepted yet alerts (pop-up +
+  // repeating chime), oldest first, until someone taps "View order" or its
+  // card. Based on what's saved on the device, so orders that came in while
+  // the page was asleep or reloading still alert. Orders older than 6 hours
+  // are left alone.
+  const nowMs = lastFetchTime?.getTime() ?? 0;
+  const alertQueue = ackedLoaded
+    ? orders
+        .filter(
+          (o) =>
+            o.status !== "DELIVERED" &&
+            !ackedIds[o.id] &&
+            nowMs - new Date(o.createdAt).getTime() < 6 * 60 * 60 * 1000
+        )
+        .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
+        .map((o) => o.id)
+    : [];
+  const alertKey = alertQueue.join(",");
+
+  useEffect(() => {
+    if (alertQueue.length === 0) {
+      stopAlertLoop();
+      return;
+    }
+    const fresh = alertQueue.filter((id) => !alertedRef.current.has(id));
+    if (fresh.length > 0) {
+      fresh.forEach((id) => alertedRef.current.add(id));
+      // Close other dialogs so the alert's button can always be tapped.
+      setExpandedOrderId(null);
+      setDeleteDialogOpen(false);
+      playNotificationSound();
+      fresh.forEach((id) => {
+        const o = orders.find((x) => x.id === id);
+        if (o) showBrowserNotification(o);
+      });
+    }
+    startAlertLoop();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [alertKey]);
+
+  // Check right away when the page comes back (phone unlocked, tab
+  // reopened) instead of waiting for the next 5-second refresh.
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState === "visible") fetchOrdersQuietly();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("focus", onVisible);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("focus", onVisible);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const isJaeky = brand.site === "jaeky";
   const accent = isJaeky
     ? {
@@ -550,7 +605,7 @@ export default function AllOrders() {
   // No prices anywhere on this page: staff don't need to see them.
   const renderOrderCard = (order: Order) => {
     const isDelivered = order.status === "DELIVERED";
-    const isNew = unacknowledgedOrderIds.has(order.id);
+    const isNew = alertQueue.includes(order.id);
     const itemCount = getTotalItems(order.items);
     const thumbs = order.items
       .map((item) => (item.product?.id ? productImages[item.product.id] : undefined))
@@ -558,7 +613,7 @@ export default function AllOrders() {
       .slice(0, 3);
 
     const openOrder = () => {
-      acknowledgeNewOrders();
+      ackOrder(order.id);
       setExpandedOrderId(order.id);
     };
 
@@ -575,8 +630,15 @@ export default function AllOrders() {
           }
         }}
         className={`group relative flex cursor-pointer flex-col gap-3.5 rounded-3xl border bg-white/90 p-4 shadow-[0_1px_2px_rgba(0,0,0,0.04),0_8px_24px_-12px_rgba(0,0,0,0.12)] backdrop-blur transition-all hover:-translate-y-0.5 hover:shadow-[0_2px_4px_rgba(0,0,0,0.05),0_16px_32px_-12px_rgba(0,0,0,0.18)] focus-visible:outline-none focus-visible:ring-2 active:scale-[0.99] ${accent.ring} ${
-          isNew ? "border-red-400 ring-2 ring-red-400/60" : "border-zinc-200/80"
+          isNew ? "border-red-400 ring-2 ring-red-400/60" : isDelivered ? "border-zinc-200/80" : "border-amber-400"
         }`}
+        // Not ready yet = keeps flashing (red for not accepted, amber once
+        // accepted) until someone marks it Ready.
+        style={
+          isDelivered
+            ? undefined
+            : { animation: `${isNew ? "order-card-flash-new" : "order-card-flash"} 1.4s ease-in-out infinite` }
+        }
       >
         {isNew && (
           <span className="absolute -top-2.5 right-4 flex items-center gap-1 rounded-full bg-red-600 px-2 py-0.5 text-[11px] font-bold tracking-wide text-white shadow">
@@ -771,10 +833,13 @@ export default function AllOrders() {
 
   // The order shown in the flashing new-order pop-up (oldest waiting first).
   const alertOrder = alertQueue.length > 0 ? orders.find((o) => o.id === alertQueue[0]) ?? null : null;
+  // Accepts the order shown in the pop-up. If more are waiting, the next one
+  // pops up right away; after the last one, its details open.
   const viewAlertOrder = () => {
     const id = alertQueue[0];
-    acknowledgeNewOrders(); // stops the tone, the flashing and the NEW tags
-    if (id) setExpandedOrderId(id);
+    if (!id) return;
+    ackOrder(id);
+    if (alertQueue.length <= 1) setExpandedOrderId(id);
   };
 
   const emptyState = (icon: React.ReactNode, title: string, subtitle: string) => (
@@ -806,6 +871,17 @@ export default function AllOrders() {
         @keyframes order-alert-backdrop {
           0%, 100% { background-color: rgba(127, 29, 29, 0.55); }
           50% { background-color: rgba(24, 24, 27, 0.55); }
+        }
+        @keyframes order-card-flash {
+          0%, 100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.55), 0 8px 24px -12px rgba(0,0,0,0.12); }
+          50% { box-shadow: 0 0 0 6px rgba(245, 158, 11, 0.12), 0 8px 24px -12px rgba(0,0,0,0.12); }
+        }
+        @keyframes order-card-flash-new {
+          0%, 100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.6), 0 8px 24px -12px rgba(0,0,0,0.12); }
+          50% { box-shadow: 0 0 0 8px rgba(220, 38, 38, 0.15), 0 8px 24px -12px rgba(0,0,0,0.12); }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          [style*="order-card-flash"] { animation-duration: 3s !important; }
         }
         @keyframes order-alert-bell {
           0%, 100% { transform: rotate(0deg); }
@@ -844,7 +920,7 @@ export default function AllOrders() {
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
                 <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
               </span>
-              {hasUnacknowledgedOrder ? (
+              {alertQueue.length > 0 ? (
                 <span className="font-semibold text-red-600">New order!</span>
               ) : (
                 <>
