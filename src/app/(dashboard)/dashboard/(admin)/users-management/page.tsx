@@ -90,6 +90,7 @@ export default function UserManagement() {
     { id: "menu-items", description: "Deleting all menu items and prices", status: "pending" },
     { id: "menu-categories", description: "Deleting all menu categories", status: "pending" },
     { id: "users", description: "Deleting all users", status: "pending" },
+    { id: "settings", description: "Turning off ticket printing", status: "pending" },
   ])
 
   // Clear Orders Only state — a lighter reset than Washup: wipes order
@@ -369,6 +370,7 @@ export default function UserManagement() {
       { id: "menu-items", description: "Deleting all menu items and prices", status: "pending" },
       { id: "menu-categories", description: "Deleting all menu categories", status: "pending" },
       { id: "users", description: "Deleting all users", status: "pending" },
+      { id: "settings", description: "Turning off ticket printing", status: "pending" },
     ])
   }
 
@@ -416,6 +418,7 @@ export default function UserManagement() {
         { id: "menu-items", failMessage: "Failed to delete menu items" },
         { id: "menu-categories", failMessage: "Failed to delete menu categories" },
         { id: "users", failMessage: "Failed to delete users" },
+        { id: "settings", failMessage: "Failed to turn off ticket printing" },
       ]
       for (let i = 0; i < steps.length; i++) {
         const { id, failMessage } = steps[i]
@@ -432,8 +435,11 @@ export default function UserManagement() {
       setWashupProgress(100)
 
       toast.success("Washup completed successfully!", {
-        description: "Orders, menu, prices and users are cleared. Item Library photos were kept.",
+        description: "Orders, menu, prices and users are cleared, and ticket printing is off. Item Library photos were kept.",
       })
+
+      // Ticket printing is switched off by washup.
+      setPrintTickets(false)
 
       // Refresh users list after washup completes
       await fetchUsers()
