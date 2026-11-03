@@ -569,7 +569,7 @@ export default function AllOrdersEnlarged() {
             ? "border-red-500 border-2"
             : isDelivered
               ? "border-zinc-200 hover:border-zinc-300"
-              : "border-amber-400 border-2"
+              : "border-amber-700 border-2"
         }`}
       >
         <CardHeader className="px-4">
@@ -864,8 +864,8 @@ export default function AllOrdersEnlarged() {
 
       <style>{`
         @keyframes order-card-flash {
-          0%, 100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.55), 0 8px 24px -12px rgba(0,0,0,0.12); }
-          50% { box-shadow: 0 0 0 6px rgba(245, 158, 11, 0.12), 0 8px 24px -12px rgba(0,0,0,0.12); }
+          0%, 100% { border-color: #b45309; box-shadow: 0 0 0 0 rgba(180, 83, 9, 0.9), 0 8px 24px -12px rgba(0,0,0,0.2); }
+          50% { border-color: #7c2d12; box-shadow: 0 0 0 8px rgba(154, 52, 18, 0.45), 0 8px 24px -12px rgba(0,0,0,0.2); }
         }
         @keyframes order-card-flash-new {
           0%, 100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.6), 0 8px 24px -12px rgba(0,0,0,0.12); }
