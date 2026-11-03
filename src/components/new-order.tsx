@@ -189,8 +189,8 @@ export default function NewOrder({ onOrderComplete, onBack }: NewOrderProps) {
     }
 
     if (!paymentType) {
-      toast.info("Payment type is required", {
-        description: "Please select a payment type before placing the order.",
+      toast.info("How you paying is required", {
+        description: "Please choose Cash or Credit card before placing the order.",
         action: {
           label: "Close",
           onClick: () => console.log("Toast Closed"),
@@ -570,7 +570,7 @@ export default function NewOrder({ onOrderComplete, onBack }: NewOrderProps) {
                 </div>
 
                 <div className="space-y-2">
-                  <Label className="text-sm font-medium text-zinc-900">Payment Type *</Label>
+                  <Label className="text-sm font-medium text-zinc-900">How you paying? *</Label>
                   <RadioGroup value={paymentType} onValueChange={(value) => setPaymentType(value as "CASH" | "CARD")}>
                     <div
                       className={`flex items-center space-x-2 rounded-md border px-3 py-2 transition-colors ${
@@ -593,7 +593,7 @@ export default function NewOrder({ onOrderComplete, onBack }: NewOrderProps) {
                     >
                       <RadioGroupItem value="CARD" id="card" className={isJaeky ? "border-zinc-300 text-purple-500" : "border-zinc-300 text-lime-500"} />
                       <Label htmlFor="card" className="text-sm font-normal cursor-pointer text-zinc-900">
-                        Card
+                        Credit card
                       </Label>
                     </div>
                   </RadioGroup>
@@ -814,7 +814,7 @@ export default function NewOrder({ onOrderComplete, onBack }: NewOrderProps) {
               </div>
 
               <div className="space-y-2">
-                <Label className="text-sm font-medium text-zinc-900">Payment Type *</Label>
+                <Label className="text-sm font-medium text-zinc-900">How you paying? *</Label>
                 <RadioGroup value={paymentType} onValueChange={(value) => setPaymentType(value as "CASH" | "CARD")}>
                   <div
                     className={`flex items-center space-x-2 rounded-md border px-3 py-2 transition-colors ${
@@ -837,7 +837,7 @@ export default function NewOrder({ onOrderComplete, onBack }: NewOrderProps) {
                   >
                     <RadioGroupItem value="CARD" id="card-mobile" className={isJaeky ? "border-zinc-300 text-purple-500" : "border-zinc-300 text-lime-500"} />
                     <Label htmlFor="card-mobile" className="text-sm font-normal cursor-pointer text-zinc-900">
-                      Card
+                      Credit card
                     </Label>
                   </div>
                 </RadioGroup>

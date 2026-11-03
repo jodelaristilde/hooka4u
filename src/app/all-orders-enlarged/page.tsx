@@ -584,7 +584,7 @@ export default function AllOrdersEnlarged() {
                     #{order.orderNumber}
                   </Badge>
                 )}
-                <h3 className="font-bold text-lg text-zinc-900 truncate">
+                <h3 className="font-extrabold text-2xl text-zinc-900 truncate">
                   {order.customerName || "Guest"}
                 </h3>
                 <span className="text-sm text-muted-foreground shrink-0">
@@ -607,7 +607,7 @@ export default function AllOrdersEnlarged() {
 
           <Badge
             variant="outline"
-            className={`self-center text-sm font-bold px-3 py-1 ${
+            className={`w-full justify-center text-xl tracking-widest font-extrabold px-3 py-2 border-2 ${
               isDelivered
                 ? "bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400 border-emerald-300 dark:border-emerald-800"
                 : "bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-400 border-amber-300 dark:border-amber-800"
@@ -630,7 +630,7 @@ export default function AllOrdersEnlarged() {
               ) : (
                 <Banknote className="w-3.5 h-3.5 mr-1" />
               )}
-              {order.paymentType === "CARD" ? "Card" : "Cash"}
+              {order.paymentType === "CARD" ? "Paying: with Credit card" : "Paying: Cash"}
             </Badge>
             {order.Seating && (
               <Badge
@@ -638,7 +638,7 @@ export default function AllOrdersEnlarged() {
                 className="text-sm border-border bg-muted text-muted-foreground px-2.5 py-1"
               >
                 <MapPin className="w-3.5 h-3.5 mr-1" />
-                {order.Seating}
+                Location: {order.Seating}
               </Badge>
             )}
           </div>
@@ -672,7 +672,7 @@ export default function AllOrdersEnlarged() {
         <div className="flex items-center gap-2.5 flex-wrap">
           <Badge
             variant="outline"
-            className={`text-sm uppercase font-bold border-border px-3 py-1.5 ${
+            className={`text-sm font-bold border-border px-3 py-1.5 ${
               order.paymentType === "CARD"
                 ? "bg-muted text-foreground"
                 : "bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400 border-emerald-300 dark:border-emerald-800"
@@ -683,7 +683,7 @@ export default function AllOrdersEnlarged() {
             ) : (
               <Banknote className="w-4 h-4 mr-1.5" />
             )}
-            {order.paymentType === "CARD" ? "Card" : "Cash"}
+            {order.paymentType === "CARD" ? "Paying: with Credit card" : "Paying: Cash"}
           </Badge>
           {order.Seating && (
             <Badge
@@ -691,7 +691,7 @@ export default function AllOrdersEnlarged() {
               className="text-sm border-border bg-muted text-muted-foreground px-3 py-1.5"
             >
               <MapPin className="w-4 h-4 mr-1.5" />
-              {order.Seating}
+              Location: {order.Seating}
             </Badge>
           )}
           <Badge

@@ -598,7 +598,7 @@ export default function AllOrders() {
       ) : (
         <Banknote className={large ? "h-4 w-4" : "h-3.5 w-3.5"} aria-hidden="true" />
       ),
-      order.paymentType === "CARD" ? "Card" : "Cash",
+      order.paymentType === "CARD" ? "Paying: with Credit card" : "Paying: Cash",
       large
     );
 
@@ -656,7 +656,7 @@ export default function AllOrders() {
             <span className="text-lg font-extrabold tabular-nums">{order.orderNumber ?? "—"}</span>
           </span>
           <div className="min-w-0 flex-1">
-            <h3 className="truncate text-lg leading-tight font-bold tracking-tight text-zinc-900">
+            <h3 className="truncate text-2xl leading-tight font-extrabold tracking-tight text-zinc-900">
               {order.customerName || "Guest"}
             </h3>
             <p className="mt-0.5 flex items-center gap-1 text-xs text-zinc-500">
@@ -677,11 +677,25 @@ export default function AllOrders() {
           </button>
         </div>
 
-        {/* Status, payment, seat */}
+        {/* Big status in the middle */}
+        <div
+          className={`flex items-center justify-center gap-2 rounded-2xl py-2 text-xl font-extrabold tracking-widest uppercase ${
+            isDelivered
+              ? "bg-emerald-100 text-emerald-800 ring-1 ring-emerald-200"
+              : "bg-amber-100 text-amber-900 ring-1 ring-amber-300"
+          }`}
+        >
+          <span
+            className={`h-2.5 w-2.5 rounded-full ${isDelivered ? "bg-emerald-600" : "bg-amber-600"}`}
+            aria-hidden="true"
+          />
+          {isDelivered ? "Ready" : "Pending"}
+        </div>
+
+        {/* Payment, location */}
         <div className="flex flex-wrap items-center gap-1.5">
-          {statusChip(isDelivered)}
           {paymentChip(order)}
-          {order.Seating && infoChip(<MapPin className="h-3.5 w-3.5" aria-hidden="true" />, order.Seating)}
+          {order.Seating && infoChip(<MapPin className="h-3.5 w-3.5" aria-hidden="true" />, `Location: ${order.Seating}`)}
         </div>
 
         {/* What they ordered (no prices) */}
@@ -742,7 +756,7 @@ export default function AllOrders() {
         <div className="flex flex-wrap items-center gap-2">
           {statusChip(isDelivered, true)}
           {paymentChip(order, true)}
-          {order.Seating && infoChip(<MapPin className="h-4 w-4" aria-hidden="true" />, order.Seating, true)}
+          {order.Seating && infoChip(<MapPin className="h-4 w-4" aria-hidden="true" />, `Location: ${order.Seating}`, true)}
         </div>
 
         <div className="divide-y divide-zinc-100 overflow-hidden rounded-2xl border border-zinc-200 bg-white">
@@ -1094,7 +1108,7 @@ export default function AllOrders() {
               <>
                 <div className="mt-4 flex flex-wrap items-center gap-1.5">
                   {alertOrder.Seating &&
-                    infoChip(<MapPin className="h-4 w-4" aria-hidden="true" />, alertOrder.Seating, true)}
+                    infoChip(<MapPin className="h-4 w-4" aria-hidden="true" />, `Location: ${alertOrder.Seating}`, true)}
                   {paymentChip(alertOrder, true)}
                 </div>
                 <ul className="mt-4 space-y-2 rounded-2xl bg-zinc-50 p-3 ring-1 ring-zinc-100">
