@@ -46,7 +46,6 @@ export default async function Dashboard() {
       url: "/dashboard/quick-add",
       icon: ImagePlus,
       description: "Photo, category, price. Done.",
-      requiresAdmin: true,
       featured: true,
     },
     {

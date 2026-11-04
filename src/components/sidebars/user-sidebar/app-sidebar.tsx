@@ -26,7 +26,6 @@ const sidebarData = {
       title: "Add Items",
       url: "/dashboard/quick-add",
       icon: ImagePlus,
-      requiresAdmin: true,
     },
     {
       title: "New Order",
