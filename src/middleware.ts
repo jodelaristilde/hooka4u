@@ -3,8 +3,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { getToken } from "next-auth/jwt";
 
 const PUBLIC_ROUTES = ["/login", "/register"];
+// Staff (USER) can use Add Items just like an admin.
 const RESTRICTED_FOR_USER = [
-  "/dashboard/quick-add",
   "/dashboard/item-library",
   "/dashboard/users-management",
 ];
