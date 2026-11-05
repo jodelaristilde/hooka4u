@@ -117,7 +117,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       </SidebarHeader>
       <SidebarContent>
         <NavMain items={filteredNavMain} />
-        {session?.user?.role === "ADMIN" && <HomepageQR/>}
+        {/* Guest-ordering QR code: shown to every logged-in user (staff too). */}
+        {session?.user && <HomepageQR/>}
       </SidebarContent>
       <SidebarFooter>
         <NavUser user={user} />

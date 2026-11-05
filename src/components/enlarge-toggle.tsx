@@ -101,8 +101,8 @@ export function EnlargeToggle() {
           title="Enlarge this page"
           className={
             isJaeky
-              ? "fixed bottom-4 right-4 z-50 flex h-11 w-11 items-center justify-center rounded-full bg-purple-500 text-white shadow-lg transition-transform hover:scale-105 hover:bg-purple-400"
-              : "fixed bottom-4 right-4 z-50 flex h-11 w-11 items-center justify-center rounded-full bg-lime-500 text-zinc-950 shadow-lg transition-transform hover:scale-105 hover:bg-lime-400"
+              ? "fixed bottom-24 right-4 md:bottom-4 z-50 flex h-11 w-11 items-center justify-center rounded-full bg-purple-500 text-white shadow-lg transition-transform hover:scale-105 hover:bg-purple-400"
+              : "fixed bottom-24 right-4 md:bottom-4 z-50 flex h-11 w-11 items-center justify-center rounded-full bg-lime-500 text-zinc-950 shadow-lg transition-transform hover:scale-105 hover:bg-lime-400"
           }
         >
           <Maximize className="h-5 w-5" />
