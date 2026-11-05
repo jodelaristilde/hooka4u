@@ -883,7 +883,7 @@ export default function AllOrders() {
   const unlockSales = async (e?: React.FormEvent) => {
     e?.preventDefault();
     if (!salesPassword.trim()) {
-      setSalesUnlockError("Enter an admin password.");
+      setSalesUnlockError("Enter your password.");
       return;
     }
     setSalesUnlocking(true);
@@ -1268,7 +1268,7 @@ export default function AllOrders() {
           </DialogHeader>
           <form onSubmit={unlockSales} className="flex flex-col gap-3">
             <label htmlFor="sales-admin-password" className="text-sm text-zinc-600">
-              Enter an admin password to see the total.
+              Enter your password to see the total.
             </label>
             <input
               id="sales-admin-password"
@@ -1355,7 +1355,7 @@ export default function AllOrders() {
               Download tonight&apos;s report
             </button>
             <p className="text-xs text-zinc-500">
-              Only admins can see this (staff logins need an admin password). Download the report before wash-up: wash-up clears
+              Staff logins need their password to open this. Download the report before wash-up: wash-up clears
               tonight&apos;s orders.
             </p>
           </DialogContent>
