@@ -723,9 +723,12 @@ export default function ItemLibraryPage() {
                             handleDeleteClick(template);
                           }}
                           title="Remove from library"
-                          className="absolute top-2 right-2 flex h-7 w-7 items-center justify-center rounded-full bg-black/60 text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
+                          aria-label={`Remove ${template.name} from library`}
+                          // Always visible (it used to appear only on mouse
+                          // hover, so it never showed on iPad or phone).
+                          className="absolute top-2 right-2 flex h-9 w-9 items-center justify-center rounded-full bg-red-600 text-white shadow-md transition-colors hover:bg-red-700"
                         >
-                          <Trash2 className="h-3.5 w-3.5" />
+                          <Trash2 className="h-4 w-4" />
                         </button>
                       )}
                     </div>
