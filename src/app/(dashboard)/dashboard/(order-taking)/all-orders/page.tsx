@@ -48,7 +48,7 @@ import { useBrand } from "@/lib/use-brand";
 import { useSession } from "next-auth/react";
 import { useShiftMode } from "@/lib/use-shift-mode";
 import { printOrderTicket } from "@/lib/print-ticket";
-import { buildNightReport, downloadNightReport, todaysOrders as ordersSinceMidnight } from "@/lib/night-report";
+import { buildNightReport, downloadNightReport, startOfTonight, todaysOrders as ordersSinceMidnight } from "@/lib/night-report";
 
 interface OrderItem {
   id: string;
@@ -106,6 +106,13 @@ export default function AllOrders() {
   const { data: session } = useSession();
   const isAdmin = session?.user?.role === "ADMIN";
   const [salesOpen, setSalesOpen] = useState(false);
+  // Staff logins: double-tap Total asks for an admin password, then loads
+  // tonight's sales with prices just for that look (cleared on close).
+  const [salesUnlockOpen, setSalesUnlockOpen] = useState(false);
+  const [salesPassword, setSalesPassword] = useState("");
+  const [salesUnlockError, setSalesUnlockError] = useState<string | null>(null);
+  const [salesUnlocking, setSalesUnlocking] = useState(false);
+  const [unlockedSalesOrders, setUnlockedSalesOrders] = useState<Order[] | null>(null);
   const lastTotalTapRef = useRef(0);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -852,17 +859,54 @@ export default function AllOrders() {
   const money = (n: number) =>
     n.toLocaleString("en-US", { style: "currency", currency: "USD" });
   // Same numbers as the downloadable night report.
-  const todaysSales = buildNightReport(ordersSinceMidnight(orders));
+  const todaysSales = buildNightReport(
+    ordersSinceMidnight(isAdmin ? orders : unlockedSalesOrders ?? [])
+  );
   const startOfToday = todaysSales.date;
   // Double-click (computer) or double-tap (phone) on Total.
   const handleTotalTap = () => {
-    if (!isAdmin) return;
     const now = Date.now();
     if (now - lastTotalTapRef.current < 400) {
       lastTotalTapRef.current = 0;
-      setSalesOpen(true);
+      if (isAdmin) {
+        setSalesOpen(true);
+      } else {
+        setSalesPassword("");
+        setSalesUnlockError(null);
+        setSalesUnlockOpen(true);
+      }
     } else {
       lastTotalTapRef.current = now;
+    }
+  };
+
+  const unlockSales = async (e?: React.FormEvent) => {
+    e?.preventDefault();
+    if (!salesPassword.trim()) {
+      setSalesUnlockError("Enter an admin password.");
+      return;
+    }
+    setSalesUnlocking(true);
+    setSalesUnlockError(null);
+    try {
+      const res = await fetch("/api/orders/sales", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password: salesPassword, since: startOfTonight().toISOString() }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !Array.isArray(data)) {
+        setSalesUnlockError(data?.error || "Couldn't open tonight's sales.");
+        return;
+      }
+      setUnlockedSalesOrders(data);
+      setSalesUnlockOpen(false);
+      setSalesPassword("");
+      setSalesOpen(true);
+    } catch {
+      setSalesUnlockError("Couldn't open tonight's sales.");
+    } finally {
+      setSalesUnlocking(false);
     }
   };
 
@@ -1035,7 +1079,7 @@ export default function AllOrders() {
                       key={stat.label}
                       onClick={stat.label === "Total" ? handleTotalTap : undefined}
                       className={`rounded-2xl px-3 py-2.5 ring-1 select-none lg:min-w-32 ${stat.box} ${
-                        stat.label === "Total" && isAdmin ? "cursor-pointer" : ""
+                        stat.label === "Total" ? "cursor-pointer" : ""
                       }`}
                     >
                       <div className="text-[11px] font-semibold tracking-wide text-zinc-500 uppercase">{stat.label}</div>
@@ -1210,9 +1254,54 @@ export default function AllOrders() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Today's sales — admins only, opened by double-tapping Total */}
-      {isAdmin && (
-        <Dialog open={salesOpen} onOpenChange={setSalesOpen}>
+      {/* Staff login: admin password before showing tonight's sales */}
+      <Dialog
+        open={salesUnlockOpen}
+        onOpenChange={(open) => {
+          setSalesUnlockOpen(open);
+          if (!open) setSalesPassword("");
+        }}
+      >
+        <DialogContent className="w-[calc(100%-1.5rem)] max-w-sm rounded-3xl border-zinc-200 bg-white">
+          <DialogHeader>
+            <DialogTitle className="text-left text-zinc-900">Tonight&apos;s sales</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={unlockSales} className="flex flex-col gap-3">
+            <label htmlFor="sales-admin-password" className="text-sm text-zinc-600">
+              Enter an admin password to see the total.
+            </label>
+            <input
+              id="sales-admin-password"
+              type="password"
+              autoComplete="off"
+              autoFocus
+              value={salesPassword}
+              onChange={(e) => setSalesPassword(e.target.value)}
+              className="h-12 rounded-2xl border border-zinc-300 px-4 text-base text-zinc-900 outline-none focus:border-zinc-500"
+            />
+            {salesUnlockError && <p className="text-sm font-medium text-red-600">{salesUnlockError}</p>}
+            <button
+              type="submit"
+              disabled={salesUnlocking}
+              className={`flex h-12 w-full items-center justify-center gap-2 rounded-2xl text-base font-semibold disabled:opacity-60 ${accent.button}`}
+            >
+              {salesUnlocking && <Loader2 className="h-5 w-5 animate-spin" />}
+              Show total
+            </button>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Today's sales — opened by double-tapping Total (staff need an admin password first) */}
+      {(isAdmin || unlockedSalesOrders) && (
+        <Dialog
+          open={salesOpen}
+          onOpenChange={(open) => {
+            setSalesOpen(open);
+            // On a staff login, forget the prices as soon as it's closed.
+            if (!open && !isAdmin) setUnlockedSalesOrders(null);
+          }}
+        >
           <DialogContent className="max-h-[90vh] w-[calc(100%-1.5rem)] max-w-md overflow-y-auto rounded-3xl border-zinc-200 bg-white">
             <DialogHeader>
               <DialogTitle className="text-left text-zinc-900">
@@ -1266,7 +1355,7 @@ export default function AllOrders() {
               Download tonight&apos;s report
             </button>
             <p className="text-xs text-zinc-500">
-              Only admins can see this. Staff never see prices. Download the report before wash-up: wash-up clears
+              Only admins can see this (staff logins need an admin password). Download the report before wash-up: wash-up clears
               tonight&apos;s orders.
             </p>
           </DialogContent>
