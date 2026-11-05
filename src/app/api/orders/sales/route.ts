@@ -6,9 +6,8 @@ import { verifyPassword } from "@/lib/passwords";
 import { startOfTonight } from "@/lib/night-report";
 
 // Tonight's sales WITH prices, for the "double-tap Total" panel.
-// Admins get it straight away. On a staff login, an admin password must be
-// typed (so the owner can check the total on any staff phone/iPad, while
-// staff themselves still never see prices).
+// Admins get it straight away. On a staff login, the staff member's own
+// password (or any admin password) must be typed first.
 export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
@@ -24,18 +23,22 @@ export async function POST(request: NextRequest) {
     if (!isAdminSession(auth)) {
       const password = body.password;
       if (typeof password !== "string" || !password) {
-        return NextResponse.json({ error: "Enter an admin password." }, { status: 400 });
+        return NextResponse.json({ error: "Enter your password." }, { status: 400 });
       }
-      const admins = await prisma.user.findMany({ where: { role: "ADMIN" }, select: { password: true } });
+      // The logged-in user's own password, or any admin's.
+      const candidates = await prisma.user.findMany({
+        where: { OR: [{ id: auth.user.id }, { role: "ADMIN" }] },
+        select: { password: true },
+      });
       let ok = false;
-      for (const a of admins) {
+      for (const a of candidates) {
         if ((await verifyPassword(password, a.password)).ok) {
           ok = true;
           break;
         }
       }
       if (!ok) {
-        return NextResponse.json({ error: "That's not an admin password." }, { status: 401 });
+        return NextResponse.json({ error: "Wrong password. Try again." }, { status: 401 });
       }
     }
 
