@@ -1,9 +1,9 @@
 "use client"
 
-import { MoreHorizontal, type LucideIcon } from "lucide-react"
+import { MoreHorizontal, QrCode, type LucideIcon } from "lucide-react"
 import { useSession } from "next-auth/react"
 import * as React from "react"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Button } from "@/components/ui/button"
 
 export function MobileBottomNav({
@@ -33,6 +33,12 @@ export function MobileBottomNav({
       return true
     })
   }, [items, userRole])
+
+  // Guest-ordering link for the QR code in the "More" menu (browser only).
+  const [guestUrl, setGuestUrl] = React.useState("")
+  React.useEffect(() => {
+    setGuestUrl(`${window.location.origin}/place-new-order`)
+  }, [])
 
   // Show first 4 items, rest in "More" menu
   const visibleItems = filteredItems.slice(0, 4)
@@ -98,7 +104,7 @@ export function MobileBottomNav({
         })}
 
         {/* More menu if needed */}
-        {moreItems.length > 0 && (
+        {(moreItems.length > 0 || !!session?.user) && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
@@ -141,6 +147,26 @@ export function MobileBottomNav({
                   </DropdownMenuItem>
                 )
               })}
+              {session?.user && guestUrl && (
+                <>
+                  {moreItems.length > 0 && <DropdownMenuSeparator />}
+                  <div className="flex flex-col items-center gap-2 px-2 py-3">
+                    <span className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                      <QrCode className="h-3.5 w-3.5" />
+                      QR Code for Ordering Online
+                    </span>
+                    <div className="rounded-lg border-2 border-border bg-white p-2">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        draggable="false"
+                        src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(guestUrl)}&bgcolor=ffffff&color=000000&qzone=1&format=svg`}
+                        alt="QR code for ordering online"
+                        className="h-36 w-36"
+                      />
+                    </div>
+                  </div>
+                </>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
         )}
