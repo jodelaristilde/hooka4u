@@ -7,6 +7,7 @@ import { useBrand } from "@/lib/use-brand"
 interface OrderStatusResult {
   orderNumber: number
   status: "PENDING" | "DELIVERED" | string
+  paymentStatus?: "UNPAID" | "PAID" | null
   customerName: string
   createdAt: string
 }
@@ -162,6 +163,14 @@ export default function OrderStatusPage() {
               {isDelivered ? <CheckCircle2 className="w-4 h-4" /> : <Clock className="w-4 h-4" />}
               {isDelivered ? "Ready" : "Pending"}
             </div>
+
+            {result?.paymentStatus === "UNPAID" && !isDelivered && (
+              <p
+                className={`text-center text-sm font-semibold ${isJaeky ? "text-purple-700" : "text-amber-300"}`}
+              >
+                Waiting for payment. A team member is coming to collect it.
+              </p>
+            )}
 
             <p className={isJaeky ? "text-zinc-500 text-xs" : "text-zinc-500 text-xs"}>
               This page updates automatically every few seconds.

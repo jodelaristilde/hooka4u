@@ -72,7 +72,7 @@ export async function POST(request: Request) {
         // Users/logins are shared across both sites (no `site` field on
         // User), so this intentionally is NOT scoped by site.
         await prisma.user.deleteMany({
-          where: { role: "USER" },
+          where: { role: { in: ["USER", "CASHIER"] } },
         });
         return NextResponse.json({ success: true, step: "users" });
 

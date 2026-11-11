@@ -37,6 +37,7 @@ export async function GET(request: NextRequest) {
         status: true,
         customerName: true,
         createdAt: true,
+        paymentStatus: true,
       },
     });
 
@@ -81,13 +82,7 @@ export async function PATCH(request: NextRequest) {
     const order = await prisma.order.update({
       where: { id: orderId },
       data: { status },
-      include: {
-        items: {
-          include: {
-            product: true,
-          },
-        },
-      },
+      select: { id: true, status: true },
     });
 
     return NextResponse.json(order);

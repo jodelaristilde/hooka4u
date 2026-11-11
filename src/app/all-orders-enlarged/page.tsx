@@ -65,6 +65,7 @@ interface Order {
   items: OrderItem[];
   paymentType?: "CASH" | "CARD";
   Seating?: string;
+  paymentStatus?: "UNPAID" | "PAID" | null;
   status?: "PENDING" | "DELIVERED";
 }
 
@@ -641,7 +642,11 @@ export default function AllOrdersEnlarged() {
               ) : (
                 <Banknote className="w-3.5 h-3.5 mr-1" />
               )}
-              {order.paymentType === "CARD" ? "Paying: with Credit card" : "Paying: Cash"}
+              {order.paymentStatus === "UNPAID"
+                ? `Not paid yet · ${order.paymentType === "CARD" ? "Credit card" : "Cash"}`
+                : order.paymentStatus === "PAID"
+                  ? `Paid · ${order.paymentType === "CARD" ? "Card" : "Cash"}`
+                  : order.paymentType === "CARD" ? "Paying: with Credit card" : "Paying: Cash"}
             </Badge>
             {order.Seating && (
               <Badge
@@ -694,7 +699,11 @@ export default function AllOrdersEnlarged() {
             ) : (
               <Banknote className="w-4 h-4 mr-1.5" />
             )}
-            {order.paymentType === "CARD" ? "Paying: with Credit card" : "Paying: Cash"}
+            {order.paymentStatus === "UNPAID"
+                ? `Not paid yet · ${order.paymentType === "CARD" ? "Credit card" : "Cash"}`
+                : order.paymentStatus === "PAID"
+                  ? `Paid · ${order.paymentType === "CARD" ? "Card" : "Cash"}`
+                  : order.paymentType === "CARD" ? "Paying: with Credit card" : "Paying: Cash"}
           </Badge>
           {order.Seating && (
             <Badge

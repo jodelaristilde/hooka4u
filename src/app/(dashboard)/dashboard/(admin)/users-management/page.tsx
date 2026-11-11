@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Plus, Trash2, Loader2, Eye, EyeOff, X, UserPlus, RotateCcw, CheckCircle2, History, Download, Zap, Printer } from "lucide-react"
+import { Plus, Trash2, Loader2, Eye, EyeOff, X, UserPlus, RotateCcw, CheckCircle2, History, Download, Zap, Printer, Banknote } from "lucide-react"
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -36,7 +36,7 @@ interface User {
   id: string
   username: string
   name?: string
-  role: "USER" | "ADMIN"
+  role: "USER" | "ADMIN" | "CASHIER"
   createdAt: string
   password?: string // Added password field
 }
@@ -66,7 +66,7 @@ export default function UserManagement() {
   const [username, setUsername] = useState("")
   const [password, setPassword] = useState("")
   const [name, setName] = useState("")
-  const [role, setRole] = useState<"USER" | "ADMIN">("USER")
+  const [role, setRole] = useState<"USER" | "ADMIN" | "CASHIER">("USER")
   const [showPassword, setShowPassword] = useState(false)
   const [isFormOpen, setIsFormOpen] = useState(false)
 
@@ -197,12 +197,42 @@ export default function UserManagement() {
   // an order Ready on All Orders / the TV screen opens the print sheet
   // with a small ticket (no prices) to attach to the order.
   const [printTickets, setPrintTickets] = useState<boolean | null>(null)
+  // "Pay before the order shows" (cashier flow). Off until an admin turns it on.
+  const [requirePayment, setRequirePayment] = useState(false)
+  const [isSavingPay, setIsSavingPay] = useState(false)
+
+  const toggleRequirePayment = async () => {
+    const next = !requirePayment
+    setIsSavingPay(true)
+    try {
+      const res = await fetch("/api/settings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ requirePayment: next }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data?.error || "Couldn't save")
+      setRequirePayment(Boolean(data.requirePayment))
+      toast.success(
+        next
+          ? "Staff now see orders only after they're paid"
+          : "Staff see every order right away again"
+      )
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Couldn't save")
+    } finally {
+      setIsSavingPay(false)
+    }
+  }
   const [isSavingPrint, setIsSavingPrint] = useState(false)
 
   useEffect(() => {
     fetch("/api/settings", { cache: "no-store" })
       .then((r) => (r.ok ? r.json() : null))
-      .then((d) => setPrintTickets(Boolean(d?.printTickets)))
+      .then((d) => {
+        setPrintTickets(Boolean(d?.printTickets))
+        setRequirePayment(Boolean(d?.requirePayment))
+      })
       .catch(() => setPrintTickets(false))
   }, [])
 
@@ -828,6 +858,37 @@ export default function UserManagement() {
               </div>
 
               {printTickets !== null && (
+                <div className="mb-3 flex items-center gap-4 rounded-2xl border border-border bg-card p-4 shadow-sm">
+                  <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                    <Banknote className="h-5 w-5" />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="font-semibold text-foreground">Orders must be paid before staff see them</p>
+                    <p className="text-sm text-muted-foreground">
+                      A Cashier (or admin) collects cash or card and taps Paid. Only then does the order pop up for the rest of the staff.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={requirePayment}
+                    aria-label="Orders must be paid before staff see them"
+                    onClick={toggleRequirePayment}
+                    disabled={isSavingPay}
+                    className={`relative h-8 w-14 shrink-0 rounded-full transition-colors disabled:opacity-60 ${
+                      requirePayment ? "bg-emerald-600" : "bg-zinc-300"
+                    }`}
+                  >
+                    <span
+                      className={`absolute top-1 left-1 h-6 w-6 rounded-full bg-white shadow transition-transform ${
+                        requirePayment ? "translate-x-6" : ""
+                      }`}
+                    />
+                  </button>
+                </div>
+              )}
+
+              {printTickets !== null && (
                 <div className="mb-6 flex items-center gap-4 rounded-2xl border border-border bg-card p-4 shadow-sm">
                   <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
                     <Printer className="h-5 w-5" />
@@ -887,7 +948,13 @@ export default function UserManagement() {
                                 <h3 className="font-semibold text-base text-foreground truncate">{user.username}</h3>
                                 <Badge
                                   variant={isDeveloper ? "outline" : displayRole === "ADMIN" ? "default" : "secondary"}
-                                  className={isDeveloper ? "border-purple-500 text-purple-600" : ""}
+                                  className={
+                                    isDeveloper
+                                      ? "border-purple-500 text-purple-600"
+                                      : displayRole === "CASHIER"
+                                        ? "bg-emerald-100 text-emerald-800"
+                                        : ""
+                                  }
                                 >
                                   {displayRole}
                                 </Badge>
@@ -1013,11 +1080,17 @@ export default function UserManagement() {
 
               <div className="space-y-2">
                 <Label>Role *</Label>
-                <RadioGroup value={role} onValueChange={(v) => setRole(v as "USER" | "ADMIN")}>
+                <RadioGroup value={role} onValueChange={(v) => setRole(v as "USER" | "ADMIN" | "CASHIER")}>
                   <div className="flex items-center space-x-2">
                     <RadioGroupItem value="USER" id="user" />
                     <Label htmlFor="user" className="font-normal cursor-pointer">
                       User - Standard access
+                    </Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="CASHIER" id="cashier" />
+                    <Label htmlFor="cashier" className="font-normal cursor-pointer">
+                      Cashier - Takes payment, sees prices
                     </Label>
                   </div>
                   <div className="flex items-center space-x-2">
@@ -1127,11 +1200,17 @@ export default function UserManagement() {
 
                   <div className="space-y-2">
                     <Label className="text-zinc-200">Role *</Label>
-                    <RadioGroup value={role} onValueChange={(v) => setRole(v as "USER" | "ADMIN")}>
+                    <RadioGroup value={role} onValueChange={(v) => setRole(v as "USER" | "ADMIN" | "CASHIER")}>
                       <div className="flex items-center space-x-2">
                         <RadioGroupItem value="USER" id="mobile-user" />
                         <Label htmlFor="mobile-user" className="font-normal cursor-pointer text-zinc-300">
                           User - Standard access
+                        </Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="CASHIER" id="mobile-cashier" />
+                        <Label htmlFor="mobile-cashier" className="font-normal cursor-pointer text-zinc-300">
+                          Cashier - Takes payment, sees prices
                         </Label>
                       </div>
                       <div className="flex items-center space-x-2">

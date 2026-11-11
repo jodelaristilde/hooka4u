@@ -13,6 +13,8 @@ export interface ReportOrder {
   paymentType?: string | null;
   Seating?: string | null;
   status?: string | null;
+  paymentStatus?: string | null;
+  paidBy?: string | null;
   items: { quantity: number; product: { id: string; name: string; price: number } | null }[];
 }
 
@@ -25,6 +27,8 @@ export interface NightReport {
   card: number;
   ready: number;
   pending: number;
+  /** Ordered but not paid yet (cashier flow). Cash/Card only count paid. */
+  unpaid: number;
   topItems: { name: string; quantity: number; sales: number }[];
   orders: ReportOrder[];
 }
@@ -66,8 +70,9 @@ export function buildNightReport(orders: ReportOrder[], date: Date = startOfToni
     total: sum(orders),
     count: orders.length,
     items,
-    cash: sum(orders.filter((o) => o.paymentType !== "CARD")),
-    card: sum(orders.filter((o) => o.paymentType === "CARD")),
+    cash: sum(orders.filter((o) => o.paymentStatus !== "UNPAID" && o.paymentType !== "CARD")),
+    card: sum(orders.filter((o) => o.paymentStatus !== "UNPAID" && o.paymentType === "CARD")),
+    unpaid: sum(orders.filter((o) => o.paymentStatus === "UNPAID")),
     ready: sum(orders.filter((o) => o.status === "DELIVERED")),
     pending: sum(orders.filter((o) => o.status !== "DELIVERED")),
     topItems: [...byItem.values()].sort((a, b) => b.quantity - a.quantity || b.sales - a.sales),
@@ -93,19 +98,22 @@ export function nightReportCsv(r: NightReport, siteName: string): string {
     ["Items", r.items],
     ["Cash", money(r.cash)],
     ["Card", money(r.card)],
+    ["Not paid yet", money(r.unpaid)],
     ["Ready (served)", money(r.ready)],
     ["Still pending", money(r.pending)],
     [],
     ["Top items", "Quantity", "Sales"],
     ...r.topItems.map((t) => [t.name, t.quantity, money(t.sales)]),
     [],
-    ["Order #", "Time", "Customer", "Seat", "Payment", "Status", "Items", "Total"],
+    ["Order #", "Time", "Customer", "Seat", "Payment", "Paid", "Taken by", "Status", "Items", "Total"],
     ...r.orders.map((o) => [
       o.orderNumber ?? "",
       new Date(o.createdAt).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }),
       o.customerName || "Guest",
       o.Seating ?? "",
       o.paymentType === "CARD" ? "Card" : "Cash",
+      o.paymentStatus === "UNPAID" ? "No" : "Yes",
+      o.paidBy ?? "",
       o.status === "DELIVERED" ? "Ready" : "Pending",
       o.items.map((i) => `${i.quantity}x ${i.product?.name ?? "Item"}`).join("; "),
       money(o.subtotal || 0),
