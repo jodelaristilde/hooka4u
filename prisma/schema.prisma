@@ -20,6 +20,7 @@ model User {
 enum Role {
   USER
   ADMIN
+  CASHIER // takes payment: sees prices, marks orders Paid
 }
 
 model VerificationToken {
@@ -105,6 +106,11 @@ model Order {
   Seating      String
   subtotal     Float
   status       String      @default("PENDING")
+  // "UNPAID" until a cashier/admin takes the money; "PAID" after.
+  // Older orders have no value and count as paid.
+  paymentStatus String?
+  paidAt       DateTime?
+  paidBy       String?
   site         String?     @default("vipservice4u")
   createdAt    DateTime    @default(now())
   updatedAt    DateTime    @updatedAt
@@ -132,5 +138,7 @@ model SiteSetting {
   id           String   @id @default(uuid()) @map("_id")
   site         String
   printTickets Boolean  @default(false)
+  // When on, staff screens only show an order after it has been paid.
+  requirePayment Boolean @default(false)
   updatedAt    DateTime @updatedAt
 }

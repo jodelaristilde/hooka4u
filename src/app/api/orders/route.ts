@@ -74,6 +74,7 @@ export async function POST(request: NextRequest) {
         Seating: Seating.trim(),
         subtotal,
         status: "PENDING", // Default status for new orders
+        paymentStatus: "UNPAID", // a cashier/admin marks it Paid
         site,
         items: {
           create: items.map((item: { productId: string; quantity: number }) => ({

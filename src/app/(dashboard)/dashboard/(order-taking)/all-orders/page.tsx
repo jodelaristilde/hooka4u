@@ -72,7 +72,13 @@ interface Order {
   paymentType?: "CASH" | "CARD";
   Seating?: string;
   status?: "PENDING" | "DELIVERED";
+  // "UNPAID" until a cashier/admin takes the money. Missing = paid (older orders).
+  paymentStatus?: "UNPAID" | "PAID" | null;
+  paidBy?: string | null;
+  paidAt?: string | null;
 }
+
+const isUnpaid = (o: Order) => o.paymentStatus === "UNPAID";
 
 export default function AllOrders() {
   const brand = useBrand();
@@ -84,7 +90,7 @@ export default function AllOrders() {
   const [deleting, setDeleting] = useState(false);
   const [lastFetchTime, setLastFetchTime] = useState<Date | null>(null);
   const [updatingStatus, setUpdatingStatus] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState("pending");
+  const [pickedTab, setActiveTab] = useState<string | null>(null);
   // Orders this device has accepted ("View order" or tapping the card).
   // Saved on the device so a reload or a phone waking up never treats a new
   // order as already seen. Any pending order NOT in here alerts.
@@ -105,6 +111,11 @@ export default function AllOrders() {
   // Admin-only "today's sales" panel, opened by double-tapping Total.
   const { data: session } = useSession();
   const isAdmin = session?.user?.role === "ADMIN";
+  // Cashiers and admins take payment and see order totals.
+  const handlesMoney = isAdmin || session?.user?.role === "CASHIER";
+  // Cashiers start on "To collect"; everyone else on "Pending".
+  const activeTab = pickedTab ?? (session?.user?.role === "CASHIER" ? "collect" : "pending");
+  const [payingId, setPayingId] = useState<string | null>(null);
   const [salesOpen, setSalesOpen] = useState(false);
   // Staff logins: double-tap Total asks for an admin password, then loads
   // tonight's sales with prices just for that look (cleared on close).
@@ -499,6 +510,41 @@ export default function AllOrders() {
   const pendingOrders = orders.filter(
     (o) => !o.status || o.status === "PENDING"
   );
+  // Orders still waiting for the money (cashier/admin "To collect" tab).
+  const unpaidOrders = orders
+    .filter(isUnpaid)
+    .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+
+  // Cashier/admin: mark an order Paid (Cash or Card), or undo it.
+  const markPaid = async (order: Order, method: "CASH" | "CARD" | null) => {
+    setPayingId(order.id);
+    try {
+      const res = await fetch("/api/orders/pay", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(method ? { orderId: order.id, method } : { orderId: order.id, undo: true }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(data?.error || "Couldn't save the payment.");
+      setOrders((prev) =>
+        prev.map((o) =>
+          o.id === order.id
+            ? {
+                ...o,
+                paymentStatus: data.paymentStatus,
+                paymentType: data.paymentType ?? o.paymentType,
+                paidBy: data.paidBy,
+                paidAt: data.paidAt,
+              }
+            : o
+        )
+      );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Couldn't save the payment.");
+    } finally {
+      setPayingId(null);
+    }
+  };
   const deliveredOrders = orders.filter((o) => o.status === "DELIVERED");
   const expandedOrder = orders.find((o) => o.id === expandedOrderId) ?? null;
 
@@ -609,8 +655,80 @@ export default function AllOrders() {
     </span>
   );
 
+  const money2 = (n: number) => n.toLocaleString("en-US", { style: "currency", currency: "USD" });
+  const waitMinutes = (o: Order) => Math.max(0, Math.floor(((lastFetchTime?.getTime() ?? 0) - new Date(o.createdAt).getTime()) / 60000));
+
+  // Cash / Card buttons for the cashier (also used on the card itself).
+  const payButtons = (order: Order, large = false) => (
+    <div className="grid grid-cols-2 gap-2">
+      {(["CASH", "CARD"] as const).map((m) => (
+        <button
+          key={m}
+          type="button"
+          disabled={payingId === order.id}
+          onClick={(e) => {
+            e.stopPropagation();
+            ackOrder(order.id);
+            markPaid(order, m);
+          }}
+          className={`flex items-center justify-center gap-2 rounded-2xl bg-emerald-600 font-bold text-white shadow-md shadow-emerald-600/25 transition-colors hover:bg-emerald-700 disabled:opacity-60 ${
+            large ? "h-14 text-lg" : "h-12 text-base"
+          }`}
+        >
+          {payingId === order.id ? (
+            <Loader2 className="h-5 w-5 animate-spin" />
+          ) : m === "CASH" ? (
+            <Banknote className="h-5 w-5" aria-hidden="true" />
+          ) : (
+            <CreditCard className="h-5 w-5" aria-hidden="true" />
+          )}
+          Paid · {m === "CASH" ? "Cash" : "Card"}
+        </button>
+      ))}
+    </div>
+  );
+
+  // Amount to collect + how long they've waited (cashier/admin only).
+  const collectBox = (order: Order, large = false) => {
+    const mins = waitMinutes(order);
+    const late = mins >= 10;
+    return (
+      <div className={`flex items-center justify-between gap-3 rounded-2xl px-4 ${large ? "py-3" : "py-2.5"} ${late ? "bg-red-50 ring-1 ring-red-200" : "bg-zinc-900 text-white"}`}>
+        <div>
+          <div className={`text-[11px] font-bold tracking-widest uppercase ${late ? "text-red-700" : "text-white/70"}`}>To collect</div>
+          <div className={`font-extrabold tabular-nums ${large ? "text-3xl" : "text-2xl"} ${late ? "text-red-700" : "text-white"}`}>{money2(order.subtotal)}</div>
+        </div>
+        <div className={`text-right text-xs font-semibold ${late ? "text-red-700" : "text-white/80"}`}>
+          {late ? "Waiting" : "Ordered"}
+          <div className={`text-base font-extrabold tabular-nums ${late ? "text-red-700" : "text-white"}`}>{mins < 1 ? "just now" : `${mins} min`}</div>
+        </div>
+      </div>
+    );
+  };
+
   const paymentChip = (order: Order, large = false) =>
-    infoChip(
+    isUnpaid(order)
+      ? (
+          <span
+            className={`inline-flex items-center gap-1.5 rounded-full bg-red-50 font-bold text-red-700 ring-1 ring-red-200 ${
+              large ? "px-3 py-1 text-sm" : "px-2.5 py-0.5 text-xs"
+            }`}
+          >
+            Not paid yet · {order.paymentType === "CARD" ? "Credit card" : "Cash"}
+          </span>
+        )
+      : order.paymentStatus === "PAID"
+        ? (
+            <span
+              className={`inline-flex items-center gap-1.5 rounded-full bg-emerald-50 font-bold text-emerald-800 ring-1 ring-emerald-200 ${
+                large ? "px-3 py-1 text-sm" : "px-2.5 py-0.5 text-xs"
+              }`}
+            >
+              <CheckCircle2 className={large ? "h-4 w-4" : "h-3.5 w-3.5"} aria-hidden="true" />
+              Paid · {order.paymentType === "CARD" ? "Card" : "Cash"}
+            </span>
+          )
+        : infoChip(
       order.paymentType === "CARD" ? (
         <CreditCard className={large ? "h-4 w-4" : "h-3.5 w-3.5"} aria-hidden="true" />
       ) : (
@@ -710,6 +828,8 @@ export default function AllOrders() {
           {isDelivered ? "Ready" : "Pending"}
         </div>
 
+        {handlesMoney && isUnpaid(order) && collectBox(order)}
+
         {/* Payment, location */}
         <div className="flex flex-wrap items-center gap-1.5">
           {paymentChip(order)}
@@ -753,13 +873,17 @@ export default function AllOrders() {
           </div>
         </div>
 
-        <span
-          className={`mt-auto flex h-11 items-center justify-center rounded-2xl text-sm font-semibold transition-colors ${
-            isDelivered ? `border ${accent.outline}` : accent.button
-          }`}
-        >
-          View order
-        </span>
+        {handlesMoney && isUnpaid(order) ? (
+          <div className="mt-auto">{payButtons(order)}</div>
+        ) : (
+          <span
+            className={`mt-auto flex h-11 items-center justify-center rounded-2xl text-sm font-semibold transition-colors ${
+              isDelivered ? `border ${accent.outline}` : accent.button
+            }`}
+          >
+            View order
+          </span>
+        )}
       </div>
     );
   };
@@ -776,6 +900,30 @@ export default function AllOrders() {
           {paymentChip(order, true)}
           {order.Seating && infoChip(<MapPin className="h-4 w-4" aria-hidden="true" />, `Location: ${order.Seating}`, true)}
         </div>
+
+        {handlesMoney && isUnpaid(order) && (
+          <div className="flex flex-col gap-2">
+            {collectBox(order, true)}
+            {payButtons(order, true)}
+          </div>
+        )}
+        {handlesMoney && order.paymentStatus === "PAID" && (
+          <div className="flex items-center justify-between gap-3 rounded-2xl bg-emerald-50 px-4 py-3 ring-1 ring-emerald-200">
+            <div className="text-sm text-emerald-900">
+              <span className="font-bold">{money2(order.subtotal)} paid</span>{" "}
+              {order.paymentType === "CARD" ? "by card" : "in cash"}
+              {order.paidBy ? ` · taken by ${order.paidBy}` : ""}
+            </div>
+            <button
+              type="button"
+              onClick={() => markPaid(order, null)}
+              disabled={payingId === order.id}
+              className="shrink-0 text-xs font-semibold text-emerald-800 underline underline-offset-2 disabled:opacity-60"
+            >
+              Undo
+            </button>
+          </div>
+        )}
 
         <div className="divide-y divide-zinc-100 overflow-hidden rounded-2xl border border-zinc-200 bg-white">
           {order.items.map((item) => {
@@ -1087,7 +1235,12 @@ export default function AllOrders() {
                     </div>
                   ))}
                 </div>
-                <TabsList className="grid h-12 w-full grid-cols-2 rounded-2xl bg-zinc-200/70 p-1 lg:w-80">
+                <TabsList className={`grid h-12 w-full rounded-2xl bg-zinc-200/70 p-1 ${handlesMoney ? "grid-cols-3 lg:w-[30rem]" : "grid-cols-2 lg:w-80"}`}>
+                  {handlesMoney && (
+                    <TabsTrigger value="collect" className={`h-10 rounded-xl text-sm font-semibold text-zinc-600 ${accent.tabActive}`}>
+                      To collect · {unpaidOrders.length}
+                    </TabsTrigger>
+                  )}
                   <TabsTrigger value="pending" className={`h-10 rounded-xl text-sm font-semibold text-zinc-600 ${accent.tabActive}`}>
                     Pending · {pendingOrders.length}
                   </TabsTrigger>
@@ -1099,6 +1252,21 @@ export default function AllOrders() {
             </div>
 
             <div className="min-h-0 flex-1 overflow-hidden">
+              {handlesMoney && (
+                <TabsContent value="collect" className="m-0 h-full">
+                  <ScrollArea className="h-full">
+                    <div className="mx-auto max-w-7xl px-4 pt-3 pb-28 md:px-6 md:pb-8">
+                      {unpaidOrders.length === 0 ? (
+                        emptyState(<Banknote className="h-8 w-8" />, "Nothing to collect", "New orders waiting for payment show up here.")
+                      ) : (
+                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                          {unpaidOrders.map((order) => renderOrderCard(order))}
+                        </div>
+                      )}
+                    </div>
+                  </ScrollArea>
+                </TabsContent>
+              )}
               <TabsContent value="pending" className="m-0 h-full">
                 <ScrollArea className="h-full">
                   <div className="mx-auto max-w-7xl px-4 pt-3 pb-28 md:px-6 md:pb-8">
@@ -1176,6 +1344,7 @@ export default function AllOrders() {
                     infoChip(<MapPin className="h-4 w-4" aria-hidden="true" />, `Location: ${alertOrder.Seating}`, true)}
                   {paymentChip(alertOrder, true)}
                 </div>
+                {handlesMoney && isUnpaid(alertOrder) && <div className="mt-3">{collectBox(alertOrder, true)}</div>}
                 <ul className="mt-4 space-y-2 rounded-2xl bg-zinc-50 p-3 ring-1 ring-zinc-100">
                   {alertOrder.items.slice(0, 4).map((item) => {
                     const src = item.product?.id ? productImages[item.product.id] : undefined;
@@ -1322,6 +1491,9 @@ export default function AllOrders() {
               {[
                 { label: "Cash", value: todaysSales.cash, box: "bg-zinc-50 ring-zinc-200" },
                 { label: "Card", value: todaysSales.card, box: "bg-zinc-50 ring-zinc-200" },
+                ...(todaysSales.unpaid > 0
+                  ? [{ label: "Not paid yet", value: todaysSales.unpaid, box: "bg-red-50 ring-red-200" }]
+                  : []),
                 { label: "Ready", value: todaysSales.ready, box: "bg-emerald-50 ring-emerald-200" },
                 { label: "Still pending", value: todaysSales.pending, box: "bg-amber-50 ring-amber-200" },
               ].map((row) => (

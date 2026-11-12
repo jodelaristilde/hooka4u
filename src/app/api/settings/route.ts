@@ -7,7 +7,7 @@ import { requireAdmin, requireUser } from "@/lib/api-auth";
 // Ready"). Staff can read them; only an admin can change them.
 export const dynamic = "force-dynamic";
 
-const DEFAULTS = { printTickets: false };
+const DEFAULTS = { printTickets: false, requirePayment: false };
 
 export async function GET(request: NextRequest) {
   const auth = await requireUser();
@@ -15,7 +15,10 @@ export async function GET(request: NextRequest) {
   try {
     const site = getSiteFromRequest(request);
     const row = await prisma.siteSetting.findFirst({ where: { site } });
-    return NextResponse.json({ printTickets: row?.printTickets ?? DEFAULTS.printTickets });
+    return NextResponse.json({
+      printTickets: row?.printTickets ?? DEFAULTS.printTickets,
+      requirePayment: row?.requirePayment ?? DEFAULTS.requirePayment,
+    });
   } catch (err) {
     console.error("Error reading settings:", err);
     return NextResponse.json(DEFAULTS);
@@ -28,14 +31,17 @@ export async function PATCH(request: NextRequest) {
   try {
     const site = getSiteFromRequest(request);
     const body = await request.json().catch(() => ({}));
-    if (typeof body.printTickets !== "boolean") {
-      return NextResponse.json({ error: "printTickets must be true or false" }, { status: 400 });
+    const data: { printTickets?: boolean; requirePayment?: boolean } = {};
+    if (typeof body.printTickets === "boolean") data.printTickets = body.printTickets;
+    if (typeof body.requirePayment === "boolean") data.requirePayment = body.requirePayment;
+    if (Object.keys(data).length === 0) {
+      return NextResponse.json({ error: "Nothing to change." }, { status: 400 });
     }
     const existing = await prisma.siteSetting.findFirst({ where: { site } });
     const row = existing
-      ? await prisma.siteSetting.update({ where: { id: existing.id }, data: { printTickets: body.printTickets } })
-      : await prisma.siteSetting.create({ data: { site, printTickets: body.printTickets } });
-    return NextResponse.json({ printTickets: row.printTickets });
+      ? await prisma.siteSetting.update({ where: { id: existing.id }, data })
+      : await prisma.siteSetting.create({ data: { site, ...data } });
+    return NextResponse.json({ printTickets: row.printTickets, requirePayment: row.requirePayment });
   } catch (err) {
     console.error("Error saving settings:", err);
     return NextResponse.json({ error: "Could not save the setting." }, { status: 500 });

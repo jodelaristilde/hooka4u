@@ -23,7 +23,7 @@ export async function middleware(req: NextRequest) {
     }
 
     // Restrict user role from certain pages only
-if (role === "USER") {
+if (role !== "ADMIN") {
   if (
     RESTRICTED_FOR_USER.some((route) =>
       pathname === route || pathname.startsWith(route + "/")

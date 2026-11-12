@@ -34,6 +34,11 @@ export async function requireAdmin(): Promise<Session | NextResponse> {
   return session;
 }
 
+// Admins and cashiers handle money, so they see prices and can mark orders paid.
+export function canTakePayment(session: Session | null | undefined): boolean {
+  return session?.user?.role === "ADMIN" || session?.user?.role === "CASHIER";
+}
+
 export function isAdminSession(session: Session | null | undefined): boolean {
   return session?.user?.role === "ADMIN";
 }
