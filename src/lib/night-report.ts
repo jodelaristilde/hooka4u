@@ -15,6 +15,8 @@ export interface ReportOrder {
   status?: string | null;
   paymentStatus?: string | null;
   paidBy?: string | null;
+  cashReceived?: number | null;
+  paymentLog?: unknown;
   items: { quantity: number; product: { id: string; name: string; price: number } | null }[];
 }
 
@@ -29,6 +31,10 @@ export interface NightReport {
   pending: number;
   /** Ordered but not paid yet (cashier flow). Cash/Card only count paid. */
   unpaid: number;
+  /** Money each person took tonight (for counting the drawer). */
+  byPerson: { name: string; cash: number; card: number; orders: number }[];
+  /** Payments that were marked Paid and then undone (who undid them). */
+  undone: { orderNumber?: number | null; by: string; amount: number }[];
   topItems: { name: string; quantity: number; sales: number }[];
   orders: ReportOrder[];
 }
@@ -73,6 +79,24 @@ export function buildNightReport(orders: ReportOrder[], date: Date = startOfToni
     cash: sum(orders.filter((o) => o.paymentStatus !== "UNPAID" && o.paymentType !== "CARD")),
     card: sum(orders.filter((o) => o.paymentStatus !== "UNPAID" && o.paymentType === "CARD")),
     unpaid: sum(orders.filter((o) => o.paymentStatus === "UNPAID")),
+    byPerson: (() => {
+      const m = new Map<string, { name: string; cash: number; card: number; orders: number }>();
+      for (const o of orders) {
+        if (o.paymentStatus !== "PAID") continue;
+        const name = o.paidBy || "Unknown";
+        const row = m.get(name) ?? { name, cash: 0, card: 0, orders: 0 };
+        if (o.paymentType === "CARD") row.card += o.subtotal || 0;
+        else row.cash += o.subtotal || 0;
+        row.orders += 1;
+        m.set(name, row);
+      }
+      return [...m.values()].sort((a, b) => b.cash + b.card - (a.cash + a.card));
+    })(),
+    undone: orders.flatMap((o) =>
+      (Array.isArray(o.paymentLog) ? (o.paymentLog as { action?: string; by?: string; amount?: number }[]) : [])
+        .filter((e) => e?.action === "UNDO")
+        .map((e) => ({ orderNumber: o.orderNumber, by: e.by || "Unknown", amount: e.amount ?? o.subtotal ?? 0 }))
+    ),
     ready: sum(orders.filter((o) => o.status === "DELIVERED")),
     pending: sum(orders.filter((o) => o.status !== "DELIVERED")),
     topItems: [...byItem.values()].sort((a, b) => b.quantity - a.quantity || b.sales - a.sales),
@@ -101,6 +125,12 @@ export function nightReportCsv(r: NightReport, siteName: string): string {
     ["Not paid yet", money(r.unpaid)],
     ["Ready (served)", money(r.ready)],
     ["Still pending", money(r.pending)],
+    [],
+    ["Taken by", "Cash", "Card", "Total", "Orders"],
+    ...r.byPerson.map((p) => [p.name, money(p.cash), money(p.card), money(p.cash + p.card), p.orders]),
+    ...(r.undone.length
+      ? [[], ["Payments undone", "Order #", "Amount"], ...r.undone.map((u) => [u.by, u.orderNumber ?? "", money(u.amount)])]
+      : []),
     [],
     ["Top items", "Quantity", "Sales"],
     ...r.topItems.map((t) => [t.name, t.quantity, money(t.sales)]),

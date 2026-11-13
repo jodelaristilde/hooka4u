@@ -40,6 +40,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
+import { useSession } from "next-auth/react";
 import { useBrand } from "@/lib/use-brand";
 import { useShiftMode } from "@/lib/use-shift-mode";
 import { printOrderTicket } from "@/lib/print-ticket";
@@ -76,6 +77,9 @@ interface Order {
 // anywhere (subtotal, item prices) since anyone can walk by and see it.
 export default function AllOrdersEnlarged() {
   const brand = useBrand();
+  const { data: session } = useSession();
+  // Only admins can delete orders.
+  const isAdmin = session?.user?.role === "ADMIN";
   const orderNumberBadgeClass =
     brand.site === "jaeky"
       ? "text-sm font-bold border-purple-500/50 bg-purple-100 text-purple-800 tabular-nums px-2 py-0.5 shrink-0"
@@ -604,17 +608,19 @@ export default function AllOrdersEnlarged() {
                 </span>
               </div>
             </div>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 shrink-0"
-              onClick={(e) => {
-                e.stopPropagation();
-                handleDeleteClick(order);
-              }}
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
+            {isAdmin && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 shrink-0"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleDeleteClick(order);
+                }}
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            )}
           </div>
 
           <Badge
@@ -807,17 +813,19 @@ export default function AllOrdersEnlarged() {
                 <Printer className="w-5 h-5" />
               </Button>
             )}
-            <Button
-              variant="outline"
-              size="lg"
-              className="text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-              onClick={() => {
-                setExpandedOrderId(null);
-                handleDeleteClick(order);
-              }}
-            >
-              <Trash2 className="h-5 w-5" />
-            </Button>
+            {isAdmin && (
+              <Button
+                variant="outline"
+                size="lg"
+                className="text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                onClick={() => {
+                  setExpandedOrderId(null);
+                  handleDeleteClick(order);
+                }}
+              >
+                <Trash2 className="h-5 w-5" />
+              </Button>
+            )}
           </div>
         </div>
       </div>

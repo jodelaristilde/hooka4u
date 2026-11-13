@@ -76,6 +76,7 @@ interface Order {
   paymentStatus?: "UNPAID" | "PAID" | null;
   paidBy?: string | null;
   paidAt?: string | null;
+  cashReceived?: number | null;
 }
 
 const isUnpaid = (o: Order) => o.paymentStatus === "UNPAID";
@@ -116,6 +117,10 @@ export default function AllOrders() {
   // Cashiers start on "To collect"; everyone else on "Pending".
   const activeTab = pickedTab ?? (session?.user?.role === "CASHIER" ? "collect" : "pending");
   const [payingId, setPayingId] = useState<string | null>(null);
+  const isCashier = session?.user?.role === "CASHIER";
+  // Cash change helper: which order, and what the guest handed over.
+  const [cashFor, setCashFor] = useState<Order | null>(null);
+  const [cashGiven, setCashGiven] = useState("");
   const [salesOpen, setSalesOpen] = useState(false);
   // Staff logins: double-tap Total asks for an admin password, then loads
   // tonight's sales with prices just for that look (cleared on close).
@@ -516,13 +521,15 @@ export default function AllOrders() {
     .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
 
   // Cashier/admin: mark an order Paid (Cash or Card), or undo it.
-  const markPaid = async (order: Order, method: "CASH" | "CARD" | null) => {
+  const markPaid = async (order: Order, method: "CASH" | "CARD" | null, cashReceived?: number) => {
     setPayingId(order.id);
     try {
       const res = await fetch("/api/orders/pay", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(method ? { orderId: order.id, method } : { orderId: order.id, undo: true }),
+        body: JSON.stringify(
+          method ? { orderId: order.id, method, cashReceived } : { orderId: order.id, undo: true }
+        ),
       });
       const data = await res.json().catch(() => null);
       if (!res.ok) throw new Error(data?.error || "Couldn't save the payment.");
@@ -535,6 +542,7 @@ export default function AllOrders() {
                 paymentType: data.paymentType ?? o.paymentType,
                 paidBy: data.paidBy,
                 paidAt: data.paidAt,
+                cashReceived: data.cashReceived ?? null,
               }
             : o
         )
@@ -669,7 +677,12 @@ export default function AllOrders() {
           onClick={(e) => {
             e.stopPropagation();
             ackOrder(order.id);
-            markPaid(order, m);
+            if (m === "CASH") {
+              setCashGiven("");
+              setCashFor(order);
+            } else {
+              markPaid(order, m);
+            }
           }}
           className={`flex items-center justify-center gap-2 rounded-2xl bg-emerald-600 font-bold text-white shadow-md shadow-emerald-600/25 transition-colors hover:bg-emerald-700 disabled:opacity-60 ${
             large ? "h-14 text-lg" : "h-12 text-base"
@@ -742,6 +755,8 @@ export default function AllOrders() {
   const renderOrderCard = (order: Order) => {
     const isDelivered = order.status === "DELIVERED";
     const isNew = alertQueue.includes(order.id);
+    // Cashier/admin: the big middle bar says NOT PAID until the money's in.
+    const showNotPaid = handlesMoney && isUnpaid(order) && !isDelivered;
     const itemCount = getTotalItems(order.items);
     const thumbs = order.items
       .map((item) => (item.product?.id ? productImages[item.product.id] : undefined))
@@ -800,6 +815,7 @@ export default function AllOrders() {
               {formatDate(order.createdAt)}
             </p>
           </div>
+          {isAdmin && (
           <button
             type="button"
             aria-label={`Delete order for ${order.customerName || "Guest"}`}
@@ -811,21 +827,24 @@ export default function AllOrders() {
           >
             <Trash2 className="h-4 w-4" />
           </button>
+          )}
         </div>
 
         {/* Big status in the middle */}
         <div
           className={`flex items-center justify-center gap-2 rounded-2xl py-2 text-xl font-extrabold tracking-widest uppercase ${
-            isDelivered
-              ? "bg-emerald-100 text-emerald-800 ring-1 ring-emerald-200"
-              : "bg-amber-100 text-amber-900 ring-1 ring-amber-300"
+            showNotPaid
+              ? "bg-red-600 text-white ring-1 ring-red-700"
+              : isDelivered
+                ? "bg-emerald-100 text-emerald-800 ring-1 ring-emerald-200"
+                : "bg-amber-100 text-amber-900 ring-1 ring-amber-300"
           }`}
         >
           <span
-            className={`h-2.5 w-2.5 rounded-full ${isDelivered ? "bg-emerald-600" : "bg-amber-600"}`}
+            className={`h-2.5 w-2.5 rounded-full ${showNotPaid ? "bg-white" : isDelivered ? "bg-emerald-600" : "bg-amber-600"}`}
             aria-hidden="true"
           />
-          {isDelivered ? "Ready" : "Pending"}
+          {showNotPaid ? "Not paid" : isDelivered ? "Ready" : "Pending"}
         </div>
 
         {handlesMoney && isUnpaid(order) && collectBox(order)}
@@ -913,6 +932,11 @@ export default function AllOrders() {
               <span className="font-bold">{money2(order.subtotal)} paid</span>{" "}
               {order.paymentType === "CARD" ? "by card" : "in cash"}
               {order.paidBy ? ` · taken by ${order.paidBy}` : ""}
+              {order.paymentType !== "CARD" && typeof order.cashReceived === "number" && order.cashReceived > 0 && (
+                <span className="block text-xs text-emerald-800">
+                  Got {money2(order.cashReceived)} · change {money2(Math.max(0, order.cashReceived - order.subtotal))}
+                </span>
+              )}
             </div>
             <button
               type="button"
@@ -1218,20 +1242,41 @@ export default function AllOrders() {
             <div className="shrink-0 px-4 pt-4 pb-2 md:px-6">
               <div className="mx-auto flex max-w-7xl flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                 <div className="grid grid-cols-3 gap-2 sm:gap-3 lg:flex">
-                  {[
-                    { label: "Total", value: orders.length, box: "bg-white ring-zinc-200", tone: "text-zinc-900" },
-                    { label: "Pending", value: pendingOrders.length, box: "bg-amber-50 ring-amber-200", tone: "text-amber-700" },
-                    { label: "Ready", value: deliveredOrders.length, box: "bg-emerald-50 ring-emerald-200", tone: "text-emerald-700" },
-                  ].map((stat) => (
+                  {(isCashier
+                    ? [
+                        {
+                          label: "To collect",
+                          value: money2(unpaidOrders.reduce((s, o) => s + (o.subtotal || 0), 0)),
+                          box: unpaidOrders.length ? "bg-red-50 ring-red-200" : "bg-white ring-zinc-200",
+                          tone: unpaidOrders.length ? "text-red-700" : "text-zinc-900",
+                        },
+                        { label: "Waiting", value: unpaidOrders.length, box: "bg-amber-50 ring-amber-200", tone: "text-amber-700" },
+                        {
+                          label: "You took",
+                          value: money2(
+                            orders
+                              .filter((o) => o.paymentStatus === "PAID" && o.paidBy === session?.user?.username)
+                              .reduce((s, o) => s + (o.subtotal || 0), 0)
+                          ),
+                          box: "bg-emerald-50 ring-emerald-200",
+                          tone: "text-emerald-700",
+                        },
+                      ]
+                    : [
+                        { label: "Total", value: orders.length, box: "bg-white ring-zinc-200", tone: "text-zinc-900" },
+                        { label: "Pending", value: pendingOrders.length, box: "bg-amber-50 ring-amber-200", tone: "text-amber-700" },
+                        { label: "Ready", value: deliveredOrders.length, box: "bg-emerald-50 ring-emerald-200", tone: "text-emerald-700" },
+                      ]
+                  ).map((stat) => (
                     <div
                       key={stat.label}
-                      onClick={stat.label === "Total" ? handleTotalTap : undefined}
+                      onClick={stat.label === "Total" || stat.label === "You took" ? handleTotalTap : undefined}
                       className={`rounded-2xl px-3 py-2.5 ring-1 select-none lg:min-w-32 ${stat.box} ${
                         stat.label === "Total" ? "cursor-pointer" : ""
                       }`}
                     >
                       <div className="text-[11px] font-semibold tracking-wide text-zinc-500 uppercase">{stat.label}</div>
-                      <div className={`text-2xl leading-tight font-extrabold tabular-nums ${stat.tone}`}>{stat.value}</div>
+                      <div className={`truncate leading-tight font-extrabold tabular-nums ${typeof stat.value === "string" ? "text-xl" : "text-2xl"} ${stat.tone}`}>{stat.value}</div>
                     </div>
                   ))}
                 </div>
@@ -1423,6 +1468,95 @@ export default function AllOrders() {
         </AlertDialogContent>
       </AlertDialog>
 
+      {/* Cash change helper */}
+      <Dialog open={!!cashFor} onOpenChange={(open) => !open && setCashFor(null)}>
+        <DialogContent className="w-[calc(100%-1.5rem)] max-w-sm rounded-3xl border-zinc-200 bg-white">
+          {cashFor &&
+            (() => {
+              const due = cashFor.subtotal || 0;
+              const given = cashGiven.trim() === "" ? due : Number(cashGiven);
+              const valid = isFinite(given) && given >= 0;
+              const short = valid && given + 0.001 < due;
+              const change = valid ? Math.max(0, given - due) : 0;
+              const quick = Array.from(
+                new Set([due, Math.ceil(due / 5) * 5, Math.ceil(due / 10) * 10, Math.ceil(due / 20) * 20, 50, 100].filter((v) => v >= due))
+              )
+                .sort((a, b) => a - b)
+                .slice(0, 4);
+              return (
+                <div className="flex flex-col gap-4">
+                  <DialogHeader>
+                    <DialogTitle className="text-left text-zinc-900">
+                      Cash · #{cashFor.orderNumber} {cashFor.customerName || "Guest"}
+                    </DialogTitle>
+                  </DialogHeader>
+                  <div className="rounded-2xl bg-zinc-900 px-4 py-3 text-white">
+                    <div className="text-[11px] font-bold tracking-widest text-white/70 uppercase">Amount due</div>
+                    <div className="text-3xl font-extrabold tabular-nums">{money2(due)}</div>
+                  </div>
+                  <div>
+                    <div className="mb-2 text-sm font-semibold text-zinc-700">What did they hand you?</div>
+                    <div className="grid grid-cols-4 gap-2">
+                      {quick.map((v) => (
+                        <button
+                          key={v}
+                          type="button"
+                          onClick={() => setCashGiven(String(v))}
+                          className={`h-12 rounded-xl text-sm font-bold ring-1 transition-colors ${
+                            Number(cashGiven) === v || (cashGiven === "" && v === due)
+                              ? "bg-emerald-600 text-white ring-emerald-700"
+                              : "bg-white text-zinc-900 ring-zinc-300 hover:bg-zinc-50"
+                          }`}
+                        >
+                          {v === due ? "Exact" : money2(v).replace(".00", "")}
+                        </button>
+                      ))}
+                    </div>
+                    <label htmlFor="cash-given" className="mt-3 block text-xs font-medium text-zinc-500">
+                      Or type the amount
+                    </label>
+                    <input
+                      id="cash-given"
+                      inputMode="decimal"
+                      placeholder={due.toFixed(2)}
+                      value={cashGiven}
+                      onChange={(e) => setCashGiven(e.target.value.replace(/[^0-9.]/g, ""))}
+                      className="mt-1 h-12 w-full rounded-2xl border border-zinc-300 px-4 text-lg font-semibold text-zinc-900 tabular-nums outline-none focus:border-zinc-500"
+                    />
+                  </div>
+                  <div
+                    className={`rounded-2xl px-4 py-3 text-center ${
+                      short ? "bg-red-50 text-red-700 ring-1 ring-red-200" : "bg-emerald-50 text-emerald-900 ring-1 ring-emerald-200"
+                    }`}
+                  >
+                    {short ? (
+                      <span className="text-lg font-bold">Short by {money2(due - given)}</span>
+                    ) : (
+                      <>
+                        <div className="text-[11px] font-bold tracking-widest uppercase">Give back</div>
+                        <div className="text-4xl font-extrabold tabular-nums">{money2(change)}</div>
+                      </>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    disabled={!valid || short || payingId === cashFor.id}
+                    onClick={async () => {
+                      const o = cashFor;
+                      setCashFor(null);
+                      await markPaid(o, "CASH", given);
+                    }}
+                    className="flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-emerald-600 text-lg font-bold text-white shadow-md shadow-emerald-600/25 hover:bg-emerald-700 disabled:opacity-50"
+                  >
+                    <Banknote className="h-5 w-5" aria-hidden="true" />
+                    Paid · Cash
+                  </button>
+                </div>
+              );
+            })()}
+        </DialogContent>
+      </Dialog>
+
       {/* Staff login: admin password before showing tonight's sales */}
       <Dialog
         open={salesUnlockOpen}
@@ -1503,6 +1637,28 @@ export default function AllOrders() {
                 </div>
               ))}
             </div>
+            {todaysSales.byPerson.length > 0 && (
+              <div className="rounded-2xl bg-zinc-50 p-3 ring-1 ring-zinc-200">
+                <div className="mb-2 text-[11px] font-semibold tracking-wide text-zinc-500 uppercase">Taken by</div>
+                <ul className="space-y-1.5">
+                  {todaysSales.byPerson.map((p) => (
+                    <li key={p.name} className="flex items-center gap-2 text-sm">
+                      <span className="min-w-0 flex-1 truncate font-medium text-zinc-900">{p.name}</span>
+                      <span className="text-xs text-zinc-500 tabular-nums">
+                        Cash {money(p.cash)} · Card {money(p.card)}
+                      </span>
+                      <span className="w-20 text-right font-semibold text-zinc-900 tabular-nums">{money(p.cash + p.card)}</span>
+                    </li>
+                  ))}
+                </ul>
+                {todaysSales.undone.length > 0 && (
+                  <p className="mt-2 text-xs font-medium text-red-700">
+                    {todaysSales.undone.length} payment{todaysSales.undone.length === 1 ? "" : "s"} undone tonight:{" "}
+                    {todaysSales.undone.map((u) => `#${u.orderNumber ?? "?"} by ${u.by}`).join(", ")}
+                  </p>
+                )}
+              </div>
+            )}
             {todaysSales.topItems.length > 0 && (
               <div className="rounded-2xl bg-zinc-50 p-3 ring-1 ring-zinc-200">
                 <div className="mb-2 text-[11px] font-semibold tracking-wide text-zinc-500 uppercase">Top items</div>
