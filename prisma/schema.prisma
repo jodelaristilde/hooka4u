@@ -113,6 +113,10 @@ model Order {
   paidBy       String?
   // Cash the guest handed over (for the change helper / drawer count).
   cashReceived Float?
+  // Dual pricing, saved when the order is placed so later changes to the
+  // setting don't change old orders. cardTotal = what a card payment costs.
+  cardPricePercent Float?
+  cardTotal    Float?
   // Every Paid / Undo, with who and when, so nothing disappears quietly.
   paymentLog   Json?
   site         String?     @default("vipservice4u")
@@ -144,5 +148,7 @@ model SiteSetting {
   printTickets Boolean  @default(false)
   // When on, staff screens only show an order after it has been paid.
   requirePayment Boolean @default(false)
+  // Dual pricing: card prices are this % higher than cash (0 = off).
+  cardPricePercent Float @default(0)
   updatedAt    DateTime @updatedAt
 }

@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
+import { cardPrice } from "@/lib/card-price";
 import { Pencil, Loader2, DollarSign, ChevronDown, ChevronUp } from "lucide-react";
 import {
   Breadcrumb,
@@ -88,8 +89,15 @@ export default function MenuPrices() {
   const [sortField, setSortField] = useState<SortField | null>(null);
   const [sortAsc, setSortAsc] = useState(true);
 
+  // Dual pricing: card prices are this % higher (0 = off).
+  const [cardPct, setCardPct] = useState(0);
+
   useEffect(() => {
     fetchMenuItems();
+    fetch("/api/pricing", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => setCardPct(Number(d?.cardPricePercent) || 0))
+      .catch(() => {});
   }, []);
 
   const fetchMenuItems = async () => {
@@ -343,6 +351,11 @@ export default function MenuPrices() {
                           {/* PRICE */}
                           <td className={`px-4 py-3 text-right font-semibold ${brand.accentText}`}>
                             ${item.price.toFixed(2)}
+                            {cardPct > 0 && (
+                              <span className="block text-xs font-medium text-zinc-500">
+                                Card ${cardPrice(item.price, cardPct).toFixed(2)}
+                              </span>
+                            )}
                           </td>
 
                           {/* ACTION */}
@@ -403,6 +416,11 @@ export default function MenuPrices() {
                   autoFocus
                 />
               </div>
+              {cardPct > 0 && Number(price) > 0 && (
+                <p className="text-xs text-zinc-500">
+                  This is the cash price. Card price: ${cardPrice(Number(price), cardPct).toFixed(2)} (+{cardPct}%)
+                </p>
+              )}
             </div>
 
             <div className="flex gap-2 items-center">

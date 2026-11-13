@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
 import { getSiteFromRequest, siteWhere } from "@/lib/site";
 import { requireAdmin, requireUser } from "@/lib/api-auth";
+import { cardTotal } from "@/lib/card-price";
 
 const prisma = new PrismaClient();
 
@@ -65,6 +66,22 @@ export async function POST(request: NextRequest) {
     });
     const orderNumber = (lastOrder?.orderNumber ?? 99) + 1;
 
+    // Dual pricing: work out the card total from the menu prices.
+    const setting = await prisma.siteSetting
+      .findFirst({ where: { site }, select: { cardPricePercent: true } })
+      .catch(() => null);
+    const cardPct = setting?.cardPricePercent ?? 0;
+    let orderCardTotal: number | null = null;
+    if (cardPct > 0) {
+      const ids = [...new Set(items.map((i) => i.productId))];
+      const products = await prisma.menuItems.findMany({ where: { id: { in: ids } }, select: { id: true, price: true } });
+      const priceOf = new Map(products.map((p) => [p.id, p.price]));
+      orderCardTotal = cardTotal(
+        items.map((i) => ({ price: Number(priceOf.get(i.productId) ?? 0), quantity: i.quantity })),
+        cardPct
+      );
+    }
+
     // Create order with items
     const order = await prisma.order.create({
       data: {
@@ -75,6 +92,8 @@ export async function POST(request: NextRequest) {
         subtotal,
         status: "PENDING", // Default status for new orders
         paymentStatus: "UNPAID", // a cashier/admin marks it Paid
+        cardPricePercent: cardPct > 0 ? cardPct : null,
+        cardTotal: orderCardTotal,
         site,
         items: {
           create: items.map((item: { productId: string; quantity: number }) => ({

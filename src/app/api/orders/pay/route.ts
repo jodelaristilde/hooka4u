@@ -23,7 +23,7 @@ export async function PATCH(request: NextRequest) {
     const site = getSiteFromRequest(request);
     const order = await prisma.order.findFirst({
       where: { AND: [{ id: orderId }, siteWhere(site)] },
-      select: { id: true, subtotal: true, paymentLog: true, paymentType: true },
+      select: { id: true, subtotal: true, cardTotal: true, paymentLog: true, paymentType: true },
     });
     if (!order) return NextResponse.json({ error: "Order not found." }, { status: 404 });
 
@@ -38,7 +38,15 @@ export async function PATCH(request: NextRequest) {
     log.push(
       undo
         ? { action: "UNDO", by: who, at: now.toISOString(), method: order.paymentType ?? null, amount: order.subtotal }
-        : { action: "PAID", by: who, at: now.toISOString(), method, amount: order.subtotal, cashReceived: received }
+        : {
+            action: "PAID",
+            by: who,
+            at: now.toISOString(),
+            method,
+            // A card payment is charged the card price (dual pricing).
+            amount: method === "CARD" ? (order.cardTotal ?? order.subtotal) : order.subtotal,
+            cashReceived: received,
+          }
     );
 
     const updated = await prisma.order.update({

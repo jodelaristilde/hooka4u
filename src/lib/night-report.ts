@@ -16,6 +16,7 @@ export interface ReportOrder {
   paymentStatus?: string | null;
   paidBy?: string | null;
   cashReceived?: number | null;
+  cardTotal?: number | null;
   paymentLog?: unknown;
   items: { quantity: number; product: { id: string; name: string; price: number } | null }[];
 }
@@ -23,6 +24,8 @@ export interface ReportOrder {
 export interface NightReport {
   date: Date;
   total: number;
+  /** Extra the customers paid by paying with card (dual pricing). */
+  cardFees: number;
   count: number;
   items: number;
   cash: number;
@@ -56,8 +59,16 @@ export function todaysOrders<T extends { createdAt: string }>(orders: T[]): T[] 
   return orders.filter((o) => new Date(o.createdAt) >= start);
 }
 
+// What an order actually brings in: card payments are charged the card
+// price (dual pricing); everything else the cash price.
+function amount(o: ReportOrder): number {
+  return o.paymentStatus !== "UNPAID" && o.paymentType === "CARD" && typeof o.cardTotal === "number"
+    ? o.cardTotal
+    : o.subtotal || 0;
+}
+
 export function buildNightReport(orders: ReportOrder[], date: Date = startOfTonight()): NightReport {
-  const sum = (list: ReportOrder[]) => list.reduce((s, o) => s + (o.subtotal || 0), 0);
+  const sum = (list: ReportOrder[]) => list.reduce((s, o) => s + amount(o), 0);
   const byItem = new Map<string, { name: string; quantity: number; sales: number }>();
   let items = 0;
   for (const o of orders) {
@@ -74,6 +85,7 @@ export function buildNightReport(orders: ReportOrder[], date: Date = startOfToni
   return {
     date,
     total: sum(orders),
+    cardFees: orders.reduce((s, o) => s + (amount(o) - (o.subtotal || 0)), 0),
     count: orders.length,
     items,
     cash: sum(orders.filter((o) => o.paymentStatus !== "UNPAID" && o.paymentType !== "CARD")),
@@ -85,8 +97,8 @@ export function buildNightReport(orders: ReportOrder[], date: Date = startOfToni
         if (o.paymentStatus !== "PAID") continue;
         const name = o.paidBy || "Unknown";
         const row = m.get(name) ?? { name, cash: 0, card: 0, orders: 0 };
-        if (o.paymentType === "CARD") row.card += o.subtotal || 0;
-        else row.cash += o.subtotal || 0;
+        if (o.paymentType === "CARD") row.card += amount(o);
+        else row.cash += amount(o);
         row.orders += 1;
         m.set(name, row);
       }
@@ -123,6 +135,7 @@ export function nightReportCsv(r: NightReport, siteName: string): string {
     ["Cash", money(r.cash)],
     ["Card", money(r.card)],
     ["Not paid yet", money(r.unpaid)],
+    ["Card price extra (paid by customers)", money(r.cardFees)],
     ["Ready (served)", money(r.ready)],
     ["Still pending", money(r.pending)],
     [],
@@ -146,7 +159,7 @@ export function nightReportCsv(r: NightReport, siteName: string): string {
       o.paidBy ?? "",
       o.status === "DELIVERED" ? "Ready" : "Pending",
       o.items.map((i) => `${i.quantity}x ${i.product?.name ?? "Item"}`).join("; "),
-      money(o.subtotal || 0),
+      money(amount(o)),
     ]),
   ];
   return rows.map((row) => row.map(cell).join(",")).join("\r\n");

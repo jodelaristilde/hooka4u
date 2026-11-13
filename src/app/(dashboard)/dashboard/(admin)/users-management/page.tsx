@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Plus, Trash2, Loader2, Eye, EyeOff, X, UserPlus, RotateCcw, CheckCircle2, History, Download, Zap, Printer, Banknote } from "lucide-react"
+import { Plus, Trash2, Loader2, Eye, EyeOff, X, UserPlus, RotateCcw, CheckCircle2, History, Download, Zap, Printer, Banknote, CreditCard } from "lucide-react"
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -14,6 +14,7 @@ import { Separator } from "@/components/ui/separator"
 import { SidebarTrigger } from "@/components/ui/sidebar"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
+import { cardPrice } from "@/lib/card-price"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Label } from "@/components/ui/label"
@@ -200,6 +201,35 @@ export default function UserManagement() {
   // "Pay before the order shows" (cashier flow). Off until an admin turns it on.
   const [requirePayment, setRequirePayment] = useState(false)
   const [isSavingPay, setIsSavingPay] = useState(false)
+  // Dual pricing: card prices are this % higher than cash (0 = off).
+  const [cardPct, setCardPct] = useState("")
+  const [savedCardPct, setSavedCardPct] = useState(0)
+  const [isSavingCard, setIsSavingCard] = useState(false)
+
+  const saveCardPct = async () => {
+    const pct = cardPct.trim() === "" ? 0 : Number(cardPct)
+    if (!isFinite(pct) || pct < 0 || pct > 10) {
+      toast.error("Enter a percentage between 0 and 10.")
+      return
+    }
+    setIsSavingCard(true)
+    try {
+      const res = await fetch("/api/settings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ cardPricePercent: pct }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data?.error || "Couldn't save")
+      setSavedCardPct(Number(data.cardPricePercent) || 0)
+      setCardPct(data.cardPricePercent ? String(data.cardPricePercent) : "")
+      toast.success(pct > 0 ? `Card prices are now ${pct}% higher than cash` : "Card and cash prices are the same again")
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Couldn't save")
+    } finally {
+      setIsSavingCard(false)
+    }
+  }
 
   const toggleRequirePayment = async () => {
     const next = !requirePayment
@@ -232,6 +262,8 @@ export default function UserManagement() {
       .then((d) => {
         setPrintTickets(Boolean(d?.printTickets))
         setRequirePayment(Boolean(d?.requirePayment))
+        setSavedCardPct(Number(d?.cardPricePercent) || 0)
+        setCardPct(d?.cardPricePercent ? String(d.cardPricePercent) : "")
       })
       .catch(() => setPrintTickets(false))
   }, [])
@@ -856,6 +888,47 @@ export default function UserManagement() {
                   </Button>
                 </div>
               </div>
+
+              {printTickets !== null && (
+                <div className="mb-3 flex flex-col gap-3 rounded-2xl border border-border bg-card p-4 shadow-sm sm:flex-row sm:items-center sm:gap-4">
+                  <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                    <CreditCard className="h-5 w-5" />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="font-semibold text-foreground">Card price (customer pays the card fee)</p>
+                    <p className="text-sm text-muted-foreground">
+                      Menu prices are the cash price. Card prices are this much higher, shown to guests next to the cash price.
+                      With Square (2.6% + 15¢), 3.5% covers the fee on orders of $19 or more. 0 = off.
+                    </p>
+                    {Number(cardPct) > 0 && (
+                      <p className="mt-1 text-sm font-medium text-foreground">
+                        Example: $25.00 cash → ${cardPrice(25, Number(cardPct)).toFixed(2)} card
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex shrink-0 items-center gap-2">
+                    <div className="relative">
+                      <Input
+                        id="card-price-percent"
+                        inputMode="decimal"
+                        aria-label="Card price percent"
+                        placeholder="0"
+                        value={cardPct}
+                        onChange={(e) => setCardPct(e.target.value.replace(/[^0-9.]/g, ""))}
+                        className="h-10 w-24 pr-7 text-right"
+                      />
+                      <span className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 text-sm text-muted-foreground">%</span>
+                    </div>
+                    <Button
+                      onClick={saveCardPct}
+                      disabled={isSavingCard || (cardPct === "" ? 0 : Number(cardPct)) === savedCardPct}
+                      className="h-10"
+                    >
+                      {isSavingCard ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save"}
+                    </Button>
+                  </div>
+                </div>
+              )}
 
               {printTickets !== null && (
                 <div className="mb-3 flex items-center gap-4 rounded-2xl border border-border bg-card p-4 shadow-sm">

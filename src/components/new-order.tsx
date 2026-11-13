@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { ArrowLeft, Loader2, Minus, Plus, ShoppingCart, X } from "lucide-react"
 import { useEffect, useState } from "react"
+import { cardPrice, cardTotal } from "@/lib/card-price"
 import { toast } from "sonner"
 import { useBrand } from "@/lib/use-brand"
 
@@ -57,6 +58,15 @@ export default function NewOrder({ onOrderComplete, onBack }: NewOrderProps) {
   const [mobileSheetView, setMobileSheetView] = useState<"cart" | "form">("cart")
   const [showSuccessDialog, setShowSuccessDialog] = useState(false)
   const [lastOrderId, setLastOrderId] = useState<string>("")
+  // Dual pricing: card prices are this % higher than cash (0 = off).
+  const [cardPct, setCardPct] = useState(0)
+
+  useEffect(() => {
+    fetch("/api/pricing", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => setCardPct(Number(d?.cardPricePercent) || 0))
+      .catch(() => {})
+  }, [])
 
   // Fetch products from database
   useEffect(() => {
@@ -271,6 +281,16 @@ export default function NewOrder({ onOrderComplete, onBack }: NewOrderProps) {
 
   const cartItems = Object.values(cart)
   const subtotal = cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0)
+  const cardSubtotal = cardTotal(cartItems, cardPct)
+  // Total shown to the guest: both prices until they pick how they're paying.
+  const totalLabel =
+    cardPct <= 0
+      ? `$${subtotal.toFixed(2)}`
+      : paymentType === "CARD"
+        ? `$${cardSubtotal.toFixed(2)} card`
+        : paymentType === "CASH"
+          ? `$${subtotal.toFixed(2)} cash`
+          : `$${subtotal.toFixed(2)} cash · $${cardSubtotal.toFixed(2)} card`
   const totalItems = cartItems.reduce((sum, item) => sum + item.quantity, 0)
 
   // Items in a hidden category are left out of ordering entirely — they
@@ -397,10 +417,15 @@ export default function NewOrder({ onOrderComplete, onBack }: NewOrderProps) {
     </h3>
 
     {/* Price and description on the same line */}
-    <div className="flex items-center gap-2">
+    <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
       <div className={isJaeky ? "w-fit shrink-0 rounded-full bg-purple-500 px-2 py-0.5 text-xs font-bold text-white sm:px-3 sm:py-1 sm:text-base" : "w-fit shrink-0 rounded-full bg-lime-500 px-2 py-0.5 text-xs font-bold text-black sm:px-3 sm:py-1 sm:text-base"}>
-        ${product.price.toFixed(2)}
+        ${product.price.toFixed(2)}{cardPct > 0 && <span className="font-semibold opacity-90"> cash</span>}
       </div>
+      {cardPct > 0 && (
+        <div className="w-fit shrink-0 text-xs font-semibold text-zinc-600 sm:text-sm">
+          ${cardPrice(product.price, cardPct).toFixed(2)} card
+        </div>
+      )}
       {product.description && (
         <p className="line-clamp-2 min-w-0 flex-1 text-xs leading-tight text-zinc-600">
           {product.description}
@@ -519,7 +544,7 @@ export default function NewOrder({ onOrderComplete, onBack }: NewOrderProps) {
               <div className="border-t border-zinc-200 bg-zinc-50 p-4 space-y-4">
                 <div className="flex justify-between items-center">
                   <span className="text-sm font-semibold text-zinc-900">Total</span>
-                  <span className={isJaeky ? "text-xl font-bold text-purple-500" : "text-xl font-bold text-lime-500"}>${subtotal.toFixed(2)}</span>
+                  <span className={isJaeky ? "text-xl font-bold text-purple-500" : "text-xl font-bold text-lime-500"}>{totalLabel}</span>
                 </div>
                 <Button
                   className={isJaeky ? "w-full bg-purple-600 hover:bg-purple-700 text-white h-12 text-base font-medium transition-colors active:scale-95" : "w-full bg-lime-600 hover:bg-lime-700 text-white h-12 text-base font-medium transition-colors active:scale-95"}
@@ -581,7 +606,7 @@ export default function NewOrder({ onOrderComplete, onBack }: NewOrderProps) {
                     >
                       <RadioGroupItem value="CASH" id="cash" className={isJaeky ? "border-zinc-300 text-purple-500" : "border-zinc-300 text-lime-500"} />
                       <Label htmlFor="cash" className="text-sm font-normal cursor-pointer text-zinc-900">
-                        Cash
+                        Cash{cardPct > 0 && cartItems.length > 0 ? ` · $${subtotal.toFixed(2)}` : ""}
                       </Label>
                     </div>
                     <div
@@ -593,7 +618,7 @@ export default function NewOrder({ onOrderComplete, onBack }: NewOrderProps) {
                     >
                       <RadioGroupItem value="CARD" id="card" className={isJaeky ? "border-zinc-300 text-purple-500" : "border-zinc-300 text-lime-500"} />
                       <Label htmlFor="card" className="text-sm font-normal cursor-pointer text-zinc-900">
-                        Credit card
+                        Credit card{cardPct > 0 && cartItems.length > 0 ? ` · $${cardSubtotal.toFixed(2)}` : ""}
                       </Label>
                     </div>
                   </RadioGroup>
@@ -630,7 +655,7 @@ export default function NewOrder({ onOrderComplete, onBack }: NewOrderProps) {
                   </div>
                   <div className="flex justify-between items-center mt-4 pt-4 border-t border-zinc-200">
                     <span className="font-semibold text-zinc-900">Total</span>
-                    <span className={isJaeky ? "text-xl font-bold text-purple-500" : "text-xl font-bold text-lime-500"}>${subtotal.toFixed(2)}</span>
+                    <span className={isJaeky ? "text-xl font-bold text-purple-500" : "text-xl font-bold text-lime-500"}>{totalLabel}</span>
                   </div>
                 </div>
               </div>
@@ -781,7 +806,7 @@ export default function NewOrder({ onOrderComplete, onBack }: NewOrderProps) {
             <div className="border-t border-zinc-200 bg-zinc-50 p-4 space-y-4">
               <div className="flex justify-between items-center">
                 <span className="text-sm font-semibold text-zinc-900">Total</span>
-                <span className={isJaeky ? "text-xl font-bold text-purple-500" : "text-xl font-bold text-lime-500"}>${subtotal.toFixed(2)}</span>
+                <span className={isJaeky ? "text-xl font-bold text-purple-500" : "text-xl font-bold text-lime-500"}>{totalLabel}</span>
               </div>
               <Button
                 className={isJaeky ? "w-full bg-purple-600 hover:bg-purple-700 text-white h-12 text-base font-medium transition-colors active:scale-95" : "w-full bg-lime-600 hover:bg-lime-700 text-white h-12 text-base font-medium transition-colors active:scale-95"}
@@ -825,7 +850,7 @@ export default function NewOrder({ onOrderComplete, onBack }: NewOrderProps) {
                   >
                     <RadioGroupItem value="CASH" id="cash-mobile" className={isJaeky ? "border-zinc-300 text-purple-500" : "border-zinc-300 text-lime-500"} />
                     <Label htmlFor="cash-mobile" className="text-sm font-normal cursor-pointer text-zinc-900">
-                      Cash
+                      Cash{cardPct > 0 && cartItems.length > 0 ? ` · $${subtotal.toFixed(2)}` : ""}
                     </Label>
                   </div>
                   <div
@@ -837,7 +862,7 @@ export default function NewOrder({ onOrderComplete, onBack }: NewOrderProps) {
                   >
                     <RadioGroupItem value="CARD" id="card-mobile" className={isJaeky ? "border-zinc-300 text-purple-500" : "border-zinc-300 text-lime-500"} />
                     <Label htmlFor="card-mobile" className="text-sm font-normal cursor-pointer text-zinc-900">
-                      Credit card
+                      Credit card{cardPct > 0 && cartItems.length > 0 ? ` · $${cardSubtotal.toFixed(2)}` : ""}
                     </Label>
                   </div>
                 </RadioGroup>
@@ -874,7 +899,7 @@ export default function NewOrder({ onOrderComplete, onBack }: NewOrderProps) {
                 </div>
                 <div className="flex justify-between items-center mt-4 pt-4 border-t border-zinc-200">
                   <span className="font-semibold text-zinc-900">Total</span>
-                  <span className={isJaeky ? "text-xl font-bold text-purple-500" : "text-xl font-bold text-lime-500"}>${subtotal.toFixed(2)}</span>
+                  <span className={isJaeky ? "text-xl font-bold text-purple-500" : "text-xl font-bold text-lime-500"}>{totalLabel}</span>
                 </div>
               </div>
             </div>
