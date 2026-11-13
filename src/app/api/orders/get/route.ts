@@ -81,6 +81,8 @@ export async function GET(request: NextRequest) {
       return {
         ...base,
         subtotal: 0,
+        cashReceived: null,
+        paymentLog: null,
         items: order.items.map((item) => ({
           ...item,
           product: item.product ? { id: item.product.id, name: item.product.name, price: 0 } : null,

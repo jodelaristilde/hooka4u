@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
 import { getSiteFromRequest, siteWhere } from "@/lib/site";
-import { requireUser } from "@/lib/api-auth";
+import { requireAdmin, requireUser } from "@/lib/api-auth";
 
 const prisma = new PrismaClient();
 
@@ -103,7 +103,9 @@ export async function POST(request: NextRequest) {
 }
 
 export async function DELETE(request: NextRequest) {
-  const auth = await requireUser();
+  // Only admins can delete orders (protects cash: an order can't vanish
+  // after the money was taken).
+  const auth = await requireAdmin();
   if (auth instanceof NextResponse) return auth;
   try {
     const { searchParams } = new URL(request.url);

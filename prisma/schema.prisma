@@ -111,6 +111,10 @@ model Order {
   paymentStatus String?
   paidAt       DateTime?
   paidBy       String?
+  // Cash the guest handed over (for the change helper / drawer count).
+  cashReceived Float?
+  // Every Paid / Undo, with who and when, so nothing disappears quietly.
+  paymentLog   Json?
   site         String?     @default("vipservice4u")
   createdAt    DateTime    @default(now())
   updatedAt    DateTime    @updatedAt
