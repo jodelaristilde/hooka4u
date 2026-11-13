@@ -7,7 +7,7 @@ import { requireAdmin, requireUser } from "@/lib/api-auth";
 // Ready"). Staff can read them; only an admin can change them.
 export const dynamic = "force-dynamic";
 
-const DEFAULTS = { printTickets: false, requirePayment: false };
+const DEFAULTS = { printTickets: false, requirePayment: false, cardPricePercent: 0 };
 
 export async function GET(request: NextRequest) {
   const auth = await requireUser();
@@ -18,6 +18,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       printTickets: row?.printTickets ?? DEFAULTS.printTickets,
       requirePayment: row?.requirePayment ?? DEFAULTS.requirePayment,
+      cardPricePercent: row?.cardPricePercent ?? DEFAULTS.cardPricePercent,
     });
   } catch (err) {
     console.error("Error reading settings:", err);
@@ -31,7 +32,14 @@ export async function PATCH(request: NextRequest) {
   try {
     const site = getSiteFromRequest(request);
     const body = await request.json().catch(() => ({}));
-    const data: { printTickets?: boolean; requirePayment?: boolean } = {};
+    const data: { printTickets?: boolean; requirePayment?: boolean; cardPricePercent?: number } = {};
+    if (body.cardPricePercent !== undefined) {
+      const pct = Number(body.cardPricePercent);
+      if (!isFinite(pct) || pct < 0 || pct > 10) {
+        return NextResponse.json({ error: "Card price must be between 0% and 10%." }, { status: 400 });
+      }
+      data.cardPricePercent = Math.round(pct * 100) / 100;
+    }
     if (typeof body.printTickets === "boolean") data.printTickets = body.printTickets;
     if (typeof body.requirePayment === "boolean") data.requirePayment = body.requirePayment;
     if (Object.keys(data).length === 0) {
@@ -41,7 +49,11 @@ export async function PATCH(request: NextRequest) {
     const row = existing
       ? await prisma.siteSetting.update({ where: { id: existing.id }, data })
       : await prisma.siteSetting.create({ data: { site, ...data } });
-    return NextResponse.json({ printTickets: row.printTickets, requirePayment: row.requirePayment });
+    return NextResponse.json({
+      printTickets: row.printTickets,
+      requirePayment: row.requirePayment,
+      cardPricePercent: row.cardPricePercent,
+    });
   } catch (err) {
     console.error("Error saving settings:", err);
     return NextResponse.json({ error: "Could not save the setting." }, { status: 500 });

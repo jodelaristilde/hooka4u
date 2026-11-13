@@ -77,6 +77,8 @@ interface Order {
   paidBy?: string | null;
   paidAt?: string | null;
   cashReceived?: number | null;
+  // Dual pricing: what a card payment costs (cash price is subtotal).
+  cardTotal?: number | null;
 }
 
 const isUnpaid = (o: Order) => o.paymentStatus === "UNPAID";
@@ -664,6 +666,11 @@ export default function AllOrders() {
   );
 
   const money2 = (n: number) => n.toLocaleString("en-US", { style: "currency", currency: "USD" });
+  // Card price for this order (dual pricing), or the cash price if it's off.
+  const cardAmount = (o: Order) => (typeof o.cardTotal === "number" && o.cardTotal > 0 ? o.cardTotal : o.subtotal);
+  const hasCardPrice = (o: Order) => cardAmount(o) > o.subtotal;
+  // What a paid order actually brought in.
+  const paidAmount = (o: Order) => (o.paymentType === "CARD" ? cardAmount(o) : o.subtotal);
   const waitMinutes = (o: Order) => Math.max(0, Math.floor(((lastFetchTime?.getTime() ?? 0) - new Date(o.createdAt).getTime()) / 60000));
 
   // Cash / Card buttons for the cashier (also used on the card itself).
@@ -695,7 +702,14 @@ export default function AllOrders() {
           ) : (
             <CreditCard className="h-5 w-5" aria-hidden="true" />
           )}
-          Paid · {m === "CASH" ? "Cash" : "Card"}
+          <span className="flex flex-col items-center leading-tight">
+            <span>Paid · {m === "CASH" ? "Cash" : "Card"}</span>
+            {hasCardPrice(order) && (
+              <span className="text-xs font-semibold text-white/85 tabular-nums">
+                {money2(m === "CASH" ? order.subtotal : cardAmount(order))}
+              </span>
+            )}
+          </span>
         </button>
       ))}
     </div>
@@ -709,7 +723,19 @@ export default function AllOrders() {
       <div className={`flex items-center justify-between gap-3 rounded-2xl px-4 ${large ? "py-3" : "py-2.5"} ${late ? "bg-red-50 ring-1 ring-red-200" : "bg-zinc-900 text-white"}`}>
         <div>
           <div className={`text-[11px] font-bold tracking-widest uppercase ${late ? "text-red-700" : "text-white/70"}`}>To collect</div>
-          <div className={`font-extrabold tabular-nums ${large ? "text-3xl" : "text-2xl"} ${late ? "text-red-700" : "text-white"}`}>{money2(order.subtotal)}</div>
+          <div className={`font-extrabold tabular-nums ${large ? "text-3xl" : "text-2xl"} ${late ? "text-red-700" : "text-white"}`}>
+            {money2(order.paymentType === "CARD" ? cardAmount(order) : order.subtotal)}
+            {hasCardPrice(order) && (
+              <span className={`ml-1.5 text-xs font-bold ${late ? "text-red-700" : "text-white/70"}`}>
+                {order.paymentType === "CARD" ? "card" : "cash"}
+              </span>
+            )}
+          </div>
+          {hasCardPrice(order) && (
+            <div className={`text-xs font-semibold tabular-nums ${late ? "text-red-700/80" : "text-white/70"}`}>
+              {order.paymentType === "CARD" ? `Cash ${money2(order.subtotal)}` : `Card ${money2(cardAmount(order))}`}
+            </div>
+          )}
         </div>
         <div className={`text-right text-xs font-semibold ${late ? "text-red-700" : "text-white/80"}`}>
           {late ? "Waiting" : "Ordered"}
@@ -929,7 +955,7 @@ export default function AllOrders() {
         {handlesMoney && order.paymentStatus === "PAID" && (
           <div className="flex items-center justify-between gap-3 rounded-2xl bg-emerald-50 px-4 py-3 ring-1 ring-emerald-200">
             <div className="text-sm text-emerald-900">
-              <span className="font-bold">{money2(order.subtotal)} paid</span>{" "}
+              <span className="font-bold">{money2(paidAmount(order))} paid</span>{" "}
               {order.paymentType === "CARD" ? "by card" : "in cash"}
               {order.paidBy ? ` · taken by ${order.paidBy}` : ""}
               {order.paymentType !== "CARD" && typeof order.cashReceived === "number" && order.cashReceived > 0 && (
@@ -1246,7 +1272,9 @@ export default function AllOrders() {
                     ? [
                         {
                           label: "To collect",
-                          value: money2(unpaidOrders.reduce((s, o) => s + (o.subtotal || 0), 0)),
+                          value: money2(
+                            unpaidOrders.reduce((s, o) => s + (o.paymentType === "CARD" ? cardAmount(o) : o.subtotal || 0), 0)
+                          ),
                           box: unpaidOrders.length ? "bg-red-50 ring-red-200" : "bg-white ring-zinc-200",
                           tone: unpaidOrders.length ? "text-red-700" : "text-zinc-900",
                         },
@@ -1256,7 +1284,7 @@ export default function AllOrders() {
                           value: money2(
                             orders
                               .filter((o) => o.paymentStatus === "PAID" && o.paidBy === session?.user?.username)
-                              .reduce((s, o) => s + (o.subtotal || 0), 0)
+                              .reduce((s, o) => s + paidAmount(o), 0)
                           ),
                           box: "bg-emerald-50 ring-emerald-200",
                           tone: "text-emerald-700",
@@ -1627,6 +1655,9 @@ export default function AllOrders() {
                 { label: "Card", value: todaysSales.card, box: "bg-zinc-50 ring-zinc-200" },
                 ...(todaysSales.unpaid > 0
                   ? [{ label: "Not paid yet", value: todaysSales.unpaid, box: "bg-red-50 ring-red-200" }]
+                  : []),
+                ...(todaysSales.cardFees > 0.004
+                  ? [{ label: "Card price extra", value: todaysSales.cardFees, box: "bg-violet-50 ring-violet-200" }]
                   : []),
                 { label: "Ready", value: todaysSales.ready, box: "bg-emerald-50 ring-emerald-200" },
                 { label: "Still pending", value: todaysSales.pending, box: "bg-amber-50 ring-amber-200" },
